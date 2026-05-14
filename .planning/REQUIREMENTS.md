@@ -50,12 +50,12 @@
 ### Hook Integration (One-Way Mode)
 
 - [ ] **HOOK-01**: mrclean registers handlers for the four Claude Code hook events it depends on: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`
-- [ ] **HOOK-02**: `UserPromptSubmit`: when a CRITICAL/HIGH detection fires the hook returns `permissionDecision: "deny"` with `permissionDecisionReason` naming the rule and a redacted snippet so the operator can rewrite the prompt themselves (Claude Code's hook contract does not yet allow silent prompt rewrite)
-- [ ] **HOOK-03**: `PreToolUse`: when a tool argument contains a detection, the hook emits `hookSpecificOutput.updatedInput` with the placeholder-substituted version so the tool runs on sanitized input
-- [ ] **HOOK-04**: `PostToolUse`: tool results are scanned and any newly discovered secrets are added to the session map and substituted in the output that re-enters the model context (one-way; reversible-mode restoration is REVMODE phase)
+- [x] **HOOK-02**: `UserPromptSubmit`: when a CRITICAL/HIGH detection fires the hook returns `permissionDecision: "deny"` with `permissionDecisionReason` naming the rule and a redacted snippet so the operator can rewrite the prompt themselves (Claude Code's hook contract does not yet allow silent prompt rewrite)
+- [x] **HOOK-03**: `PreToolUse`: when a tool argument contains a detection, the hook emits `hookSpecificOutput.updatedInput` with the placeholder-substituted version so the tool runs on sanitized input
+- [x] **HOOK-04**: `PostToolUse`: tool results are scanned and any newly discovered secrets are added to the session map and substituted in the output that re-enters the model context (one-way; reversible-mode restoration is REVMODE phase)
 - [ ] **HOOK-05**: Hook fails closed — any uncaught exception or invalid input causes exit code 2 with a structured stderr message rather than passing the unsanitized payload through
 - [ ] **HOOK-06**: Hook writes nothing to stdout except the JSON response object; all diagnostics, banners, and errors go to stderr to avoid corrupting the Claude Code response stream
-- [ ] **HOOK-07**: A "mrclean active vN.N.N (rules: NNN, allowlist: NN)" banner is emitted to stderr on `SessionStart` so silent-misconfig regressions are visible to the operator
+- [x] **HOOK-07**: A "mrclean active vN.N.N (rules: NNN, allowlist: NN)" banner is emitted to stderr on `SessionStart` so silent-misconfig regressions are visible to the operator
 
 ### MCP Server
 
@@ -69,7 +69,7 @@
 - [ ] **CFG-01**: mrclean reads `.mrclean/config.toml` for project-local overrides; missing file is fine and means defaults
 - [ ] **CFG-02**: Config schema supports per-rule action override (`block` / `warn` / `audit`), severity tier (`CRITICAL` / `HIGH` / `MEDIUM` / `LOW`), and a multi-axis allowlist with five fields: `rules` (rule-id list), `paths` (glob list), `stopwords` (literal-string list), `regexes` (pattern list), `fingerprints` (per-finding hash list)
 - [ ] **CFG-03**: Config layering precedence is bundled defaults < user-global (`~/.mrclean/config.toml`) < project-local (`.mrclean/config.toml`) — later layers override earlier ones field-by-field
-- [ ] **CFG-04**: Operator can run `mrclean ignore <fingerprint>` to append a fingerprint to the project-local allowlist for false-positive feedback
+- [x] **CFG-04**: Operator can run `mrclean ignore <fingerprint>` to append a fingerprint to the project-local allowlist for false-positive feedback
 
 ### Audit Log
 
@@ -159,12 +159,12 @@
 | PH-03 | Phase 2 | Pending |
 | PH-04 | Phase 2 | Pending |
 | HOOK-01 | Phase 1 | Pending |
-| HOOK-02 | Phase 2 | Pending |
-| HOOK-03 | Phase 2 | Pending |
-| HOOK-04 | Phase 2 | Pending |
+| HOOK-02 | Phase 2 | Complete |
+| HOOK-03 | Phase 2 | Complete |
+| HOOK-04 | Phase 2 | Complete |
 | HOOK-05 | Phase 1 | Pending |
 | HOOK-06 | Phase 1 | Pending |
-| HOOK-07 | Phase 1 | Pending |
+| HOOK-07 | Phase 1 | Complete |
 | MCP-01 | Phase 1 | Pending |
 | MCP-02 | Phase 3 | Pending |
 | MCP-03 | Phase 3 | Pending |
@@ -172,7 +172,7 @@
 | CFG-01 | Phase 1 | Pending |
 | CFG-02 | Phase 2 | Pending |
 | CFG-03 | Phase 1 | Pending |
-| CFG-04 | Phase 2 | Pending |
+| CFG-04 | Phase 2 | Complete |
 | AUDIT-01 | Phase 2 | Pending |
 | AUDIT-02 | Phase 2 | Pending |
 | AUDIT-03 | Phase 1 | Pending |

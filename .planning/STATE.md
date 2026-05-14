@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 2 Plan 04 complete — runDetection orchestrator + applyDryRun + warn→audit normalization + budget bail-out.
-last_updated: "2026-05-14T11:00:00.000Z"
+last_updated: "2026-05-14T15:02:52.277Z"
 progress:
   total_phases: 3
   completed_phases: 1
@@ -32,7 +32,7 @@ Plan: 4 of 7
 **Phase:** Phase 2 in progress (02-04 complete)
 **Plan:** 02-04-PLAN.md COMPLETE (runDetection orchestrator + applyDryRun + warn→audit normalization + budget bail-out)
 **Status:** Executing Phase 2 — Plan 02-05 is next
-**Progress:** [████████████] 92% (12/13 plans complete)
+**Progress:** [█████████░] 92%
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
@@ -114,8 +114,6 @@ None.
 - **budgetExhausted is a signal, not an early exit:** findings collected before Layer 1 timeouts still populate DetectionResult; Plan 02-05 decides on deny path.
 - **Promise.allSettled for audit writes:** write failures logged to stderr as JSON warning; hook response always returned regardless of audit log state.
 - **Module-level WorkerPool + PlaceholderManager cache:** Map<sessionId, PlaceholderManager> ensures placeholder stability across calls; shutdownDetection() resets both on process exit.
-
-
 
 - **smol-toml ^1.6.1 replaces hand-rolled TOML parser** — Phase 2 requires [[rules]] array-of-tables and [entropy] sub-tables that the Phase 1 hand-rolled parser could not handle.
 - **secrets_files flattened from [secrets_files].paths** — `readConfigLayer` hoists `paths` to `config.secrets_files: string[]` for ergonomics; Layer 3 consumers see a flat string array.

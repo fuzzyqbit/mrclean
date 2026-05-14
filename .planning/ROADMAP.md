@@ -47,10 +47,10 @@
 **Plans**: 7 plans
   - [x] 02-00-deps-config-schema-toml-migration-PLAN.md — Phase 2 runtime deps + smol-toml migration + MrcleanConfig extension (CFG-02 schema)
   - [x] 02-01-layer1-regex-engine-PLAN.md — Secretlint + vendored gitleaks rule pack + ReDoS-safe worker pool (DET1-01..04)
-  - [ ] 02-02-layers-2-3-4-PLAN.md — Shannon entropy + .env extraction + words.txt + SessionState (DET2/3/4)
-  - [ ] 02-03-placeholder-manager-audit-log-PLAN.md — `<MRCLEAN:TYPE:NNN>` manager + JSONL audit log + canary-leak helper (PH-01..04, AUDIT-01/02)
-  - [ ] 02-04-detection-orchestrator-dry-run-PLAN.md — runDetection orchestrator + dry_run coercion (MODE-01/02)
-  - [ ] 02-05-hook-integration-PLAN.md — UserPromptSubmit block + PreToolUse/PostToolUse substitute + long-form banner + `mrclean ignore` (HOOK-02/03/04, CFG-04)
+  - [x] 02-02-layers-2-3-4-PLAN.md — Shannon entropy + .env extraction + words.txt + SessionState (DET2/3/4)
+  - [x] 02-03-placeholder-manager-audit-log-PLAN.md — `<MRCLEAN:TYPE:NNN>` manager + JSONL audit log + canary-leak helper (PH-01..04, AUDIT-01/02)
+  - [x] 02-04-detection-orchestrator-dry-run-PLAN.md — runDetection orchestrator + dry_run coercion (MODE-01/02)
+  - [x] 02-05-hook-integration-PLAN.md — UserPromptSubmit block + PreToolUse/PostToolUse substitute + long-form banner + `mrclean ignore` (HOOK-02/03/04, CFG-04)
   - [ ] 02-06-fixtures-bench-stub-PLAN.md — Positive + negative fixture corpus + doctor `--bench` stub (proves success criterion #4)
 
 ### Phase 3: MCP Tools, Performance Gate, Public Release
