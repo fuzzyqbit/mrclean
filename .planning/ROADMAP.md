@@ -26,8 +26,8 @@
   4. Operator deliberately corrupts the mrclean bin (e.g., `chmod -x`) and observes that Claude Code blocks the next tool call with exit code 2 and a structured stderr message — never silently passes through
   5. `.mrclean/` exists in the project after first run with a `.gitignore` entry for itself, the audit log, and session artifacts; `git status` shows nothing to commit
 **Plans**: 5 plans
-  - [ ] 01-01-PLAN.md — Project scaffold (package.json, tsup, vitest, src/ skeleton with two bin entrypoints)
-  - [ ] 01-02-PLAN.md — `mrclean install` / `uninstall` with atomic JSON edits, absolute-path resolution, `.mrclean/` setup, gitignore
+  - [x] 01-01-PLAN.md — Project scaffold (package.json, tsup, vitest, src/ skeleton with two bin entrypoints)
+  - [x] 01-02-PLAN.md — `mrclean install` / `uninstall` with atomic JSON edits, absolute-path resolution, `.mrclean/` setup, gitignore
   - [ ] 01-03-PLAN.md — Hook handler (no-op detection) with fail-closed exit semantics + "mrclean active" wiring banner via additionalContext
   - [ ] 01-04-PLAN.md — Long-lived stdio MCP server with three no-op tool stubs (sanitize, restore, audit_query) and Zod v4 schemas
   - [ ] 01-05-PLAN.md — `mrclean doctor` orchestrator: install-state checks, canary round-trip through hook + MCP, Claude Code version compatibility report

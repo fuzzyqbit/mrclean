@@ -7,12 +7,12 @@
 ### Installer & Distribution
 
 - [ ] **INST-01**: Operator can run `npx mrclean install` and have a working hook + MCP wiring written into `~/.claude/settings.json` with no further configuration
-- [ ] **INST-02**: Installer is idempotent — re-running `install` does not duplicate hook entries or corrupt existing user settings; uses marker comments to identify mrclean-owned blocks
-- [ ] **INST-03**: Installer creates an automatic timestamped backup of `~/.claude/settings.json` before any write
-- [ ] **INST-04**: Installer resolves the absolute path to the mrclean bin at install time so PATH changes never silently disable the hook (Pitfall #7)
-- [ ] **INST-05**: Operator can run `npx mrclean uninstall` to remove every mrclean-tagged entry cleanly and restore the most recent backup on demand
+- [x] **INST-02**: Installer is idempotent — re-running `install` does not duplicate hook entries or corrupt existing user settings; uses marker comments to identify mrclean-owned blocks
+- [x] **INST-03**: Installer creates an automatic timestamped backup of `~/.claude/settings.json` before any write
+- [x] **INST-04**: Installer resolves the absolute path to the mrclean bin at install time so PATH changes never silently disable the hook (Pitfall #7)
+- [x] **INST-05**: Operator can run `npx mrclean uninstall` to remove every mrclean-tagged entry cleanly and restore the most recent backup on demand
 - [ ] **INST-06**: Operator can run `npx mrclean doctor` to verify hook wiring with a seeded canary string and get a green/red report including Claude Code version compatibility
-- [ ] **INST-07**: Project-local `.mrclean/` directory is created on first run with a `.gitignore` entry for itself, the audit log, and any session/manifest artifacts
+- [x] **INST-07**: Project-local `.mrclean/` directory is created on first run with a `.gitignore` entry for itself, the audit log, and any session/manifest artifacts
 - [ ] **INST-08**: Package ships as a single npm package with both bin entrypoints declared in `package.json#bin` (`mrclean` for hook+CLI, `mrclean-mcp` for the long-lived MCP server) and runs on Node ≥ 20.18.0
 
 ### Detection Engine — Layer 1 (Regex Rules)
@@ -134,12 +134,12 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | INST-01 | Phase 1 | Pending |
-| INST-02 | Phase 1 | Pending |
-| INST-03 | Phase 1 | Pending |
-| INST-04 | Phase 1 | Pending |
-| INST-05 | Phase 1 | Pending |
+| INST-02 | Phase 1 | Complete (01-02) |
+| INST-03 | Phase 1 | Complete (01-02) |
+| INST-04 | Phase 1 | Complete (01-02) |
+| INST-05 | Phase 1 | Complete (01-02) |
 | INST-06 | Phase 1 | Pending |
-| INST-07 | Phase 1 | Pending |
+| INST-07 | Phase 1 | Complete (01-02) |
 | INST-08 | Phase 1 | Pending |
 | DET1-01 | Phase 2 | Pending |
 | DET1-02 | Phase 2 | Pending |

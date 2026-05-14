@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-14T04:06:00Z"
+last_updated: "2026-05-14T04:19:19Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
-  percent: 17
+  completed_plans: 2
+  percent: 33
 ---
 
 # State: mrclean
@@ -27,14 +27,14 @@ progress:
 ## Current Position
 
 Phase: 1 (wired-skeleton) — EXECUTING
-Plan: 2 of 6
-**Phase:** In progress (Phase 1 — Wired Skeleton — plan 01 complete)
-**Plan:** 01-01-PLAN.md COMPLETE → advancing to 01-02-PLAN.md
+Plan: 3 of 6
+**Phase:** In progress (Phase 1 — Wired Skeleton — plans 01-02 complete)
+**Plan:** 01-02-PLAN.md COMPLETE → advancing to 01-03-PLAN.md
 **Status:** Executing Phase 1
-**Progress:** [██░░░░░░░░] 17% (1/6 plans complete)
+**Progress:** [███░░░░░░░] 33% (2/6 plans complete)
 
 ```
-Phase 1: Wired Skeleton                              [ executing — 1/5 plans done ]
+Phase 1: Wired Skeleton                              [ executing — 2/5 plans done ]
 Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ pending ]
 Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 ```
@@ -62,11 +62,15 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - **Entrypoint guard via import.meta.url** — prevents Commander.parseAsync / runMcpServer from executing on test import; no separate loader module needed.
 - **Lazy subcommand imports in .action() callbacks** — MCP SDK never loads on CLI cold path; preserves sub-100ms hook cold-start budget.
 - **JSON import assertion `with { type: 'json' }`** — required for NodeNext ESM; `assert { type: 'json' }` is deprecated syntax.
+- **OQ-1 resolved: project-root .gitignore** — gitignore entry goes to project root `.gitignore`, NOT `.mrclean/.gitignore` (self-reference doesn't reliably work for parent directory). Phase 1 ignores all of `.mrclean/` by default.
+- **OQ-2 resolved: cwd = process.cwd()** — `.mrclean/` created in `process.cwd()` at install time; operator runs `mrclean install` from project root.
+- **OQ-3 resolved: user-scope default** — hooks → `~/.claude/settings.json`, MCP → `~/.claude.json`. `--scope project` errors "not implemented in Phase 1".
+- **Uninstall via oldest-backup restoration** — `runUninstall` restores the oldest mrclean backup (pre-install state) for byte-identical round-trip, rather than naive entry removal.
 
 ### Open Todos
 
 - [x] Run `/gsd-plan-phase 1` to break Phase 1 into executable plans (done — 5 plans created)
-- [ ] Execute Plan 01-02 (install subcommand + MCP registration)
+- [x] Execute Plan 01-02 (install subcommand + MCP registration) — COMPLETE
 - [ ] Execute Plan 01-03 (hook stdin/stdout handler)
 - [ ] Execute Plan 01-04 (MCP server with tool stubs)
 - [ ] Execute Plan 01-05 (doctor canary round-trip)
@@ -84,10 +88,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 01-01)
-**Last action:** Completed 01-01-PLAN.md — scaffold + smoke tests; created 01-01-SUMMARY.md.
-**Stopped at:** Completed Plan 01-01; resuming at Plan 01-02 (install subcommand).
-**Next action:** Execute Plan 01-02 (install subcommand: wire hooks into ~/.claude/settings.json + MCP into ~/.claude.json).
+**Last command:** `/gsd-execute-phase` (plan 01-02)
+**Last action:** Completed 01-02-PLAN.md — install/uninstall subcommands; 55 tests passing; created 01-02-SUMMARY.md.
+**Stopped at:** Completed Plan 01-02; advancing to Plan 01-03 (hook stdin/stdout handler).
+**Next action:** Execute Plan 01-03 (hook handler: read hook event from stdin, dispatch to event handlers, write JSON to stdout).
 
 ---
-*Last updated: 2026-05-14 after plan 01-01 execution*
+*Last updated: 2026-05-14 after plan 01-02 execution*
