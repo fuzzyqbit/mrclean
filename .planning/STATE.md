@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-14T04:19:19Z"
+last_updated: "2026-05-14T04:29:00Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 3
+  percent: 50
 ---
 
 # State: mrclean
@@ -27,14 +27,14 @@ progress:
 ## Current Position
 
 Phase: 1 (wired-skeleton) — EXECUTING
-Plan: 3 of 6
-**Phase:** In progress (Phase 1 — Wired Skeleton — plans 01-02 complete)
-**Plan:** 01-02-PLAN.md COMPLETE → advancing to 01-03-PLAN.md
+Plan: 4 of 6
+**Phase:** In progress (Phase 1 — Wired Skeleton — plans 01-01, 01-02, 01-02b complete)
+**Plan:** 01-02b-PLAN.md COMPLETE → advancing to 01-03-PLAN.md
 **Status:** Executing Phase 1
-**Progress:** [███░░░░░░░] 33% (2/6 plans complete)
+**Progress:** [█████░░░░░] 50% (3/6 plans complete)
 
 ```
-Phase 1: Wired Skeleton                              [ executing — 2/5 plans done ]
+Phase 1: Wired Skeleton                              [ executing — 3/5 plans done ]
 Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ pending ]
 Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 ```
@@ -66,11 +66,15 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - **OQ-2 resolved: cwd = process.cwd()** — `.mrclean/` created in `process.cwd()` at install time; operator runs `mrclean install` from project root.
 - **OQ-3 resolved: user-scope default** — hooks → `~/.claude/settings.json`, MCP → `~/.claude.json`. `--scope project` errors "not implemented in Phase 1".
 - **Uninstall via oldest-backup restoration** — `runUninstall` restores the oldest mrclean backup (pre-install state) for byte-identical round-trip, rather than naive entry removal.
+- **Phase 1 minimal TOML parser** — hand-rolled ~50 LOC to avoid pulling `smol-toml` before Phase 2 forces it. Unknown sections ([words], [detection]) tolerated gracefully. Upgrade path documented in source.
+- **Allowlist wholesale replacement** — Phase 1 mergeConfigs replaces the entire allowlist sub-object (not field-by-field). Documented for Phase 2 to extend with `_merge` markers if needed.
+- **loadEffectiveConfig({ homeDir, cwd })** — single entry point for Plan 01-05 doctor config-load check; demonstrating CFG-01 + CFG-03.
 
 ### Open Todos
 
 - [x] Run `/gsd-plan-phase 1` to break Phase 1 into executable plans (done — 5 plans created)
 - [x] Execute Plan 01-02 (install subcommand + MCP registration) — COMPLETE
+- [x] Execute Plan 01-02b (three-layer config reader) — COMPLETE
 - [ ] Execute Plan 01-03 (hook stdin/stdout handler)
 - [ ] Execute Plan 01-04 (MCP server with tool stubs)
 - [ ] Execute Plan 01-05 (doctor canary round-trip)
@@ -88,10 +92,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 01-02)
-**Last action:** Completed 01-02-PLAN.md — install/uninstall subcommands; 55 tests passing; created 01-02-SUMMARY.md.
-**Stopped at:** Completed Plan 01-02; advancing to Plan 01-03 (hook stdin/stdout handler).
+**Last command:** `/gsd-execute-phase` (plan 01-02b)
+**Last action:** Completed 01-02b-PLAN.md — three-layer config reader; 13 new tests (73 total); created 01-02b-SUMMARY.md.
+**Stopped at:** Completed Plan 01-02b; advancing to Plan 01-03 (hook stdin/stdout handler).
 **Next action:** Execute Plan 01-03 (hook handler: read hook event from stdin, dispatch to event handlers, write JSON to stdout).
 
 ---
-*Last updated: 2026-05-14 after plan 01-02 execution*
+*Last updated: 2026-05-14 after plan 01-02b execution*
