@@ -5,3 +5,5 @@ coverage/
 .DS_Store
 .env*
 *.tsbuildinfo
+# mrclean project-local config (user-specific, not committed)
+.mrclean/

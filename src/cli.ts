@@ -54,6 +54,15 @@ program
     await runHook()
   })
 
+// ignore subcommand (CFG-04)
+program
+  .command('ignore <fingerprint>')
+  .description('Add a fingerprint to the project-local allowlist (.mrclean/config.toml)')
+  .action(async (fingerprint: string) => {
+    const { runIgnore } = await import('./install/ignore.js')
+    await runIgnore({ fingerprint })
+  })
+
 // doctor subcommand
 program
   .command('doctor')

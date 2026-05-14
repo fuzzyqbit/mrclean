@@ -67,4 +67,25 @@ describe('checkClaudeCodeVersion', () => {
     expect(typeof result.version).toBe('string')
     expect(typeof result.detail).toBe('string')
   })
+
+  // Plan 02-05 floor bump tests: 2.1.121 is the minimum for PostToolUse updatedToolOutput
+  it('Test 11f: green — version 2.1.121 (exact floor for updatedToolOutput support)', async () => {
+    const { checkClaudeCodeVersion } = await import('../../src/doctor/version-check.js')
+    const result = await checkClaudeCodeVersion({
+      runVersionCommand: async () => '2.1.121 (Claude Code)',
+    })
+    expect(result.status).toBe<ClaudeVersionStatus>('green')
+    expect(result.version).toBe('2.1.121')
+    expect(result.detail).toContain('2.1.121')
+  })
+
+  it('Test 11g: yellow — version 2.1.120 (one below the floor)', async () => {
+    const { checkClaudeCodeVersion } = await import('../../src/doctor/version-check.js')
+    const result = await checkClaudeCodeVersion({
+      runVersionCommand: async () => '2.1.120 (Claude Code)',
+    })
+    expect(result.status).toBe<ClaudeVersionStatus>('yellow')
+    expect(result.version).toBe('2.1.120')
+    expect(result.detail).toContain('2.1.121')
+  })
 })

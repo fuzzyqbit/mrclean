@@ -60,9 +60,10 @@ function defaultRunVersionCommand(): string {
 /**
  * Check the installed Claude Code version.
  *
- * Version compatibility table (RESEARCH §4.3):
- *   >= 2.1.100  → green  (hook contract stable since args exec form at v2.1.119)
- *   >= 2.0.0    → yellow (works but some newer features unavailable)
+ * Version compatibility table (Plan 02-05 floor bump for updatedToolOutput support):
+ *   >= 2.1.121  → green  (full Phase 2 support: PostToolUse updatedToolOutput available)
+ *   >= 2.0.0    → yellow (partial: prompt block + PreToolUse substitution work,
+ *                         but PostToolUse output rewrite requires >= 2.1.121)
  *   <  2.0.0    → red    (incompatible — hook contract pre-dates Phase 1 requirements)
  *
  * Accept dep-injection via opts.runVersionCommand for hermetic test runs.
@@ -101,11 +102,17 @@ export async function checkClaudeCodeVersion(
   const minor = parseInt(match[2], 10)
   const patch = parseInt(match[3], 10)
 
-  if (major >= 2 && minor >= 1 && patch >= 100) {
+  // Floor: 2.1.121 for full Phase 2 support (updatedToolOutput in PostToolUse)
+  const isFullyCompatible =
+    major > 2 ||
+    (major === 2 && minor > 1) ||
+    (major === 2 && minor === 1 && patch >= 121)
+
+  if (isFullyCompatible) {
     return {
       status: 'green',
       version,
-      detail: `${version} — fully compatible (args exec form supported, PostToolUse updatedToolOutput available)`,
+      detail: `${version} — fully compatible (PostToolUse updatedToolOutput supported, full Phase 2 functionality)`,
     }
   }
 
@@ -113,7 +120,10 @@ export async function checkClaudeCodeVersion(
     return {
       status: 'yellow',
       version,
-      detail: `${version} — partially compatible; upgrade to >= 2.1.100 for full feature support`,
+      detail:
+        `${version} — partially compatible: PostToolUse output substitution requires Claude Code >= 2.1.121; ` +
+        `current version supports prompt block + PreToolUse substitution but not tool-output rewrite. ` +
+        `Upgrade for full Phase 2 functionality.`,
     }
   }
 
