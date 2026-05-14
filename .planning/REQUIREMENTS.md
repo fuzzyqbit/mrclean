@@ -129,4 +129,72 @@
 
 ## Traceability
 
-> Filled by ROADMAP.md after roadmapper run.
+> Filled by ROADMAP.md after roadmapper run. Coverage: 54/54 v1 requirements mapped (100%). Each REQ-ID maps to exactly one phase. v2 / Out-of-scope items are not in any phase.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| INST-01 | Phase 1 | Pending |
+| INST-02 | Phase 1 | Pending |
+| INST-03 | Phase 1 | Pending |
+| INST-04 | Phase 1 | Pending |
+| INST-05 | Phase 1 | Pending |
+| INST-06 | Phase 1 | Pending |
+| INST-07 | Phase 1 | Pending |
+| INST-08 | Phase 1 | Pending |
+| DET1-01 | Phase 2 | Pending |
+| DET1-02 | Phase 2 | Pending |
+| DET1-03 | Phase 2 | Pending |
+| DET1-04 | Phase 2 | Pending |
+| DET2-01 | Phase 2 | Pending |
+| DET2-02 | Phase 2 | Pending |
+| DET2-03 | Phase 2 | Pending |
+| DET3-01 | Phase 2 | Pending |
+| DET3-02 | Phase 2 | Pending |
+| DET3-03 | Phase 2 | Pending |
+| DET4-01 | Phase 2 | Pending |
+| DET4-02 | Phase 2 | Pending |
+| DET4-03 | Phase 2 | Pending |
+| PH-01 | Phase 2 | Pending |
+| PH-02 | Phase 2 | Pending |
+| PH-03 | Phase 2 | Pending |
+| PH-04 | Phase 2 | Pending |
+| HOOK-01 | Phase 1 | Pending |
+| HOOK-02 | Phase 2 | Pending |
+| HOOK-03 | Phase 2 | Pending |
+| HOOK-04 | Phase 2 | Pending |
+| HOOK-05 | Phase 1 | Pending |
+| HOOK-06 | Phase 1 | Pending |
+| HOOK-07 | Phase 1 | Pending |
+| MCP-01 | Phase 1 | Pending |
+| MCP-02 | Phase 3 | Pending |
+| MCP-03 | Phase 3 | Pending |
+| MCP-04 | Phase 1 | Pending |
+| CFG-01 | Phase 1 | Pending |
+| CFG-02 | Phase 2 | Pending |
+| CFG-03 | Phase 1 | Pending |
+| CFG-04 | Phase 2 | Pending |
+| AUDIT-01 | Phase 2 | Pending |
+| AUDIT-02 | Phase 2 | Pending |
+| AUDIT-03 | Phase 1 | Pending |
+| PERF-01 | Phase 3 | Pending |
+| PERF-02 | Phase 3 | Pending |
+| PERF-03 | Phase 3 | Pending |
+| MODE-01 | Phase 2 | Pending |
+| MODE-02 | Phase 2 | Pending |
+| DOC-01 | Phase 3 | Pending |
+| DOC-02 | Phase 3 | Pending |
+| DOC-03 | Phase 3 | Pending |
+| QA-01 | Phase 3 | Pending |
+| QA-02 | Phase 3 | Pending |
+| QA-03 | Phase 3 | Pending |
+
+### Coverage Summary
+
+| Phase | Requirement Count |
+|-------|-------------------|
+| Phase 1 — Wired Skeleton | 17 |
+| Phase 2 — Live Redaction (Layers 1-4 + One-Way) | 26 |
+| Phase 3 — MCP Tools, Performance Gate, Public Release | 11 |
+| **Total v1** | **54** |
+| v2 / Deferred (REVMODE, LLM5, POLISH, PERF-04) | 8 (not in v1 phases) |
+| Out of Scope | 11 (not in any phase) |
