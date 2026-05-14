@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Advancing to 03-05 (npm publish + release smoke)
-stopped_at: Plan 03-04 FULLY COMPLETE (2 tasks: @hook-integration tags + CI workflows).
-last_updated: "2026-05-14T20:00:00.000Z"
+status: Phase 3 COMPLETE — all 6 plans done. Awaiting Task 3 manual first-publish (checkpoint:human-action).
+stopped_at: Plan 03-05 Task 2 complete. Task 3 = checkpoint:human-action (manual npm publish by maintainer).
+last_updated: "2026-05-14T20:30:00.000Z"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 19
   completed_plans: 19
-  percent: 99
+  percent: 100
 ---
 
 # State: mrclean
@@ -32,7 +32,7 @@ Plan: 4 of 6
 **Phase:** Phase 3 IN PROGRESS (03-03 fully complete — Task 4 checkpoint resolved)
 **Plan:** 03-03-PLAN.md COMPLETE (docs: README, THREAT_MODEL, LICENSE, CHANGELOG + changesets bootstrap; Task 4 approved)
 **Status:** Advancing to 03-04 (quality gates + canary-leak CI)
-**Progress:** [██████████] 95%
+**Progress:** [██████████] 100%
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
@@ -100,10 +100,11 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 4/6 plans
 - [x] Execute Plan 03-02 (vitest perf gate + PERF-03 compile-once + CI workflow) — COMPLETE
 - [x] Execute Plan 03-03 (docs: README, THREAT_MODEL, LICENSE, CHANGELOG + changesets bootstrap) — COMPLETE (Task 4 checkpoint resolved: LICENSE='mrclean-claude contributors', repo URL placeholder for 03-05, package name approved)
 - [x] Execute Plan 03-04 (quality gates: >=80% coverage + @hook-integration tags + test.yml + canary-leak.yml) — COMPLETE (QA-01/02/03 satisfied; 2 tasks committed b92f4d3, 82a1dcd)
+- [x] Execute Plan 03-05 (changesets release pipeline + release-smoke + initial changeset + docs/RELEASE.md) — Tasks 1+2 COMPLETE (4f46507, e0d735b). Task 3 = checkpoint:human-action awaiting maintainer manual first publish.
 
 ### Blockers
 
-None.
+- Task 3 (checkpoint:human-action): Maintainer must run first-publish manually (npm login + npm publish --access public). See docs/RELEASE.md. After publish, tag v1.0.0-rc.1 and push. Next Release workflow run will open 1.0.0 version-PR.
 
 ### Cross-Phase Notes
 

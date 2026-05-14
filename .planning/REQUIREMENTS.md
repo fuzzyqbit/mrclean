@@ -92,13 +92,13 @@
 
 - [x] **DOC-01**: README explains the layering relationship to gitleaks ("gitleaks for what reaches your repo, mrclean for what reaches the model") to prevent overlap confusion (Pitfall #12)
 - [x] **DOC-02**: A `THREAT_MODEL.md` documents what mrclean does NOT defend against (multimodal images, model memorization, prompt-injection of the operator, etc.) so users have correct expectations
-- [ ] **DOC-03**: CHANGELOG is generated via `changesets` and the package publishes to npm as `mrclean` under MIT license
+- [x] **DOC-03**: CHANGELOG is generated via `changesets` and the package publishes to npm as `mrclean` under MIT license
 
 ### Quality Gates
 
-- [ ] **QA-01**: Vitest unit suite covers Layers 1–4 detection, placeholder allocation, allowlist evaluation, config layering, and the gitleaks-TOML→internal-format conversion with ≥ 80 % line coverage on `src/`
-- [ ] **QA-02**: Integration tests simulate Claude Code hook invocation (stdin JSON in, stdout JSON out, expected exit code) for every hook event in HOOK-01
-- [ ] **QA-03**: A "fixture corpus" — committed under `tests/fixtures/` — contains positive cases (real-shape AWS keys, GH tokens, JWTs, .env values, dirty words, base64-encoded variants) and negative cases (UUIDs, git SHAs, hashes, integrity hashes, Lorem ipsum) and the test suite enforces 100 % positive recall + 0 false positives on the negative corpus
+- [x] **QA-01**: Vitest unit suite covers Layers 1–4 detection, placeholder allocation, allowlist evaluation, config layering, and the gitleaks-TOML→internal-format conversion with ≥ 80 % line coverage on `src/`
+- [x] **QA-02**: Integration tests simulate Claude Code hook invocation (stdin JSON in, stdout JSON out, expected exit code) for every hook event in HOOK-01
+- [x] **QA-03**: A "fixture corpus" — committed under `tests/fixtures/` — contains positive cases (real-shape AWS keys, GH tokens, JWTs, .env values, dirty words, base64-encoded variants) and negative cases (UUIDs, git SHAs, hashes, integrity hashes, Lorem ipsum) and the test suite enforces 100 % positive recall + 0 false positives on the negative corpus
 
 ## v2 Requirements (Deferred)
 
@@ -183,10 +183,10 @@
 | MODE-02 | Phase 2 | Pending |
 | DOC-01 | Phase 3 | Pending |
 | DOC-02 | Phase 3 | Pending |
-| DOC-03 | Phase 3 | Pending |
-| QA-01 | Phase 3 | Pending |
-| QA-02 | Phase 3 | Pending |
-| QA-03 | Phase 3 | Pending |
+| DOC-03 | Phase 3 | Complete |
+| QA-01 | Phase 3 | Complete |
+| QA-02 | Phase 3 | Complete |
+| QA-03 | Phase 3 | Complete |
 
 ### Coverage Summary
 

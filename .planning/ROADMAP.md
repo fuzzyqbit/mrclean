@@ -10,7 +10,7 @@
 
 - [x] **Phase 1: Wired Skeleton** - `npx mrclean install` lands a working hook + MCP server in Claude Code; operator sees the "mrclean active" banner and `mrclean doctor` reports green — no real detection yet, but the integration is provably alive
 - [x] **Phase 2: Live Redaction (Layers 1-4 + One-Way)** - Real secrets pasted into a Claude Code session are blocked-with-reason on prompts and substituted with stable `<MRCLEAN:TYPE:NNN>` placeholders in tool calls; `.env` values, regex hits, entropy, and project word-list all caught; audit log records hash-only entries
-- [ ] **Phase 3: MCP Tools, Performance Gate, Public Release** - Operator can invoke `mrclean_check / mrclean_redact / mrclean_status` from inside Claude Code; CI enforces `<100ms / <200ms` budgets; README + THREAT_MODEL ship; `npm install -g mrclean-claude` installs the published 1.0.0 package
+- [x] **Phase 3: MCP Tools, Performance Gate, Public Release** - Operator can invoke `mrclean_check / mrclean_redact / mrclean_status` from inside Claude Code; CI enforces `<100ms / <200ms` budgets; README + THREAT_MODEL ship; `npm install -g mrclean-claude` installs the published 1.0.0 package (completed 2026-05-14)
 
 ## Phase Details
 
@@ -69,8 +69,8 @@
   - [x] 03-01-PLAN.md — MCP tool rename (mrclean_check / mrclean_redact / mrclean_status) + supervisor + structured output (MCP-02, MCP-03)
   - [x] 03-02-PLAN.md — Performance gate (vitest assertion suite + 4 KB + 50 KB fixtures + perf.yml + compile-once grep gate) (PERF-01, PERF-02, PERF-03)
   - [x] 03-03-PLAN.md — README + THREAT_MODEL + LICENSE + CHANGELOG + .changeset/ bootstrap (DOC-01, DOC-02) — COMPLETE (Task 4 checkpoint resolved: LICENSE='mrclean-claude contributors', repo URL placeholder for 03-05)
-  - [ ] 03-04-PLAN.md — Quality gates: ≥80% coverage enforcement + integration coverage tagging per hook event + canary-leak CI workflow (QA-01, QA-02, QA-03)
-  - [ ] 03-05-PLAN.md — Publish pipeline: release.yml (changesets/action) + release-smoke.yml + initial-release changeset + docs/RELEASE.md + first manual publish (DOC-03)
+  - [x] 03-04-PLAN.md — Quality gates: ≥80% coverage enforcement + integration coverage tagging per hook event + canary-leak CI workflow (QA-01, QA-02, QA-03)
+  - [x] 03-05-PLAN.md — Publish pipeline: release.yml (changesets/action) + release-smoke.yml + initial-release changeset + docs/RELEASE.md + first manual publish (DOC-03)
 
 ## Progress
 
@@ -78,7 +78,7 @@
 |-------|----------------|--------|-----------|
 | 1. Wired Skeleton | 0/5 | Planned, not started | - |
 | 2. Live Redaction (Layers 1-4 + One-Way) | 2/7 | In Progress|  |
-| 3. MCP Tools, Performance Gate, Public Release | 0/6 | Planned, not started | - |
+| 3. MCP Tools, Performance Gate, Public Release | 6/6 | Complete   | 2026-05-14 |
 
 ## Coverage Validation
 
