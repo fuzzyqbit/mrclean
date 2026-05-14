@@ -8,8 +8,8 @@
 
 ## Phases
 
-- [ ] **Phase 1: Wired Skeleton** - `npx mrclean install` lands a working hook + MCP server in Claude Code; operator sees the "mrclean active" banner and `mrclean doctor` reports green — no real detection yet, but the integration is provably alive
-- [ ] **Phase 2: Live Redaction (Layers 1-4 + One-Way)** - Real secrets pasted into a Claude Code session are blocked-with-reason on prompts and substituted with stable `<MRCLEAN:TYPE:NNN>` placeholders in tool calls; `.env` values, regex hits, entropy, and project word-list all caught; audit log records hash-only entries
+- [x] **Phase 1: Wired Skeleton** - `npx mrclean install` lands a working hook + MCP server in Claude Code; operator sees the "mrclean active" banner and `mrclean doctor` reports green — no real detection yet, but the integration is provably alive
+- [x] **Phase 2: Live Redaction (Layers 1-4 + One-Way)** - Real secrets pasted into a Claude Code session are blocked-with-reason on prompts and substituted with stable `<MRCLEAN:TYPE:NNN>` placeholders in tool calls; `.env` values, regex hits, entropy, and project word-list all caught; audit log records hash-only entries
 - [ ] **Phase 3: MCP Tools, Performance Gate, Public Release** - Operator can invoke `mrclean_check / mrclean_redact / mrclean_status` from inside Claude Code; CI enforces `<100ms / <200ms` budgets; README + THREAT_MODEL ship; `npm install -g mrclean` installs the published 1.0.0 package
 
 ## Phase Details
@@ -51,7 +51,7 @@
   - [x] 02-03-placeholder-manager-audit-log-PLAN.md — `<MRCLEAN:TYPE:NNN>` manager + JSONL audit log + canary-leak helper (PH-01..04, AUDIT-01/02)
   - [x] 02-04-detection-orchestrator-dry-run-PLAN.md — runDetection orchestrator + dry_run coercion (MODE-01/02)
   - [x] 02-05-hook-integration-PLAN.md — UserPromptSubmit block + PreToolUse/PostToolUse substitute + long-form banner + `mrclean ignore` (HOOK-02/03/04, CFG-04)
-  - [ ] 02-06-fixtures-bench-stub-PLAN.md — Positive + negative fixture corpus + doctor `--bench` stub (proves success criterion #4)
+  - [x] 02-06-fixtures-bench-stub-PLAN.md — Positive + negative fixture corpus + doctor `--bench` stub (proves success criterion #4)
 
 ### Phase 3: MCP Tools, Performance Gate, Public Release
 **Goal**: Close the loop from "works on the maintainer's machine" to "anyone can `npm install -g mrclean` and get the same result." Ship the explicit on-demand MCP tool surface, a CI-enforced performance budget, the documentation that prevents user confusion (gitleaks layering FAQ, threat model), and the actual npm release. After this phase mrclean is publicly usable and its perf/security guarantees survive future commits.
