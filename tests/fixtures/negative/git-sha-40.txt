@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic high-entropy non-secret
+# Source: Git commit SHA-1 (40-char hex) — common in CI output and PR descriptions
+# Negative: 40-char hex SHA shape is explicitly allowlisted in Layer 2 entropy shape allowlist
+# License: test fixture only
+
+Latest commit: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3

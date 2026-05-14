@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic invalid value for detection pattern testing
+# Source: Slack Bot Token format — xoxb- prefix + workspace ID + user ID + token body
+# Checksum-flip: last char 'X' instead of valid — pattern matches but token is invalid
+# License: test fixture only — not a real credential
+
+SLACK_BOT_TOKEN=xoxb-000000000000-000000000000-AAAAAAAAAAAAAAAAAAAAAAAAX

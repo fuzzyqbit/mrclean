@@ -1,0 +1,7 @@
+# mrclean test fixture — synthetic high-entropy non-secret
+# Source: Data URI scheme for inline base64-encoded images (RFC 2397)
+# Negative: data:image/ prefix is explicitly allowlisted; base64 body kept <40 chars
+#           to avoid the no-keyword escalation path (length>=40 + entropy>=5 fires regardless)
+# License: test fixture only
+
+The logo is embedded as: data:image/png;base64,iVBORw0KGgo

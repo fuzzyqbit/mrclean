@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic invalid value for detection pattern testing
+# Source: GitHub Personal Access Token (classic) format — ghp_ prefix + 36 alphanumeric chars
+# Checksum-flip: token body contains no valid Luhn check sum — this is structurally shaped but invalid
+# License: test fixture only — not a real credential
+
+Set the GITHUB_TOKEN to ghp_1234567890abcdefGHIJKLMNOPQRSTUVWXYZ for CI authentication.

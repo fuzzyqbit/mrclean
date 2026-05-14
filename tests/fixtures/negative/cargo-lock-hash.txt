@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic low-entropy non-secret
+# Source: Cargo.lock checksum field format — short hex string
+# Negative: 12-char hex has low entropy (below Layer 2 threshold) and is below min_length
+# License: test fixture only
+
+checksum = "ab12cd34ef56"

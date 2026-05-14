@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic invalid value for detection pattern testing
+# Source: AWS Access Key ID format from official AWS docs (20-char AKIA... shape)
+# Checksum-flip: last char 'E' replaced with 'X' — pattern still matches but value is invalid
+# License: test fixture only — not a real credential
+
+Please use the access key AKIAIOSFODNN7EXAMPLX for the deployment.

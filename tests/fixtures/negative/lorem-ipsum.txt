@@ -1,0 +1,6 @@
+# mrclean test fixture — natural language text (no secrets)
+# Source: Classic Lorem Ipsum placeholder text — widely used in design and documentation
+# Negative: low entropy, no secret-shaped tokens, no entropy keywords in proximity
+# License: test fixture only
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet.

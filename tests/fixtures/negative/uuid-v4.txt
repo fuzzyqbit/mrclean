@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic high-entropy non-secret
+# Source: RFC 4122 UUID v4 example
+# Negative: UUID shape is explicitly allowlisted in Layer 2 entropy shape allowlist
+# License: test fixture only
+
+Session id is 550e8400-e29b-41d4-a716-446655440000.

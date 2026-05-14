@@ -1,0 +1,10 @@
+# mrclean test fixture — synthetic invalid value for detection pattern testing
+# Source: PKCS#8 Private Key PEM format — BEGIN/END PRIVATE KEY markers with base64 body
+# Checksum-flip: base64 body is placeholder padding that does not decode to a real key
+# License: test fixture only — not a real credential
+
+The service uses the following private key for JWT signing:
+-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+-----END PRIVATE KEY-----

@@ -1,0 +1,7 @@
+# mrclean test fixture — synthetic invalid value for detection pattern testing
+# Source: OpenAI API key format (sk-proj- variant with T3BlbkFJ base64 marker)
+# Checksum-flip: key body uses 'A' padding on both sides of the required T3BlbkFJ marker
+# Format: sk-proj- (8) + 58 word chars + T3BlbkFJ (8) + 58 word chars = 132 chars total
+# License: test fixture only — not a real credential
+
+OPENAI_API_KEY=sk-proj-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT3BlbkFJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA

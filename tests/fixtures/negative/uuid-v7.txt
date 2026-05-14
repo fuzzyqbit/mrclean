@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic high-entropy non-secret
+# Source: RFC 9562 UUID v7 example (timestamp-based)
+# Negative: UUID shape is explicitly allowlisted in Layer 2 entropy shape allowlist
+# License: test fixture only
+
+Request correlation ID: 018f4c6a-b420-7e3a-8000-000000000000

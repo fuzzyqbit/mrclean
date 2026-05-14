@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic high-entropy non-secret
+# Source: SHA-256 digest (64-char hex) — common in checksums and content-addressable storage
+# Negative: 64-char hex digest shape is allowlisted in Layer 2 entropy shape allowlist
+# License: test fixture only
+
+SHA-256: 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824

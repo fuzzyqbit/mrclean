@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic non-secret
+# Source: Git short commit SHA (7-char hex) — common in git log --oneline output
+# Negative: 7 chars is below Layer 2 entropy min_length threshold of 20 chars
+# License: test fixture only
+
+Deployed version a94a8fe to production.

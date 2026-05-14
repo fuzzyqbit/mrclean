@@ -1,0 +1,7 @@
+# mrclean test fixture — synthetic value derived from a .env file
+# Source: Layer 3 (.env value extraction) — this fixture's text contains the VALUE (not the name)
+#         from a side-by-side .env file: MY_API_KEY=secretvalue12345
+# Checksum-flip: N/A — this is the exact value loaded by dotenv.parse() and added to the blocklist
+# License: test fixture only — not a real credential
+
+Please send the request with the credential secretvalue12345 in the Authorization header.

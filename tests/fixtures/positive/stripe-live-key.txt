@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic invalid value for detection pattern testing
+# Source: Stripe Secret Key (live) format — sk_live_ prefix + 24 alphanumeric chars
+# Checksum-flip: last char 'x' instead of a valid character — pattern matches but key is invalid
+# License: test fixture only — not a real credential
+
+STRIPE_SECRET_KEY=sk_live_0000000000000000000000000000000x

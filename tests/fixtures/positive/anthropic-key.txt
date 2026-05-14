@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic invalid value for detection pattern testing
+# Source: Anthropic API key format — sk-ant-api03- prefix + base64-like body
+# Checksum-flip: body consists entirely of 'A' chars — structurally shaped but invalid
+# License: test fixture only — not a real credential
+
+ANTHROPIC_API_KEY=sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA

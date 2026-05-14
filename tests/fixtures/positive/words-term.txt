@@ -1,0 +1,7 @@
+# mrclean test fixture — synthetic value matched by the Layer 4 dirty-word list
+# Source: Layer 4 (words.txt matching) — this fixture's text contains the term ACME_INTERNAL_CODENAME
+#         which is also present in the side-by-side .mrclean/words.txt loaded by the test
+# Checksum-flip: N/A — term must match words.txt entry exactly (case-insensitive whole-word)
+# License: test fixture only — not a real proprietary term
+
+The project uses the internal codename ACME_INTERNAL_CODENAME for the authentication service.

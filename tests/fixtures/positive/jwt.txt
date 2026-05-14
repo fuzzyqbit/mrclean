@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic invalid value for detection pattern testing
+# Source: JSON Web Token format (RFC 7519) — three base64url segments separated by dots
+# Checksum-flip: signature segment replaced with 'X' chars — valid structure but invalid signature
+# License: test fixture only — not a real credential
+
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.XXXXXXXXXXXXXXXXXXXXXXXXXXX

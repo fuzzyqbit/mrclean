@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic high-entropy non-secret
+# Source: MD5 digest (32-char hex) — common in file integrity checks
+# Negative: 32-char hex digest shape is allowlisted in Layer 2 entropy shape allowlist
+# License: test fixture only
+
+File checksum (MD5): 5d41402abc4b2a76b9719d911017c592

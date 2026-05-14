@@ -1,0 +1,6 @@
+# mrclean test fixture — synthetic high-entropy non-secret
+# Source: npm package-lock.json integrity field format — sha512- prefix + base64
+# Negative: npm integrity hash shape (sha512- prefix) is explicitly allowlisted in Layer 2
+# License: test fixture only
+
+integrity: sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==

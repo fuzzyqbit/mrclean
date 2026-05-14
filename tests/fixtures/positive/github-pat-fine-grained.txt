@@ -1,0 +1,7 @@
+# mrclean test fixture — synthetic invalid value for detection pattern testing
+# Source: GitHub Fine-Grained Personal Access Token format — github_pat_ prefix + exactly 82 \w chars
+# Checksum-flip: body consists entirely of 'A' chars — structurally shaped but invalid
+# Token = github_pat_ (10) + 82 word chars = 92 chars total
+# License: test fixture only — not a real credential
+
+The fine-grained token github_pat_11ABCDE0000000000000000000_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA grants repo-scoped access.
