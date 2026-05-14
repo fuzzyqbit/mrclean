@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 Plan 02 complete — Layer 2 entropy + Layer 3 .env + Layer 4 words.txt + SessionState.
-last_updated: "2026-05-14T14:22:13.770Z"
+stopped_at: Phase 2 Plan 03 complete — PlaceholderManager + substituteFindings + writeAuditRecord + assertNoCanaryLeak.
+last_updated: "2026-05-14T10:29:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 9
-  percent: 69
+  completed_plans: 10
+  percent: 77
 ---
 
 # State: mrclean
@@ -29,10 +29,10 @@ progress:
 
 Phase: 2 (live-redaction-layers-1-4-one-way) — EXECUTING
 Plan: 3 of 7
-**Phase:** Phase 2 in progress (02-02 complete)
-**Plan:** 02-02-PLAN.md COMPLETE (Layers 2/3/4: entropy + .env + words.txt + SessionState)
-**Status:** Executing Phase 2 — Plan 02-03 is next
-**Progress:** [█████████░] 69% (9/13 plans complete)
+**Phase:** Phase 2 in progress (02-03 complete)
+**Plan:** 02-03-PLAN.md COMPLETE (PlaceholderManager + substituteFindings + writeAuditRecord + assertNoCanaryLeak)
+**Status:** Executing Phase 2 — Plan 02-04 is next
+**Progress:** [██████████] 77% (10/13 plans complete)
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
@@ -91,7 +91,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - [x] Execute Plan 02-00 (deps + smol-toml + shared detection types) — COMPLETE
 - [x] Execute Plan 02-01 (Layer 1: secretlint + gitleaks adapter) — COMPLETE
 - [x] Execute Plan 02-02 (Layer 2: entropy + Layer 3: env + Layer 4: words) — COMPLETE
-- [ ] Execute Plan 02-03 (placeholder manager)
+- [x] Execute Plan 02-03 (placeholder manager)
 - [ ] Execute Plan 02-04 (hook integration: one-way redaction)
 - [ ] Execute Plan 02-05 (audit log + dry_run mode)
 - [ ] Execute Plan 02-06 (Phase 2 integration tests + banner upgrade)
@@ -125,13 +125,17 @@ None.
 - **shannonEntropy exported from layer2** — exported for testing and potential re-use; gitleaks-engine.ts already inlined a copy per 02-01 decision.
 - **HOOK-PROCESS LIFETIME cache in session-state.ts** — module-level sessionId-keyed Map for per-process reuse; Phase 3 PERF gate will evaluate if persistent IPC cache is needed.
 - **initSessionState uses Promise.all** — env blocklist and word list are independent I/O operations; parallel loading keeps SessionStart latency minimal.
+- **PlaceholderManager global counter (not per-TYPE)** — PH-03 collision-free across TYPEs; operator mental model is "the Nth thing redacted this session", not "the Nth AWS key".
+- **OVF path is non-fatal (stderr JSON warning, not throw)** — hook is in Claude Code hot path; blocking the user on >999 unique secrets would be worse than degraded placeholder labels.
+- **assertNoCanaryLeak checks JSON.stringify(record) substring** — normalises field order, catches partial leaks where value appears inside nested objects; ENOENT returns ok:true; malformed JSON returns ok:false with <malformed> canary.
+- **findingToAuditRecord LOCKED comment + grep gate** — prevents future refactors from accidentally adding finding.value to the audit record; canary-leak test enforces at runtime.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 02-02)
-**Last action:** Completed 02-02-PLAN.md — Layers 2/3/4: entropy + .env extraction + words.txt + SessionState, 51 new tests (271 total).
-**Stopped at:** Phase 2 Plan 02 complete — Layer 2 entropy + Layer 3 .env + Layer 4 words.txt + SessionState.
-**Next action:** Execute Plan 02-03 (placeholder manager).
+**Last command:** `/gsd-execute-phase` (plan 02-03)
+**Last action:** Completed 02-03-PLAN.md — PlaceholderManager + substituteFindings + writeAuditRecord + assertNoCanaryLeak, 25 new tests (296 total).
+**Stopped at:** Phase 2 Plan 03 complete — PlaceholderManager + substituteFindings + writeAuditRecord + assertNoCanaryLeak.
+**Next action:** Execute Plan 02-04 (hook integration: one-way redaction).
 
 ---
 *Last updated: 2026-05-14 after plan 02-02 execution*
