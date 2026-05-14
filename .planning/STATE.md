@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 Plan 00 complete — package metadata + vitest projects split + coverage thresholds.
-last_updated: "2026-05-14T19:10:00Z"
+stopped_at: Phase 3 Plan 01 complete — mrclean_check/redact/status tools + supervisor + Phase 1 stubs deleted.
+last_updated: "2026-05-14T19:10:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 19
-  completed_plans: 14
-  percent: 74
+  completed_plans: 16
+  percent: 84
 ---
 
 # State: mrclean
@@ -28,16 +28,16 @@ progress:
 ## Current Position
 
 Phase: 3 (mcp-tools-performance-gate-public-release) — IN PROGRESS
-Plan: 1 of 6
-**Phase:** Phase 3 IN PROGRESS (03-00 complete)
-**Plan:** 03-00-PLAN.md COMPLETE (package metadata + vitest projects split + coverage thresholds)
-**Status:** Ready to execute 03-01
-**Progress:** [███████░░░] 74%
+Plan: 2 of 6
+**Phase:** Phase 3 IN PROGRESS (03-01 complete)
+**Plan:** 03-01-PLAN.md COMPLETE (mrclean_check/redact/status + supervisor + Phase 1 stubs deleted)
+**Status:** Ready to execute 03-02
+**Progress:** [████████░░] 84%
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
 Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ COMPLETE — 7/7 plans done ]
-Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 1/6 plans done ]
+Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 2/6 plans done ]
 ```
 
 ## Performance Metrics
@@ -96,6 +96,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 1/6 plans
 - [x] Execute Plan 02-05 (hook handlers: hook-level routing + banner upgrade) — COMPLETE
 - [x] Execute Plan 02-06 (fixture corpus + bundle smoke + canary-leak guard + --bench stub) — COMPLETE
 - [x] Execute Plan 03-00 (package metadata + vitest projects split + coverage thresholds) — COMPLETE
+- [x] Execute Plan 03-01 (mrclean_check/redact/status + supervisor + delete Phase 1 stubs) — COMPLETE
 
 ### Blockers
 
@@ -107,6 +108,14 @@ None.
 - Phase 2's placeholder manager (PH-01..04) is the contract that Phase 3's `mcp__mrclean__redact` tool returns; designed once in Phase 2.
 - Phase 3's performance gate measures the Phase 1+2 system; perf budget breaches surface as build failures, not warnings.
 - Audit log schema (Phase 1 gitignore + Phase 2 record format) must be settled before Phase 3's canary-leak CI test can be authored.
+
+### Additional Decisions (Phase 3 — Plan 01)
+
+- **Supervisor uses in-process Promise isolation (not per-call worker_threads)** — RESEARCH §Pattern 2 / §Pitfall 3: new Worker per call requires a pre-compiled worker entry + tsup entry. MCP-04 guarantee preserved via try/catch Promise isolation + Phase 2 WorkerPool for ReDoS safety.
+- **runDetectionReadOnly is additive to detect/index.ts** — mirrors runDetection Steps 1-11; Step 12 (audit writes) intentionally omitted. mrclean_check uses this; mrclean_redact uses full runDetection.
+- **findingDTO schema excludes `value` and `span`** — T-03-01-02 information leak guard; check.ts/redact.ts output schemas validated by SDK via Zod v4 outputSchema.
+- **AWS key test fixture: AKIAABCDE3FGHIJ2345K** — AKIAIOSFODNN7EXAMPLE (the AWS docs placeholder) is in gitleaks per-rule allowlist `.+EXAMPLE$`; non-EXAMPLE key required for test to produce findings.
+- **doctor/canary.ts: runMcpCanary updated from sanitize to mrclean_check** — Phase 1 `sanitize` tool deleted; canary now calls mrclean_check and asserts structuredContent.count is numeric (no echo-check).
 
 ### Additional Decisions (Phase 3 — Plan 00)
 
@@ -159,10 +168,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 03-00)
-**Last action:** Completed 03-00-PLAN.md — package renamed to mrclean-claude@1.0.0-rc.1, vitest split into unit/integration projects, coverage thresholds all passing, 359 tests pass.
-**Stopped at:** Phase 3 Plan 00 complete — package metadata + vitest projects split + coverage thresholds.
-**Next action:** Execute Plan 03-01 (MCP tools: check/redact/status + delete Phase 1 stubs).
+**Last command:** `/gsd-execute-phase` (plan 03-01)
+**Last action:** Completed 03-01-PLAN.md — mrclean_check/redact/status tools wired; Phase 1 stubs deleted; supervisor added; 364 tests pass.
+**Stopped at:** Phase 3 Plan 01 complete — mrclean_check/redact/status tools + supervisor + Phase 1 stubs deleted.
+**Next action:** Execute Plan 03-02 (performance gate).
 
 ---
-*Last updated: 2026-05-14 after plan 03-00 execution*
+*Last updated: 2026-05-14 after plan 03-01 execution*
