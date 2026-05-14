@@ -145,7 +145,7 @@ describe('End-to-end hook integration with detection', () => {
 
     // Long-form banner format: mrclean active vN.N.N (rules: NNN, allowlist: NN, mode: active)
     expect(parsed.hookSpecificOutput.additionalContext).toMatch(
-      /^mrclean active v\d+\.\d+\.\d+ \(rules: \d+, allowlist: \d+, mode: (active|dry-run)\)$/,
+      /^mrclean active v\d+\.\d+\.\d+[^ ]* \(rules: \d+, allowlist: \d+, mode: (active|dry-run)\)$/,
     )
   })
 

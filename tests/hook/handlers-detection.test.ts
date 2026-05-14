@@ -84,7 +84,7 @@ describe('handleSessionStart — Phase 2 wired', () => {
 
     // Long-form banner with rule/allowlist counts (HOOK-07)
     expect(output.hookSpecificOutput?.additionalContext).toMatch(
-      /^mrclean active v\d+\.\d+\.\d+ \(rules: \d+, allowlist: \d+, mode: (active|dry-run)\)$/,
+      /^mrclean active v\d+\.\d+\.\d+[^ ]* \(rules: \d+, allowlist: \d+, mode: (active|dry-run)\)$/,
     )
     expect(mockInitState).toHaveBeenCalled()
     expect(mockSetState).toHaveBeenCalled()

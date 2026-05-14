@@ -63,8 +63,8 @@ import type {
   PostToolUseInput,
 } from '../../src/shared/types.js'
 
-// Phase 2 long-form banner pattern
-const BANNER_PATTERN = /^mrclean active v\d+\.\d+\.\d+ \(rules: \d+, allowlist: \d+, mode: (active|dry-run)\)$/
+// Phase 2 long-form banner pattern (version may include pre-release suffix, e.g. 1.0.0-rc.1)
+const BANNER_PATTERN = /^mrclean active v\d+\.\d+\.\d+[^ ]* \(rules: \d+, allowlist: \d+, mode: (active|dry-run)\)$/
 
 // Minimal valid fixtures
 const sessionStartInput: SessionStartInput = {
