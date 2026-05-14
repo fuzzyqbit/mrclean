@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-14T03:59:18.135Z"
+last_updated: "2026-05-14T04:06:00Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 17
 ---
 
 # State: mrclean
@@ -27,14 +27,14 @@ progress:
 ## Current Position
 
 Phase: 1 (wired-skeleton) — EXECUTING
-Plan: 1 of 6
-**Phase:** Not started (Phase 1 — Wired Skeleton — pending plan)
-**Plan:** None
+Plan: 2 of 6
+**Phase:** In progress (Phase 1 — Wired Skeleton — plan 01 complete)
+**Plan:** 01-01-PLAN.md COMPLETE → advancing to 01-02-PLAN.md
 **Status:** Executing Phase 1
-**Progress:** [░░░░░░░░░░] 0% (0/3 phases complete)
+**Progress:** [██░░░░░░░░] 17% (1/6 plans complete)
 
 ```
-Phase 1: Wired Skeleton                              [ pending ]
+Phase 1: Wired Skeleton                              [ executing — 1/5 plans done ]
 Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ pending ]
 Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 ```
@@ -58,10 +58,18 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - **Phase 2 ships all four detection layers + one-way mode together** rather than splitting layers across phases — the value-delivery slice has to catch real secrets end-to-end to be operator-verifiable.
 - **Phase 3 bundles MCP tools + perf gate + docs + npm publish** because each is independently small but together they constitute the public-release slice.
 - **REVMODE / LLM5 / POLISH explicitly deferred** — listed as v2 in REQUIREMENTS.md, not present in any v1 phase.
+- **commander pinned to ^13.1.0** — RESEARCH.md §OQ-5 suggested ^14 was acceptable; CLAUDE.md LOCK supersedes; 13.1.0 confirmed at install time.
+- **Entrypoint guard via import.meta.url** — prevents Commander.parseAsync / runMcpServer from executing on test import; no separate loader module needed.
+- **Lazy subcommand imports in .action() callbacks** — MCP SDK never loads on CLI cold path; preserves sub-100ms hook cold-start budget.
+- **JSON import assertion `with { type: 'json' }`** — required for NodeNext ESM; `assert { type: 'json' }` is deprecated syntax.
 
 ### Open Todos
 
-- [ ] Run `/gsd-plan-phase 1` to break Phase 1 into executable plans
+- [x] Run `/gsd-plan-phase 1` to break Phase 1 into executable plans (done — 5 plans created)
+- [ ] Execute Plan 01-02 (install subcommand + MCP registration)
+- [ ] Execute Plan 01-03 (hook stdin/stdout handler)
+- [ ] Execute Plan 01-04 (MCP server with tool stubs)
+- [ ] Execute Plan 01-05 (doctor canary round-trip)
 
 ### Blockers
 
@@ -76,9 +84,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-new-project` (roadmapper subagent)
-**Last action:** Created `.planning/ROADMAP.md`, `.planning/STATE.md`; updated `.planning/REQUIREMENTS.md` traceability section.
-**Next action:** Operator approves roadmap → `/gsd-plan-phase 1` to begin Phase 1 planning.
+**Last command:** `/gsd-execute-phase` (plan 01-01)
+**Last action:** Completed 01-01-PLAN.md — scaffold + smoke tests; created 01-01-SUMMARY.md.
+**Stopped at:** Completed Plan 01-01; resuming at Plan 01-02 (install subcommand).
+**Next action:** Execute Plan 01-02 (install subcommand: wire hooks into ~/.claude/settings.json + MCP into ~/.claude.json).
 
 ---
-*Last updated: 2026-05-13 after roadmap creation*
+*Last updated: 2026-05-14 after plan 01-01 execution*
