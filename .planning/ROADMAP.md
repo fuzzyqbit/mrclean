@@ -68,7 +68,7 @@
   - [x] 03-00-PLAN.md — package.json publish metadata + vitest projects API (parallel-pollution fix) + coverage thresholds (QA-01 infrastructure)
   - [x] 03-01-PLAN.md — MCP tool rename (mrclean_check / mrclean_redact / mrclean_status) + supervisor + structured output (MCP-02, MCP-03)
   - [x] 03-02-PLAN.md — Performance gate (vitest assertion suite + 4 KB + 50 KB fixtures + perf.yml + compile-once grep gate) (PERF-01, PERF-02, PERF-03)
-  - [x] 03-03-PLAN.md — README + THREAT_MODEL + LICENSE + CHANGELOG + .changeset/ bootstrap (DOC-01, DOC-02) — COMPLETE (Task 4 checkpoint: operator review pending)
+  - [x] 03-03-PLAN.md — README + THREAT_MODEL + LICENSE + CHANGELOG + .changeset/ bootstrap (DOC-01, DOC-02) — COMPLETE (Task 4 checkpoint resolved: LICENSE='mrclean-claude contributors', repo URL placeholder for 03-05)
   - [ ] 03-04-PLAN.md — Quality gates: ≥80% coverage enforcement + integration coverage tagging per hook event + canary-leak CI workflow (QA-01, QA-02, QA-03)
   - [ ] 03-05-PLAN.md — Publish pipeline: release.yml (changesets/action) + release-smoke.yml + initial-release changeset + docs/RELEASE.md + first manual publish (DOC-03)
 

@@ -28,12 +28,13 @@ decisions:
   - "Section 8 MCP tools explicitly documents the three exposed tools and explicitly lists the tools NOT exposed (unredact/disable/add_word/config_write) with the Pitfall #10 rationale"
   - "THREAT_MODEL.md non-defense 9 (pre-commit/git-history) repeats the gitleaks layering FAQ for cross-reference reinforcement"
   - "CHANGELOG.md uses >= instead of Unicode >= signs to avoid any character encoding issues in terminal environments"
-  - "COPYRIGHT HOLDER IS A PLACEHOLDER: 'anthropics' — operator must confirm or replace before plan 03-05 publish"
-  - "REPOSITORY URLs ARE PLACEHOLDERS: github.com/anthropics/mrclean-claude — operator must confirm before publish"
+  - "COPYRIGHT HOLDER: 'mrclean-claude contributors' — updated by orchestrator post-checkpoint (commit 702e66c); safer than 'anthropics' placeholder"
+  - "REPOSITORY URLs ARE PLACEHOLDERS: github.com/anthropics/mrclean-claude — operator must confirm before plan 03-05 publish; flagged as known pre-publish placeholder"
+  - "npm package name mrclean-claude: APPROVED by operator at Task 4 checkpoint"
 metrics:
   duration: "~15 minutes"
-  completed: "2026-05-14T19:28:00Z"
-  tasks_completed: 3
+  completed: "2026-05-14T19:35:00Z"
+  tasks_completed: 4
   tasks_total: 4
   files_created: 6
   files_modified: 2
@@ -45,16 +46,15 @@ metrics:
 
 ---
 
-## Operator-Confirmed Fields (Task 4 Checkpoint)
+## Operator-Confirmed Fields (Task 4 Checkpoint — RESOLVED)
 
-The following three fields require operator review and confirmation before plan 03-05
-(publish) runs. Task 4 is a `checkpoint:human-verify` that blocks 03-05.
+Task 4 checkpoint approved. Operator responses:
 
-| Field | Current Value | Location | Action Required |
-|-------|---------------|----------|-----------------|
-| LICENSE copyright holder | `anthropics` | `LICENSE` line 3 | Replace with actual operator/org name if different |
-| Repository URL | `https://github.com/anthropics/mrclean-claude` | `package.json` (`repository.url`, `homepage`, `bugs.url`) | Replace with actual GitHub repo URL |
-| npm package name | `mrclean-claude` | `package.json` (`name`) | Confirm acceptable; alternative: `@mrclean/mrclean` (scoped) |
+| Field | Final Value | Status |
+|-------|-------------|--------|
+| LICENSE copyright holder | `mrclean-claude contributors` | PATCHED by orchestrator (commit `702e66c`) |
+| Repository URL | `https://github.com/anthropics/mrclean-claude` | KNOWN PLACEHOLDER — operator must patch before plan 03-05 publish |
+| npm package name | `mrclean-claude` | APPROVED |
 
 ---
 
@@ -104,7 +104,7 @@ The following three fields require operator review and confirmation before plan 
 
 - **Lines:** 21 (target: >= 19) — PASS
 - **Contains:** "MIT License" — YES
-- **Contains:** "Copyright (c) 2026 anthropics" — YES (placeholder, flagged for operator)
+- **Contains:** "Copyright (c) 2026 mrclean-claude contributors" — YES (updated by orchestrator post-checkpoint, commit `702e66c`)
 - **Contains:** "Permission is hereby granted, free of charge" — YES
 
 ### CHANGELOG.md
@@ -193,5 +193,8 @@ Commits:
 - Task 1 (changesets bootstrap): `1de51ab`
 - Task 2 (LICENSE + CHANGELOG): `129c4c0`
 - Task 3 (README + THREAT_MODEL): `69e0111`
+- Task 4 (LICENSE copyright fix — orchestrator post-checkpoint): `702e66c`
+
+LICENSE current copyright line: "Copyright (c) 2026 mrclean-claude contributors" — CORRECT
 
 ## Self-Check: PASSED
