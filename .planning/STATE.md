@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 Plan 01 complete — Layer 1 regex engine (secretlint + gitleaks + worker pool).
-last_updated: "2026-05-14T14:08:29.931Z"
+stopped_at: Phase 2 Plan 02 complete — Layer 2 entropy + Layer 3 .env + Layer 4 words.txt + SessionState.
+last_updated: "2026-05-14T14:22:13.770Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 8
-  percent: 62
+  completed_plans: 9
+  percent: 69
 ---
 
 # State: mrclean
@@ -28,15 +28,15 @@ progress:
 ## Current Position
 
 Phase: 2 (live-redaction-layers-1-4-one-way) — EXECUTING
-Plan: 2 of 7
-**Phase:** Phase 2 in progress (02-01 complete)
-**Plan:** 02-01-PLAN.md COMPLETE (Layer 1: secretlint + gitleaks + worker pool)
-**Status:** Executing Phase 2 — Plan 02-02 is next
-**Progress:** [████████░░] 62% (8/13 plans complete)
+Plan: 3 of 7
+**Phase:** Phase 2 in progress (02-02 complete)
+**Plan:** 02-02-PLAN.md COMPLETE (Layers 2/3/4: entropy + .env + words.txt + SessionState)
+**Status:** Executing Phase 2 — Plan 02-03 is next
+**Progress:** [█████████░] 69% (9/13 plans complete)
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
-Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ executing — 2/7 plans done ]
+Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ executing — 3/7 plans done ]
 Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 ```
 
@@ -90,7 +90,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - [x] Execute Plan 01-05 (doctor canary round-trip) — COMPLETE
 - [x] Execute Plan 02-00 (deps + smol-toml + shared detection types) — COMPLETE
 - [x] Execute Plan 02-01 (Layer 1: secretlint + gitleaks adapter) — COMPLETE
-- [ ] Execute Plan 02-02 (Layer 2: entropy + Layer 3: env + Layer 4: words)
+- [x] Execute Plan 02-02 (Layer 2: entropy + Layer 3: env + Layer 4: words) — COMPLETE
 - [ ] Execute Plan 02-03 (placeholder manager)
 - [ ] Execute Plan 02-04 (hook integration: one-way redaction)
 - [ ] Execute Plan 02-05 (audit log + dry_run mode)
@@ -120,13 +120,18 @@ None.
 - **WorkerPool size 4 default** — amortizes 2–5ms per-worker spawn cost across the keyword-filtered hot path (5–20 rules typically execute per hook invocation).
 - **vendor/ copied to dist/ via tsup onSuccess** — bundled artifact path resolution requires dist/vendor/gitleaks-rules.toml.
 - **package.json files[] explicit enumeration** — excludes dist/detect-layer1* from npm tarball; test-only bundle entry not published.
+- **Token regex excludes '=' as separator** — the tokenizer `[A-Za-z0-9_\-./+=]{N,}` includes `=` per plan spec; test fixtures use `: ` separator to ensure keyword is in surrounding window, not inside token.
+- **Unicode → in JSDoc causes oxc transform failure** — replaced with `-` in layer3-env.ts JSDoc; oxc does not support non-ASCII chars in certain comment positions.
+- **shannonEntropy exported from layer2** — exported for testing and potential re-use; gitleaks-engine.ts already inlined a copy per 02-01 decision.
+- **HOOK-PROCESS LIFETIME cache in session-state.ts** — module-level sessionId-keyed Map for per-process reuse; Phase 3 PERF gate will evaluate if persistent IPC cache is needed.
+- **initSessionState uses Promise.all** — env blocklist and word list are independent I/O operations; parallel loading keeps SessionStart latency minimal.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 02-01)
-**Last action:** Completed 02-01-PLAN.md — Layer 1 regex engine: secretlint + gitleaks adapter + worker pool + bundle test, 27 new tests (220 total).
-**Stopped at:** Phase 2 Plan 01 complete — Layer 1 regex engine (secretlint + gitleaks + worker pool).
-**Next action:** Execute Plan 02-02 (Layer 2: entropy + Layer 3: env + Layer 4: words).
+**Last command:** `/gsd-execute-phase` (plan 02-02)
+**Last action:** Completed 02-02-PLAN.md — Layers 2/3/4: entropy + .env extraction + words.txt + SessionState, 51 new tests (271 total).
+**Stopped at:** Phase 2 Plan 02 complete — Layer 2 entropy + Layer 3 .env + Layer 4 words.txt + SessionState.
+**Next action:** Execute Plan 02-03 (placeholder manager).
 
 ---
-*Last updated: 2026-05-14 after plan 02-01 execution*
+*Last updated: 2026-05-14 after plan 02-02 execution*
