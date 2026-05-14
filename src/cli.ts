@@ -68,9 +68,10 @@ program
   .command('doctor')
   .description('Verify mrclean installation: hook entries, MCP server, canary round-trip')
   .option('--verbose', 'Print detailed check output', false)
-  .action(async (opts: { verbose: boolean }) => {
+  .option('--bench', 'Run a performance benchmark stub (Phase 3 will add the assertion gate)', false)
+  .action(async (opts: { verbose: boolean; bench: boolean }) => {
     const { runDoctor } = await import('./doctor/index.js')
-    await runDoctor({ verbose: opts.verbose })
+    await runDoctor({ verbose: opts.verbose, bench: opts.bench })
   })
 
 // Entrypoint guard: only parse argv when this file is the main module.

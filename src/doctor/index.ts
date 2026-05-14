@@ -35,6 +35,7 @@ import {
 } from './checks.js'
 import { checkClaudeCodeVersion, type ClaudeVersionResult } from './version-check.js'
 import { renderReport, computeExitCode } from './report.js'
+import { runBenchmark, type BenchmarkResult } from './bench.js'
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -44,9 +45,16 @@ import { renderReport, computeExitCode } from './report.js'
 export interface DoctorOpts {
   homeDir?: string
   cwd?: string
-  /** Unused in Phase 1 — reserved for verbose output flag. */
+  /** Print detailed check output. */
   verbose?: boolean
+  /**
+   * Run a performance benchmark (Phase 2 stub; Phase 3 will add the assertion gate).
+   * When true, skips the normal doctor checks and runs runBenchmark() instead.
+   */
+  bench?: boolean
 }
+
+export type { BenchmarkResult }
 
 /** Full report returned by computeDoctorReport. */
 export interface DoctorReport {
@@ -154,10 +162,23 @@ export async function computeDoctorReport(opts: {
  * CLI wrapper: resolves homeDir/cwd, runs computeDoctorReport, renders the report,
  * and terminates the process with the computed exit code.
  *
+ * When `opts.bench` is true, runs runBenchmark() and prints p50/p95 latency to stderr
+ * instead of the normal 6-check doctor report. Exits 0 regardless of latency
+ * (Phase 3 PERF-02 owns the assertion gate).
+ *
  * This is the ONLY place in the entire doctor subsystem where the process terminates
- * via an exit call — computeDoctorReport is pure and never does this.
+ * via an exit call — computeDoctorReport and runBenchmark are pure and never do this.
  */
 export async function runDoctor(opts?: DoctorOpts): Promise<void> {
+  if (opts?.bench) {
+    const result = await runBenchmark()
+    process.stderr.write(`[bench] runs=${result.runsCount}\n`)
+    process.stderr.write(
+      `[bench] UserPromptSubmit p50=${result.p50.toFixed(1)}ms p95=${result.p95.toFixed(1)}ms (target Phase 3: <100ms)\n`,
+    )
+    process.exit(0)
+  }
+
   const homeDir = opts?.homeDir ?? homedir()
   const cwd = opts?.cwd ?? process.cwd()
 
