@@ -231,7 +231,7 @@ export class WorkerPool {
   async terminate(): Promise<void> {
     const promises: Promise<number>[] = []
     for (let i = 0; i < this.size; i++) {
-      const slot = this.workers[i]
+      const slot: PoolWorker | null = this.workers[i] as PoolWorker | null
       if (slot !== null) {
         promises.push(slot.worker.terminate())
         this.workers[i] = null
