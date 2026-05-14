@@ -71,10 +71,12 @@ All decisions trace to REQUIREMENTS.md REQ-IDs unless marked **[discretion]**.
 
 ### Hook Integration — One-Way (HOOK-02..04)
 
-- **UserPromptSubmit:** if any finding has severity `CRITICAL` or `HIGH`, return `permissionDecision: "deny"` with `permissionDecisionReason: "[mrclean] <ruleId> (<severity>): <redacted snippet>"`. Operator rewrites the prompt themselves — Claude Code's `UserPromptSubmit` hook does not yet support silent prompt rewrite. `MEDIUM`/`LOW` findings on UserPromptSubmit fall through to substitute via `additionalContext` only.
-- **PreToolUse:** any detection severity → emit `hookSpecificOutput.updatedInput` with the placeholder-substituted version. Tool runs against sanitized input. No deny path for tool calls; redaction is enough.
+> **NOTE (corrected per RESEARCH §9.1):** Field names below were corrected after RESEARCH verified the live Claude Code hook contract. UserPromptSubmit uses **top-level** `decision: "block"` + `reason`, NOT `permissionDecision`/`permissionDecisionReason`. The `permissionDecision` / `permissionDecisionReason` shape is correct ONLY for PreToolUse (under `hookSpecificOutput`). Earlier wording of this section used the PreToolUse field names by mistake — fixed here so this CONTEXT file matches RESEARCH §9 and ROADMAP success criterion #1. The original incorrect wording was: `permissionDecision: "deny"` / `permissionDecisionReason: "[mrclean] ..."`.
+
+- **UserPromptSubmit:** if any finding has severity `CRITICAL` or `HIGH`, return top-level `decision: "block"` with `reason: "[mrclean] <ruleId> (<severity>): <redacted snippet>"`. Operator rewrites the prompt themselves — Claude Code's `UserPromptSubmit` hook does not yet support silent prompt rewrite. `MEDIUM`/`LOW` findings on UserPromptSubmit fall through to substitute via `additionalContext` only.
+- **PreToolUse:** any detection severity → emit `hookSpecificOutput.updatedInput` with the placeholder-substituted version (`permissionDecision: "allow"` + `permissionDecisionReason` carries the substitution note). Tool runs against sanitized input. No deny path for tool calls; redaction is enough.
 - **PostToolUse:** scan tool result; newly-discovered secrets get added to the session placeholder map AND substituted in the output that re-enters the model context. One-way — no restoration on the way back. Reversible mode is REVMODE-deferred.
-- **Cold-path bail-out:** if any single rule's pattern-timeout fires more than 5× in a single hook invocation, abort detection for that call and emit `permissionDecision: "deny"` with `permissionDecisionReason: "[mrclean] detection budget exhausted — investigate"`. **[discretion]** Fail-closed under regex pathology rather than risk leaking by skipping detection.
+- **Cold-path bail-out:** if any single rule's pattern-timeout fires more than 5× in a single hook invocation, abort detection for that call. On UserPromptSubmit, emit top-level `decision: "block"` with `reason: "[mrclean] detection budget exhausted — investigate"`. On PreToolUse, emit `hookSpecificOutput.permissionDecision: "deny"` with `permissionDecisionReason: "[mrclean] detection budget exhausted — tool call blocked for safety"`. **[discretion]** Fail-closed under regex pathology rather than risk leaking by skipping detection.
 
 ### Audit Log (AUDIT-01..02)
 
@@ -88,7 +90,7 @@ All decisions trace to REQUIREMENTS.md REQ-IDs unless marked **[discretion]**.
 
 - **Default:** `dry_run = false` (active redaction enabled out of the box). Rationale: "trust-building first-run mode" per ROADMAP success criterion #6 is opt-in — the operator FLIPS dry_run to `true` if they want audit-only, then flips it back. If we shipped dry_run = true by default, success criterion #1 ("paste AWS key → blocked") would fail on first install.
 - **Activation:** `[mode] dry_run = true` in `.mrclean/config.toml` OR `--dry-run` CLI flag on `mrclean serve` (MCP path). Hook path inherits dry_run from config (no CLI flag — Claude Code spawns the hook bin with no extra args).
-- **dry_run effect:** every rule's effective action becomes `audit`. Findings still flow into the audit log; placeholders are still computed (for log accuracy) but NOT substituted into hook outputs; UserPromptSubmit returns `permissionDecision: "allow"` regardless of severity.
+- **dry_run effect:** every rule's effective action becomes `audit`. Findings still flow into the audit log; placeholders are still computed (for log accuracy) but NOT substituted into hook outputs; UserPromptSubmit returns no `decision` field (allow path) regardless of severity.
 - **No reversible mode:** one-way only for v1 per MODE-02.
 
 ### Configuration (CFG-02, CFG-04)
@@ -187,7 +189,7 @@ The following calls were made by Claude based on REQUIREMENTS.md context. Operat
 - `.planning/phases/01-wired-skeleton/01-05-SUMMARY.md` — `computeDoctorReport`/`runDoctor` split (Phase 2 extends doctor with `--bench` stub)
 
 ### Upstream specs (for researcher to verify)
-- Claude Code hooks reference: `https://code.claude.com/docs/en/hooks` — verify `permissionDecision: "deny"` + `permissionDecisionReason` shape for UserPromptSubmit, `hookSpecificOutput.updatedInput` shape for PreToolUse.
+- Claude Code hooks reference: `https://code.claude.com/docs/en/hooks` — verify top-level `decision: "block"` + `reason` shape for UserPromptSubmit, `hookSpecificOutput.permissionDecision` + `permissionDecisionReason` shape for PreToolUse.
 - Secretlint v13: `https://github.com/secretlint/secretlint` — `@secretlint/core` + `@secretlint/node` programmatic API.
 - Gitleaks rule pack: `https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml` — TOML rule shape (`id`, `regex`, `keywords`, `entropy`, `allowlists`).
 - MCP TypeScript SDK: not touched in Phase 2; canonical ref kept for continuity.
@@ -236,3 +238,4 @@ The following calls were made by Claude based on REQUIREMENTS.md context. Operat
 
 *Phase: 02-live-redaction-layers-1-4-one-way*
 *Context gathered: 2026-05-14 under autonomous mode — most decisions are locked by REQUIREMENTS.md; Claude-discretion choices marked **[discretion]** in the body.*
+*Revised: 2026-05-14 — HOOK-02 field names corrected per RESEARCH §9.1 (top-level `decision`/`reason` for UserPromptSubmit, not `permissionDecision`/`permissionDecisionReason`).*

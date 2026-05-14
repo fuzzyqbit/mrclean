@@ -18,17 +18,19 @@ files_modified:
   - src/doctor/version-check.ts
   - tests/hook/handlers-detection.test.ts
   - tests/hook/integration-detection.test.ts
+  - tests/hook/integration-detection.globalSetup.ts
   - tests/cli/ignore.test.ts
+  - vitest.config.ts
 autonomous: true
-requirements: [HOOK-02, HOOK-03, HOOK-04, CFG-04]
-tags: [hook-integration, user-prompt-submit, pre-tool-use, post-tool-use, banner, ignore, cli]
+requirements: [HOOK-02, HOOK-03, HOOK-04, HOOK-07, CFG-04]
+tags: [hook-integration, user-prompt-submit, pre-tool-use, post-tool-use, banner, ignore, cli, hook-07]
 must_haves:
   truths:
-    - "UserPromptSubmit with a CRITICAL or HIGH detection returns `{ decision: 'block', reason: '[mrclean] <ruleId> ...' }` at TOP LEVEL (not in hookSpecificOutput)"
+    - "UserPromptSubmit with a CRITICAL or HIGH detection returns top-level `{ decision: 'block', reason: '[mrclean] <ruleId> ...' }` (RESEARCH §9.1 — NOT permissionDecision/permissionDecisionReason; those are PreToolUse fields)"
     - "UserPromptSubmit with MEDIUM/LOW detection passes through with an additionalContext warning"
     - "PreToolUse with any detection emits `hookSpecificOutput.updatedInput` carrying the COMPLETE tool_input object with secrets substituted by placeholders"
     - "PostToolUse with detections in tool_response emits `hookSpecificOutput.updatedToolOutput` (Claude Code >= v2.1.121) with placeholder-substituted output"
-    - "SessionStart triggers Layer 3 + Layer 4 reload and emits the long-form banner `mrclean active vN.N.N (rules: NNN, allowlist: NN, mode: M)`"
+    - "SessionStart triggers Layer 3 + Layer 4 reload and emits the long-form banner `mrclean active vN.N.N (rules: NNN, allowlist: NN, mode: M)` — this is the HOOK-07 deliverable"
     - "dry_run=true: UserPromptSubmit never blocks; PreToolUse/PostToolUse do not substitute; audit log still records detections"
     - "Budget exhaustion (5 pattern timeouts) produces a structured deny on UserPromptSubmit and PreToolUse; PostToolUse logs and passes through"
     - "`mrclean ignore <fingerprint>` appends the fingerprint to `<cwd>/.mrclean/config.toml [allowlist].fingerprints` idempotently"
@@ -55,6 +57,9 @@ must_haves:
     - path: "src/cli.ts"
       provides: "ignore subcommand wired"
       contains: "ignore"
+    - path: "tests/hook/integration-detection.globalSetup.ts"
+      provides: "vitest globalSetup that runs npm run build once before the integration suite"
+      contains: "npm run build"
   key_links:
     - from: "src/hook/handlers/*"
       to: "src/detect/index.ts"
@@ -75,6 +80,8 @@ Wire the Phase 2 detection orchestrator into the four hook handlers (replacing P
 
 Purpose: This is the plan that operators see — pasting an AWS key into Claude Code MUST be blocked, secrets in tool arguments MUST be substituted, and the wiring banner MUST reflect live rule counts. Without this plan, all of Plans 02-00..04 are invisible to the user.
 
+This plan also OWNS HOOK-07 delivery (the long-form banner upgrade). Phase 1 shipped the short form; this plan replaces it with the full live-rule-count form. HOOK-07 appears in `requirements_addressed` here.
+
 Output: Four populated hook handlers, a banner module, an ignore subcommand, a doctor version-floor bump, and integration tests proving each event type behaves correctly under detection AND under dry_run AND under budget exhaustion.
 </objective>
 
@@ -90,6 +97,21 @@ Output: Four populated hook handlers, a banner module, an ignore subcommand, a d
 @.planning/phases/01-wired-skeleton/01-03-SUMMARY.md
 @.planning/phases/01-wired-skeleton/01-05-SUMMARY.md
 @CLAUDE.md
+
+> **EXECUTOR ALERT — RESEARCH SUPERSEDES CONTEXT.md WORDING FOR HOOK-02:**
+>
+> CONTEXT.md §Hook Integration was originally written using PreToolUse field names (`permissionDecision: "deny"` / `permissionDecisionReason`) for the UserPromptSubmit deny path. **THIS WAS INCORRECT.** RESEARCH §9.1 verified against the live Claude Code hook docs that UserPromptSubmit uses TOP-LEVEL `decision: "block"` + `reason` — NOT `permissionDecision`/`permissionDecisionReason`.
+>
+> CONTEXT.md has since been revised (see the in-line note in §Hook Integration — One-Way) and ROADMAP.md success criterion #1 has been corrected. BUT — if you read an older cached version, USE THESE FIELD NAMES:
+>
+> | Hook event | Top-level fields | hookSpecificOutput fields |
+> |-----------|-------|----|
+> | UserPromptSubmit (deny path) | `decision: "block"`, `reason: "[mrclean] ..."` | `additionalContext: "..."` |
+> | UserPromptSubmit (allow with warning) | (none) | `additionalContext: "..."` |
+> | PreToolUse | (none — uses hookSpecificOutput only) | `permissionDecision: "allow" \| "deny"`, `permissionDecisionReason: "..."`, `updatedInput?: ...` |
+> | PostToolUse | (none) | `updatedToolOutput?: string`, `additionalContext?: "..."` |
+>
+> See RESEARCH §9.1–§9.6 for the verified JSON shapes. **Do NOT use `permissionDecision`/`permissionDecisionReason` for UserPromptSubmit** — that is the SINGLE most common mistake the planner has flagged in this plan.
 
 <interfaces>
 Inputs (Plan 02-04 outputs):
@@ -165,7 +187,7 @@ PostToolUse substitute (RESEARCH §9.4 — requires Claude Code >= v2.1.121):
 }
 ```
 
-Banner format (RESEARCH §9.6):
+Banner format (RESEARCH §9.6 — HOOK-07 long-form delivery):
 `mrclean active v${VERSION} (rules: ${ruleCount}, allowlist: ${allowlistCount}, mode: ${mode})`
 - ruleCount = `getRuleCount().total`
 - allowlistCount = sum of all 5 `allowlist.*.length` from the merged config
@@ -191,6 +213,9 @@ Hook output types — Plan 02-00 has NOT updated these yet. This plan updates `s
 
 Doctor version-floor bump:
 - `src/doctor/version-check.ts` currently classifies green/yellow/red based on a Phase 1 threshold. Update the threshold for the `updatedToolOutput` feature: `>= 2.1.121` → green; `< 2.1.121` → yellow with "PostToolUse output substitution requires Claude Code >= 2.1.121"; not-found → red as before.
+
+Integration-test build harness:
+- The integration tests in `tests/hook/integration-detection.test.ts` spawn `node dist/cli.js`. The build must complete BEFORE the suite runs. Use vitest's `globalSetup` to do an unconditional `npm run build` once for the integration suite. The timestamp-heuristic approach (skip if dist newer than src) is UNRELIABLE on clean checkouts where timestamps may be equal — `globalSetup` removes that ambiguity.
 </interfaces>
 </context>
 
@@ -198,8 +223,10 @@ Doctor version-floor bump:
 
 <task type="auto" tdd="true">
   <name>Task 1: Hook handlers + banner — UserPromptSubmit, PreToolUse, PostToolUse, SessionStart</name>
-  <files>src/hook/handlers/user-prompt-submit.ts, src/hook/handlers/pre-tool-use.ts, src/hook/handlers/post-tool-use.ts, src/hook/handlers/session-start.ts, src/hook/banner.ts, src/shared/types.ts, tests/hook/handlers-detection.test.ts, tests/hook/integration-detection.test.ts</files>
+  <files>src/hook/handlers/user-prompt-submit.ts, src/hook/handlers/pre-tool-use.ts, src/hook/handlers/post-tool-use.ts, src/hook/handlers/session-start.ts, src/hook/banner.ts, src/shared/types.ts, tests/hook/handlers-detection.test.ts, tests/hook/integration-detection.test.ts, tests/hook/integration-detection.globalSetup.ts, vitest.config.ts</files>
   <read_first>
+    > **EXECUTOR ALERT (repeat):** CONTEXT.md §HOOK-02's earlier wording used `permissionDecision: "deny"` / `permissionDecisionReason` for UserPromptSubmit. THAT IS INCORRECT — those are PreToolUse fields. UserPromptSubmit uses TOP-LEVEL `decision: "block"` + `reason`. Use RESEARCH §9.1 as the source of truth. CONTEXT.md has been corrected; if you read an older copy, prefer RESEARCH §9.1's wording.
+
     - src/hook/handlers/user-prompt-submit.ts (Phase 1 no-op — replace body)
     - src/hook/handlers/pre-tool-use.ts (Phase 1 no-op — replace body)
     - src/hook/handlers/post-tool-use.ts (Phase 1 no-op — replace body)
@@ -211,8 +238,9 @@ Doctor version-floor bump:
     - src/detect/session-state.ts (Plan 02-02 — initSessionState + cache)
     - src/detect/layer1-regex/index.ts (Plan 02-01 — getRuleCount)
     - src/config/index.ts (Plan 02-00 — loadEffectiveConfig)
-    - .planning/phases/02-live-redaction-layers-1-4-one-way/02-RESEARCH.md §9 (hook JSON shapes — LOCKED)
-    - .planning/phases/02-live-redaction-layers-1-4-one-way/02-CONTEXT.md §Hook Integration + §Banner Upgrade
+    - **.planning/phases/02-live-redaction-layers-1-4-one-way/02-RESEARCH.md §9.1 (the field-name correction) and §9.2-§9.6 (hook JSON shapes — LOCKED — SOURCE OF TRUTH for this plan)**
+    - .planning/phases/02-live-redaction-layers-1-4-one-way/02-CONTEXT.md §Hook Integration + §Banner Upgrade (CORRECTED; refer to in-line note about HOOK-02 field names)
+    - vitest.config.ts (current vitest configuration — extend with `globalSetup` for the integration test file)
   </read_first>
   <behavior>
     Each handler is an `async` function (Phase 1 handlers were sync; the dispatcher is already `await`-aware per Plan 01-03's pattern of `await handler(input)`). All handlers must be made async-compatible — the dispatcher in src/hook/dispatcher.ts may already support this; if not, this plan amends it to `await` the result before returning.
@@ -227,9 +255,9 @@ Doctor version-floor bump:
     handleUserPromptSubmit(input):
     1. Load config + ensure SessionState cached for `input.session_id`. If `getCachedSessionState(input.session_id)` is null → bootstrap it now (defensive — SessionStart may not fire in `/clear`/compact cases; per Phase 1 SessionStartInput source field).
     2. `const result = await runDetection(input.prompt, config, state, { sessionId: input.session_id, hookEvent: 'UserPromptSubmit', cwd: input.cwd })`.
-    3. **Budget exhausted** → return `{ decision: 'block', reason: '[mrclean] detection budget exhausted (5 pattern timeouts) — prompt blocked for safety' }` (top-level).
-    4. **dry_run=true** → return `{ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: '<banner-from-buildBanner-OR-low-priority-warning>' } }`. NEVER block in dry_run.
-    5. **Any CRITICAL or HIGH finding** → return `{ decision: 'block', reason: ..., hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: '<summary including placeholders>' } }`. Reason format: `[mrclean] ${ruleId} (${severity}): detected at offset ${span.start} — rewrite prompt before submitting`.
+    3. **Budget exhausted** → return TOP-LEVEL `{ decision: 'block', reason: '[mrclean] detection budget exhausted (5 pattern timeouts) — prompt blocked for safety' }` (NOT `permissionDecision`/`permissionDecisionReason` — those are PreToolUse).
+    4. **dry_run=true** → return `{ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: '<banner-from-buildBanner-OR-low-priority-warning>' } }`. NEVER block in dry_run. NO top-level `decision` field.
+    5. **Any CRITICAL or HIGH finding** → return TOP-LEVEL `{ decision: 'block', reason: ..., hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: '<summary including placeholders>' } }`. Reason format: `[mrclean] ${ruleId} (${severity}): detected at offset ${span.start} — rewrite prompt before submitting`.
     6. **Only MEDIUM/LOW findings** → return `{ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: '[mrclean] ${count} detection(s) (${severities}) — placeholders: ${list}' } }`. **Do NOT** substitute the prompt itself — Claude Code does not support silent prompt rewrite for UserPromptSubmit. We only emit an additionalContext warning so the operator sees the audit hint.
     7. **No findings** → return the banner-style `{ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: <banner> } }` so the wiring signal still fires.
 
@@ -237,7 +265,7 @@ Doctor version-floor bump:
     1. Same config/state bootstrap as UserPromptSubmit.
     2. Coerce `tool_input` to a string for detection: scan ALL string-valued leaf fields of the JSON object. **Implementation: `JSON.stringify(input.tool_input)` is the simplest representation; detection runs on this stringified form**. Document this in code: substitution happens by re-stringifying after placeholder replacement.
     3. Actually substitution must happen on the original object's string fields, not a JSON-string serialization (Pitfall #4: `updatedInput` must be the COMPLETE tool_input object). Approach: walk the object, for each string leaf field, run detection on it; if findings exist, apply substituteFindings to that field's value; write the result back. Use a generic helper `substituteToolInputDeep(input, runDetectionFn): Promise<{ updatedInput, allFindings, budgetExhausted }>` that recurses into objects/arrays.
-    4. **Budget exhausted** → return `{ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: '[mrclean] detection budget exhausted — tool call blocked for safety' } }`.
+    4. **Budget exhausted** → return `{ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: '[mrclean] detection budget exhausted — tool call blocked for safety' } }`. (PreToolUse DOES use `permissionDecision`/`permissionDecisionReason` — these are the correct fields for PreToolUse.)
     5. **dry_run=true** → return `{ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', permissionDecisionReason: '[mrclean] dry_run: ${count} detection(s) logged, no substitution' } }`. NO updatedInput.
     6. **Any detection** → return `{ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', permissionDecisionReason: '[mrclean] substituted ${count} secret(s)', updatedInput: <FULL_TOOL_INPUT_WITH_SUBSTITUTIONS> } }`. The updatedInput is the complete object.
     7. **No findings** → return `{ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } }` (Phase 1 default).
@@ -263,33 +291,65 @@ Doctor version-floor bump:
     Update `src/hook/dispatcher.ts` if needed:
     - Confirm handlers return `Promise<HookOutput>` (was sync in Phase 1; async now). The runHook orchestrator must `await` the dispatch result. If dispatcher is already async (likely), no change needed.
 
+    **CRITICAL — Integration-test build harness (vitest globalSetup):**
+
+    Create `tests/hook/integration-detection.globalSetup.ts`:
+    ```typescript
+    // vitest globalSetup — runs ONCE before tests/hook/integration-detection.test.ts.
+    // Unconditional build (no timestamp-heuristic — that approach is unreliable when
+    // dist/cli.js timestamp equals src/ timestamp after a clean checkout).
+    import { execSync } from 'node:child_process';
+
+    export default async function globalSetup() {
+      execSync('npm run build', {
+        stdio: 'inherit',
+        timeout: 90_000, // 90s ceiling
+      });
+    }
+    ```
+
+    Update `vitest.config.ts`:
+    - Add a `globalSetup` reference SCOPED to the integration suite ONLY. The cleanest approach is to register the integration file as a separate vitest project OR conditionally include the globalSetup. Practical approach:
+      ```typescript
+      // vitest.config.ts
+      export default defineConfig({
+        test: {
+          // ... existing config
+          globalSetup: ['./tests/hook/integration-detection.globalSetup.ts'],
+          testTimeout: 30_000, // bump for integration tests (Phase 1 default may be 5s)
+        },
+      });
+      ```
+    - The unit-test suites (handlers-detection.test.ts, etc.) tolerate the build running once — they don't import from dist. The 90s build is amortized across the whole vitest run.
+    - **REMOVE the prior timestamp-heuristic beforeAll from the integration test file.** Replace with a comment saying the build happens via globalSetup.
+
     Tests:
 
     tests/hook/handlers-detection.test.ts (unit tests for each handler — ~10 tests):
 
     1. **SessionStart bootstraps state + emits long-form banner**: mock loadEffectiveConfig + initSessionState; call handler; assert banner string matches the format with mode='active' and the right rule count from a mock `getRuleCount()`.
-    2. **UserPromptSubmit blocks on HIGH finding**: prompt contains AWS fixture; result.findings has 1 HIGH; handler returns `{ decision: 'block', reason: <starts with [mrclean]>, hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: <contains placeholder> } }`.
-    3. **UserPromptSubmit passes through MEDIUM**: mock detection returning 1 MEDIUM finding; handler returns hookSpecificOutput only, NO decision: 'block'.
-    4. **UserPromptSubmit dry_run=true with HIGH finding still allows**: same prompt, config.dry_run=true; handler returns hookSpecificOutput with additionalContext, NO decision field.
-    5. **UserPromptSubmit budget exhausted blocks**: mock budgetExhausted=true; handler returns decision='block' with budget message.
-    6. **PreToolUse substitutes in tool_input.command**: tool_input = `{ command: 'curl -H ... sk_live_X' }`; handler returns updatedInput with the command rewritten to contain `<MRCLEAN:STRIPE_KEY:001>`.
+    2. **UserPromptSubmit blocks on HIGH finding (TOP-LEVEL decision)**: prompt contains AWS fixture; result.findings has 1 HIGH; handler returns object where `decision === 'block'` AT TOP LEVEL (NOT under hookSpecificOutput), `reason` starts with `[mrclean]`, and `hookSpecificOutput.additionalContext` contains the placeholder string. Asserts: NO `permissionDecision` key anywhere; NO `permissionDecisionReason` key anywhere.
+    3. **UserPromptSubmit passes through MEDIUM**: mock detection returning 1 MEDIUM finding; handler returns hookSpecificOutput only, NO `decision` key at top level.
+    4. **UserPromptSubmit dry_run=true with HIGH finding still allows**: same prompt, config.dry_run=true; handler returns hookSpecificOutput with additionalContext, NO `decision` field.
+    5. **UserPromptSubmit budget exhausted blocks (TOP-LEVEL decision)**: mock budgetExhausted=true; handler returns `decision === 'block'` AT TOP LEVEL with budget message in `reason`.
+    6. **PreToolUse substitutes in tool_input.command (hookSpecificOutput.permissionDecision='allow' + updatedInput)**: tool_input = `{ command: 'curl -H ... sk_live_X' }`; handler returns updatedInput with the command rewritten to contain `<MRCLEAN:STRIPE_KEY:001>`. Asserts the response uses `hookSpecificOutput.permissionDecision === 'allow'` (PreToolUse path — these field names ARE correct here).
     7. **PreToolUse preserves untouched fields**: tool_input = `{ command: 'echo sk_live_X', file_path: '/tmp/x' }`; updatedInput preserves file_path AND substitutes command.
-    8. **PreToolUse budget exhausted denies**: returns permissionDecision='deny' with budget message.
+    8. **PreToolUse budget exhausted denies (hookSpecificOutput.permissionDecision='deny')**: returns `hookSpecificOutput.permissionDecision === 'deny'` with budget message in `permissionDecisionReason`.
     9. **PostToolUse substitutes string tool_response**: input.tool_response is a string containing a token; handler returns updatedToolOutput with the substituted version.
     10. **PostToolUse non-string tool_response coerces to JSON**: input.tool_response is `{ output: '... token ...' }`; handler stringifies, detects, substitutes, returns updatedToolOutput.
 
     tests/hook/integration-detection.test.ts (~6 end-to-end tests):
 
-    1. **End-to-end UserPromptSubmit block via stdin/stdout**: spawn `node dist/cli.js hook`, write a SessionStart payload first (to populate the cached state — note: this requires a SHARED process for SessionStart + UserPromptSubmit, but Phase 1's hook is one-shot; resolution: this test calls runHook ONLY for the UserPromptSubmit event and relies on the handler's defensive bootstrap-when-cache-miss path). Spawn with stdin JSON of a UserPromptSubmit payload with AWS fixture in prompt. Assert exit code 0, stdout JSON contains `decision: 'block'` and a `reason` starting with `[mrclean]`. (Requires `npm run build` first.)
+    No `beforeAll` for the build — globalSetup handles it.
+
+    1. **End-to-end UserPromptSubmit block via stdin/stdout**: spawn `node dist/cli.js hook` with stdin JSON of a UserPromptSubmit payload with AWS fixture in prompt. Assert exit code 0, stdout JSON contains TOP-LEVEL `decision: 'block'` (assert via `parsed.decision === 'block'` — NOT `parsed.hookSpecificOutput.permissionDecision`), and a `reason` starting with `[mrclean]`.
     2. **End-to-end PreToolUse substitution**: stdin PreToolUse payload with `tool_input.command` containing stripe key fixture; assert stdout JSON.hookSpecificOutput.updatedInput.command contains `<MRCLEAN:STRIPE_KEY:`.
     3. **End-to-end PostToolUse updatedToolOutput**: PostToolUse payload with `tool_response: "... sk_live_X ..."`; assert stdout JSON.hookSpecificOutput.updatedToolOutput contains the placeholder.
     4. **End-to-end SessionStart banner**: assert additionalContext matches the long-form banner pattern.
-    5. **End-to-end dry_run audit-only**: temp project with `.mrclean/config.toml` containing `dry_run = true`; UserPromptSubmit with AWS fixture; assert exit code 0, NO `decision` field in stdout JSON, the audit log file has 1 line.
+    5. **End-to-end dry_run audit-only**: temp project with `.mrclean/config.toml` containing `dry_run = true`; UserPromptSubmit with AWS fixture; assert exit code 0, NO top-level `decision` field in stdout JSON, the audit log file has 1 line.
     6. **End-to-end fail-closed on uncaught error**: trigger a synthetic error by passing malformed JSON to stdin; assert exit code 2 and a structured stderr error (validates Phase 1 fail-closed still works after Phase 2 wiring).
 
-    Tests 1-5 require `npm run build` to be run before the test suite. Use a `beforeAll` hook that calls `await execAsync('npm run build')` with a 60s timeout, skipping if `dist/cli.js` is newer than `src/`.
-
-    Commit as `feat(02-05): hook integration — UserPromptSubmit block, PreToolUse + PostToolUse substitute, long-form banner`.
+    Commit as `feat(02-05): hook integration — UserPromptSubmit block (top-level decision/reason), PreToolUse + PostToolUse substitute, long-form banner`.
   </action>
   <verify>
     <automated>
@@ -297,13 +357,17 @@ Doctor version-floor bump:
       grep -c "runDetection" src/hook/handlers/pre-tool-use.ts &&
       grep -c "runDetection" src/hook/handlers/post-tool-use.ts &&
       grep -c "initSessionState" src/hook/handlers/session-start.ts &&
-      grep -cE "decision.*block|'block'" src/hook/handlers/user-prompt-submit.ts &&
+      grep -cE "decision.*['\"]block|'block'" src/hook/handlers/user-prompt-submit.ts &&
+      grep -v '^//' src/hook/handlers/user-prompt-submit.ts | grep -cE "permissionDecision" | grep -E "^0$" &&
       grep -c "updatedInput" src/hook/handlers/pre-tool-use.ts &&
+      grep -c "permissionDecision" src/hook/handlers/pre-tool-use.ts &&
       grep -c "updatedToolOutput" src/hook/handlers/post-tool-use.ts &&
       grep -cE "^export function buildBanner" src/hook/banner.ts &&
       grep -c "updatedToolOutput" src/shared/types.ts &&
+      test -f tests/hook/integration-detection.globalSetup.ts &&
+      grep -c "npm run build" tests/hook/integration-detection.globalSetup.ts &&
+      grep -c "globalSetup" vitest.config.ts &&
       npx vitest run tests/hook/handlers-detection.test.ts 2>&1 | grep -E "Tests +[0-9]+ passed" &&
-      npm run build &&
       npx vitest run tests/hook/integration-detection.test.ts 2>&1 | grep -E "Tests +[0-9]+ passed" &&
       git log -1 --format=%s | grep -E "^feat\(02-05\)"
     </automated>
@@ -311,15 +375,17 @@ Doctor version-floor bump:
   <acceptance_criteria>
     Source assertions:
     - All four handlers call `runDetection` and use `loadEffectiveConfig` + `initSessionState`/`getCachedSessionState`.
-    - `src/hook/handlers/user-prompt-submit.ts` uses `decision` + `reason` at top level (NOT `permissionDecision`).
-    - `src/hook/handlers/pre-tool-use.ts` emits `updatedInput` with the full tool_input object (verified by integration test 2).
-    - `src/hook/handlers/post-tool-use.ts` emits `updatedToolOutput` (Claude Code >= 2.1.121 feature).
+    - `src/hook/handlers/user-prompt-submit.ts` uses TOP-LEVEL `decision` + `reason` (grep `decision.*block` / `'block'`).
+    - `src/hook/handlers/user-prompt-submit.ts` does NOT use `permissionDecision` anywhere outside comments (grep excludes `//` lines; result must be 0). **This grep gate enforces the RESEARCH §9.1 correction.**
+    - `src/hook/handlers/pre-tool-use.ts` uses `permissionDecision` (grep >= 1 — PreToolUse field is correct here) and emits `updatedInput`.
+    - `src/hook/handlers/post-tool-use.ts` emits `updatedToolOutput`.
     - `src/hook/banner.ts` exports `buildBanner` and `computeAllowlistCount`.
     - `src/shared/types.ts` includes `updatedToolOutput?: string` in PostToolUseOutput.hookSpecificOutput.
+    - **Build harness:** `tests/hook/integration-detection.globalSetup.ts` exists and unconditionally runs `npm run build` with a 90s timeout. `vitest.config.ts` registers it via `globalSetup`. NO `beforeAll`-with-timestamp-heuristic in the integration test file.
 
     Behavior assertions:
     - All 10 unit tests + 6 integration tests pass.
-    - Block path verified end-to-end via spawned `dist/cli.js hook`.
+    - Block path verified end-to-end via spawned `dist/cli.js hook` — assertion is `parsed.decision === 'block'` (TOP LEVEL).
     - Substitution paths verified end-to-end for both PreToolUse and PostToolUse.
     - dry_run mode verified end-to-end (no block, audit log populated).
     - Fail-closed contract still works (Phase 1 invariant preserved).
@@ -327,7 +393,7 @@ Doctor version-floor bump:
     Commit assertion:
     - `git log -1 --format=%s` matches `^feat\(02-05\)`.
   </acceptance_criteria>
-  <done>Four hook handlers wired to runDetection; long-form banner emitted; UserPromptSubmit blocks on CRITICAL/HIGH per RESEARCH-corrected shape; PreToolUse + PostToolUse substitute; dry_run honored; budget exhaustion translates to deny paths; integration tests prove end-to-end via dist/cli.js.</done>
+  <done>Four hook handlers wired to runDetection; long-form banner emitted (HOOK-07 delivered); UserPromptSubmit blocks on CRITICAL/HIGH via TOP-LEVEL `decision`/`reason` per RESEARCH §9.1 (NOT PreToolUse's permissionDecision fields); PreToolUse + PostToolUse substitute; dry_run honored; budget exhaustion translates to deny paths; integration tests prove end-to-end via dist/cli.js with vitest globalSetup running the build unconditionally.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -467,25 +533,27 @@ Doctor version-floor bump:
 | T-02-05-07 | Information disclosure | `mrclean ignore` accepts an arbitrary string as fingerprint and writes it into config.toml; an attacker who controls the CLI can inject TOML | mitigate | Fingerprint regex `/^[a-z0-9:_.-]+:[0-9a-f]{16}$/i` rejects anything that isn't shaped like a fingerprint. Even if bypassed, the operator's own config.toml is the surface — out-of-process trust boundary. |
 | T-02-05-08 | Repudiation | `mrclean ignore` modifies `config.toml` without a marker; an audit of who-added-what is hard. | accept | Operator owns their config; v1 does not log ignore actions to a separate audit trail. Documented as a v1 limitation. |
 | T-02-05-09 | Tampering | The deep-substitute helper enters an infinite loop on a cyclic `tool_input` object. | mitigate | Use `JSON.stringify`-based cycle detection OR limit recursion depth to 32. Document the limit in code. |
+| T-02-05-10 | Information disclosure | An older cached version of CONTEXT.md (with the incorrect `permissionDecision`/`permissionDecisionReason` wording for UserPromptSubmit) leads the executor to emit the wrong shape, and Claude Code silently ignores the block | mitigate | The EXECUTOR ALERT block at the top of this plan, the in-line note in the corrected CONTEXT.md, the grep-gate in acceptance criteria (`permissionDecision` absent from user-prompt-submit.ts excluding comments), and the integration test (assert `parsed.decision === 'block'` at top level) collectively enforce the correct shape. |
 </threat_model>
 
 <verification>
 - All Layer 1..4 tests + Plan 02-04 tests still pass after this plan's changes (no regressions).
 - Plan 02-05 tests (handlers-detection + integration-detection + ignore + version-check) all pass.
-- `node dist/cli.js hook` invoked via `spawnSync` with the AWS-fixture UserPromptSubmit payload returns exit 0, stdout JSON contains `decision: 'block'`.
-- Long-form banner appears as `mrclean active v0.1.0 (rules: NNN, allowlist: M, mode: active)` where NNN matches `getRuleCount().total`.
+- `node dist/cli.js hook` invoked via `spawnSync` with the AWS-fixture UserPromptSubmit payload returns exit 0, stdout JSON has `decision === 'block'` at TOP LEVEL (not under hookSpecificOutput).
+- Long-form banner appears as `mrclean active v0.1.0 (rules: NNN, allowlist: M, mode: active)` where NNN matches `getRuleCount().total`. **HOOK-07 deliverable.**
 - Phase 1 fail-closed contract still holds: malformed stdin → exit 2.
 - `mrclean ignore <fp>` idempotency proven by byte-identical file output on second invocation.
 - Doctor version-check correctly classifies 2.1.121 (green) and 2.1.120 (yellow).
-- `grep -rE "permissionDecision.*block" src/hook/handlers/user-prompt-submit.ts` returns 0 — UserPromptSubmit uses `decision`, NOT `permissionDecision`.
+- `grep -v '^//' src/hook/handlers/user-prompt-submit.ts | grep -c "permissionDecision"` returns 0 — UserPromptSubmit uses TOP-LEVEL `decision`, NOT `permissionDecision`.
+- vitest globalSetup runs the build unconditionally before the integration test suite (90s timeout); no fragile timestamp heuristic remains.
 </verification>
 
 <success_criteria>
-- HOOK-02: UserPromptSubmit CRITICAL/HIGH → `{ decision: 'block', reason: ... }` at top level (RESEARCH-corrected shape).
-- HOOK-03: PreToolUse → `hookSpecificOutput.updatedInput` carrying the complete tool_input with substitutions.
+- HOOK-02: UserPromptSubmit CRITICAL/HIGH → top-level `{ decision: 'block', reason: ... }` (RESEARCH-corrected shape — not `permissionDecision`/`permissionDecisionReason`).
+- HOOK-03: PreToolUse → `hookSpecificOutput.updatedInput` carrying the complete tool_input with substitutions (and `permissionDecision: 'allow'` + `permissionDecisionReason` — these field names ARE correct for PreToolUse).
 - HOOK-04: PostToolUse → `hookSpecificOutput.updatedToolOutput` (CC v2.1.121+).
+- HOOK-07: long-form banner emitted at SessionStart and first UserPromptSubmit (this plan owns the upgrade from Phase 1's short form).
 - CFG-04: `mrclean ignore <fingerprint>` appends to project allowlist idempotently.
-- HOOK-07 long-form banner emitted at SessionStart and first UserPromptSubmit.
 - dry_run honored across all three event handlers.
 - Detection-budget bail-out translates to deny on UserPromptSubmit + PreToolUse; logs-and-passes on PostToolUse.
 - Doctor surfaces a yellow warning for Claude Code < 2.1.121.
@@ -495,8 +563,10 @@ Doctor version-floor bump:
 After completion, create `.planning/phases/02-live-redaction-layers-1-4-one-way/02-05-SUMMARY.md` documenting:
 - Each handler's behavior matrix (no findings / MEDIUM / HIGH / dry_run / budget-exhausted).
 - The deep-substitute helper for `updatedInput`.
-- The buildBanner format with live ruleCount + allowlistCount + mode.
+- The buildBanner format with live ruleCount + allowlistCount + mode (HOOK-07 delivery).
 - The mrclean ignore subcommand + smol-toml stringify availability outcome (text-append or stringify).
 - The doctor version-floor bump rationale.
+- Confirmation that vitest globalSetup is configured for the integration suite (build runs unconditionally, no timestamp heuristic).
+- The CONTEXT.md HOOK-02 correction: this plan's handlers use TOP-LEVEL `decision`/`reason` for UserPromptSubmit per RESEARCH §9.1, and the older CONTEXT.md wording (`permissionDecision`/`permissionDecisionReason` for UserPromptSubmit) was incorrect and has been patched.
 - Any pitfalls encountered while wiring (especially RESEARCH OQ A3 — worker_threads in the bundle, which Plan 02-01 already verified).
 </output>

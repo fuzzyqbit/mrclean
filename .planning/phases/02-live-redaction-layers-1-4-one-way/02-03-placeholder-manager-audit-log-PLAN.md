@@ -25,6 +25,7 @@ must_haves:
     - "Substitution does not mangle text containing JSON, Markdown, code-fence, or unified-diff syntax"
     - "Every detection writes one JSONL record with ts/sessionId/hookEvent/ruleId/severity/action/redactedHash/fingerprint/location"
     - "Audit log NEVER contains the raw secret value, env-var name, or file path outside project root — a canary-leak helper proves it"
+    - "src/placeholder/type-map.ts is a THIN RE-EXPORT of getTypeForRuleId from src/detect/type-map.ts (Plan 02-00 canonical); this file exists purely to give callers a 'stable placeholder/' import path"
   artifacts:
     - path: "src/placeholder/manager.ts"
       provides: "PlaceholderManager class with allocate + getByPlaceholder + size"
@@ -33,7 +34,7 @@ must_haves:
       provides: "substituteFindings(text, findings) → string (longest-spans-first, no index drift)"
       exports: ["substituteFindings", "ResolvedFinding"]
     - path: "src/placeholder/type-map.ts"
-      provides: "getTypeForRuleId(ruleId) returning the locked TYPE vocabulary"
+      provides: "Thin re-export of getTypeForRuleId from Plan 02-00's canonical src/detect/type-map.ts"
       exports: ["getTypeForRuleId", "TYPE_VOCABULARY"]
     - path: "src/audit/log.ts"
       provides: "writeAuditRecord(cwd, record) — JSONL appender"
@@ -44,8 +45,12 @@ must_haves:
   key_links:
     - from: "src/placeholder/manager.ts"
       to: "src/detect/findings.ts"
-      via: "sha256hex helper from findings.ts"
+      via: "sha256hex helper from Plan 02-00 — IMPORT, do not redefine"
       pattern: "sha256hex"
+    - from: "src/placeholder/type-map.ts"
+      to: "src/detect/type-map.ts"
+      via: "re-export getTypeForRuleId + TYPE_VOCABULARY from Plan 02-00 canonical"
+      pattern: "from '../detect/type-map"
     - from: "src/audit/log.ts"
       to: ".mrclean/audit.jsonl"
       via: "fs.appendFile with flag 'a' and JSON.stringify + '\\n'"
@@ -58,6 +63,12 @@ Build the placeholder manager (session-scoped, stable-per-value, collision-free,
 Purpose: Placeholders are the unit of work Plan 02-05's hook integration emits to Claude Code; the audit log is the only persistent artifact of detection. Both must be correct before the orchestrator (Plan 02-04) glues them together.
 
 Output: A `PlaceholderManager` class, a `substituteFindings` helper, an `writeAuditRecord` appender, and a `assertNoCanaryLeak` CI helper, all unit-tested.
+
+**Wave 1 → Wave 2 contract:** This plan IMPORTS:
+- `Finding`, `sha256hex`, `redactedHash`, `fingerprint` from `src/detect/findings.ts` (Plan 02-00 owned — DO NOT CREATE).
+- `getTypeForRuleId`, `TYPE_VOCABULARY` from `src/detect/type-map.ts` (Plan 02-00 owned — DO NOT CREATE).
+
+This plan DOES create `src/placeholder/type-map.ts` — but that file is a THIN RE-EXPORT only (`export { getTypeForRuleId, TYPE_VOCABULARY } from '../detect/type-map.js'`). It exists so callers can import from a stable `src/placeholder/` path. It is DISJOINT from `src/detect/type-map.ts` — Plan 02-00 owns the canonical map; this plan only re-exports.
 </objective>
 
 <execution_context>
@@ -69,17 +80,29 @@ Output: A `PlaceholderManager` class, a `substituteFindings` helper, an `writeAu
 @.planning/REQUIREMENTS.md
 @.planning/phases/02-live-redaction-layers-1-4-one-way/02-CONTEXT.md
 @.planning/phases/02-live-redaction-layers-1-4-one-way/02-RESEARCH.md
+@.planning/phases/02-live-redaction-layers-1-4-one-way/02-00-deps-config-schema-toml-migration-PLAN.md
 @CLAUDE.md
 
 <interfaces>
+**OWNED ELSEWHERE (Plan 02-00 — Wave 1; import only, DO NOT CREATE OR MODIFY):**
+
+From `src/detect/findings.ts`:
+- `interface Finding { ruleId, severity, span: { start, end }, value, redactedHash, fingerprint, source, action? }`
+- `function sha256hex(value: string): string`  (full 64-char hex)
+- `function redactedHash(value: string): string`  (first 16 chars)
+- `function fingerprint(ruleId: string, value: string): string`
+
+From `src/detect/type-map.ts`:
+- `function getTypeForRuleId(ruleId: string): string`
+- `const TYPE_VOCABULARY: readonly string[]`
+
+Wave 1 ran before Wave 2 — these symbols WILL exist when this plan executes. DO NOT redefine them. If you find these files missing during execution, surface a runtime error rather than re-creating them (Plan 02-00's invariants have been violated).
+
+---
+
 Locked placeholder format (PH-01 + CONTEXT §Placeholder Manager):
 - `<MRCLEAN:TYPE:NNN>` where TYPE is from the vocabulary and NNN is a 3-digit zero-padded global session counter.
 - Overflow: `<MRCLEAN:TYPE:OVF>` after counter > 999.
-
-Locked TYPE vocabulary (CONTEXT §Placeholder Manager):
-`AWS_KEY, AWS_SECRET, GH_TOKEN, JWT, STRIPE_KEY, OPENAI_KEY, ANTHROPIC_KEY, PRIVATE_KEY, SLACK_TOKEN, GCP_KEY, DATABRICKS_KEY, AZURE_KEY, CF_KEY, ENV, WORD, ENTROPY, SECRET` (SECRET = fallback for unknown rule-ids).
-
-NOTE: Plan 02-01 ALSO creates `src/detect/type-map.ts` (under `src/detect/`). The placeholder manager needs the SAME mapping. Decision: this plan does NOT create a duplicate — it imports `getTypeForRuleId` from `src/detect/type-map.ts` (the Plan 02-01 location). If Plan 02-01 has not yet executed (Wave 2 parallel), this plan's executor creates a stub of `src/detect/type-map.ts` with the locked vocabulary list, and Plan 02-01 extends or replaces it without breaking the contract. To avoid divergence, file `src/placeholder/type-map.ts` becomes a THIN re-export: `export { getTypeForRuleId } from '../detect/type-map.js'`. This file exists so Plan 02-05 can import from a "stable" placeholder path AND so the wave-parallel race is decoupled.
 
 PlaceholderManager API (RESEARCH §8.2):
 ```typescript
@@ -129,13 +152,13 @@ Canary-leak helper:
 <tasks>
 
 <task type="auto" tdd="true">
-  <name>Task 1: PlaceholderManager + substituteFindings + type-map re-export</name>
-  <files>src/placeholder/manager.ts, src/placeholder/substitute.ts, src/placeholder/type-map.ts, src/detect/type-map.ts, tests/placeholder/manager.test.ts, tests/placeholder/substitute.test.ts</files>
+  <name>Task 1: PlaceholderManager + substituteFindings + thin type-map re-export</name>
+  <files>src/placeholder/manager.ts, src/placeholder/substitute.ts, src/placeholder/type-map.ts, tests/placeholder/manager.test.ts, tests/placeholder/substitute.test.ts</files>
   <read_first>
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-RESEARCH.md §8 (manager + substitute) + §1.3 + §2 (Type vocabulary union)
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-CONTEXT.md §Placeholder Manager
-    - src/detect/findings.ts (Plan 02-01 — read `sha256hex` and `redactedHash` for re-use; if missing, this task creates stubs and Plan 02-01 will extend)
-    - src/detect/type-map.ts (if Plan 02-01 has created it — read; otherwise stub it here with the locked vocabulary)
+    - **src/detect/findings.ts (Plan 02-00 — IMPORT `sha256hex`. DO NOT CREATE.)**
+    - **src/detect/type-map.ts (Plan 02-00 — re-exported via src/placeholder/type-map.ts. DO NOT CREATE OR MODIFY.)**
   </read_first>
   <behavior>
     PlaceholderManager:
@@ -155,25 +178,30 @@ Canary-leak helper:
     - Markdown code-fence preservation: text containing ` ```python\nxxx\n``` ` with finding inside the fence → fence still parses; angle brackets do not break Markdown.
     - Unified-diff preservation: text containing `-line with secret\n+line without secret` with finding on the secret → diff structure preserved.
 
-    type-map:
+    type-map re-export:
     - `getTypeForRuleId('AWSSecretAccessKey')` returns `'AWS_SECRET'`.
     - `getTypeForRuleId('gitleaks:aws-access-token')` returns `'AWS_KEY'`.
     - `getTypeForRuleId('UnknownRule_xyz')` returns `'SECRET'` (fallback).
     - `getTypeForRuleId('entropy:high')` returns `'ENTROPY'`.
     - `getTypeForRuleId('env:literal')` returns `'ENV'`.
     - `getTypeForRuleId('word:foobar')` returns `'WORD'`.
+    All of these are provided by Plan 02-00's canonical `src/detect/type-map.ts`; this plan's thin re-export does NOT change behavior.
   </behavior>
   <action>
-    Step 0 — Defensive setup: check `src/detect/findings.ts` and `src/detect/type-map.ts` existence.
-    - If `src/detect/findings.ts` is missing or lacks `sha256hex`/`redactedHash`/`fingerprint` exports, create the minimal versions (per Plan 02-01 interfaces block). DO NOT delete or rewrite if Plan 02-01 already created them.
-    - If `src/detect/type-map.ts` is missing, create it with the full locked TYPE vocabulary and the rule-id → TYPE map (from Plan 02-01 interfaces block). The Plan 02-01 executor will extend it; this task contributes the placeholder-facing entries (`entropy:high → ENTROPY`, `env:literal → ENV`, `word:* → WORD`).
-    - Either way, after Step 0 both files exist and export the required symbols.
-
-    Step 1 — `src/placeholder/type-map.ts`:
-    - Thin re-export module: `export { getTypeForRuleId } from '../detect/type-map.js'` and `export const TYPE_VOCABULARY = [...] as const` (16 entries matching CONTEXT). This file exists so callers can import from `src/placeholder/` without crossing into `src/detect/` (separation of concerns).
+    Step 1 — `src/placeholder/type-map.ts` (thin re-export — 2-3 lines):
+    ```
+    // src/placeholder/type-map.ts
+    //
+    // Thin re-export of the canonical type-map from src/detect/type-map.ts (Plan 02-00 owned).
+    // This file exists so callers can import getTypeForRuleId from `src/placeholder/`
+    // without crossing into `src/detect/`. Behavior is identical — Plan 02-00 is the source of truth.
+    //
+    // DO NOT add new mappings here. Revise Plan 02-00 and src/detect/type-map.ts instead.
+    export { getTypeForRuleId, TYPE_VOCABULARY } from '../detect/type-map.js';
+    ```
 
     Step 2 — `src/placeholder/manager.ts`:
-    - Import `sha256hex` from `../detect/findings.js`.
+    - **Imports:** `import { sha256hex } from '../detect/findings.js';`
     - Export `PlaceholderEntry` interface per interfaces block.
     - Implement `PlaceholderManager` class:
       - `private readonly sessionId: string` (default: `'unset'`).
@@ -196,6 +224,7 @@ Canary-leak helper:
       - `size(): number`: return `counter`.
 
     Step 3 — `src/placeholder/substitute.ts`:
+    - **Imports:** `import type { Finding } from '../detect/findings.js';`
     - Export `ResolvedFinding = Finding & { placeholder: string }`.
     - Export `substituteFindings(text: string, findings: ResolvedFinding[]): string`:
       - Sort by `span.start DESCENDING`.
@@ -227,8 +256,11 @@ Canary-leak helper:
       grep -cE "MRCLEAN:OVF|MRCLEAN:\\\$" src/placeholder/manager.ts &&
       grep -cE "padStart\\(3" src/placeholder/manager.ts &&
       grep -c "sha256hex" src/placeholder/manager.ts &&
+      grep -cE "from ['\"]\\.\\./detect/findings" src/placeholder/manager.ts &&
       grep -cE "^export function substituteFindings" src/placeholder/substitute.ts &&
-      grep -c "getTypeForRuleId" src/placeholder/type-map.ts &&
+      grep -cE "from ['\"]\\.\\./detect/type-map" src/placeholder/type-map.ts &&
+      test -f src/detect/findings.ts &&
+      test -f src/detect/type-map.ts &&
       npx vitest run tests/placeholder/ 2>&1 | grep -E "Tests +[0-9]+ passed" &&
       git log -1 --format=%s | grep -E "^feat\(02-03\)"
     </automated>
@@ -236,10 +268,13 @@ Canary-leak helper:
   <acceptance_criteria>
     Source assertions:
     - `src/placeholder/manager.ts` exports `PlaceholderManager` class with `allocate`, `getByPlaceholder`, `size`.
+    - `src/placeholder/manager.ts` imports `sha256hex` from `../detect/findings` (grep verified — Plan 02-00 module).
     - Placeholder format string uses `padStart(3, '0')` (3-digit zero-padded).
     - Overflow path writes JSON warning to stderr (grep for `JSON.stringify` near `overflow`).
     - `src/placeholder/substitute.ts` sorts by `span.start` descending (grep for `b.span.start - a.span.start` or similar).
-    - `src/placeholder/type-map.ts` re-exports from `../detect/type-map.js`.
+    - `src/placeholder/substitute.ts` imports `Finding` type from `../detect/findings`.
+    - `src/placeholder/type-map.ts` re-exports from `../detect/type-map.js` (grep verified).
+    - **Wave 1 contract:** `src/detect/findings.ts` and `src/detect/type-map.ts` exist and are NOT in this plan's git diff (Plan 02-00 owns them).
 
     Behavior assertions:
     - All 12 tests across tests/placeholder/ pass.
@@ -252,7 +287,7 @@ Canary-leak helper:
     Commit assertion:
     - `git log -1 --format=%s` matches `^feat\(02-03\)`.
   </acceptance_criteria>
-  <done>PlaceholderManager + substituteFindings + type-map re-export complete; PH-01..04 all proven by tests.</done>
+  <done>PlaceholderManager + substituteFindings + thin type-map re-export complete; PH-01..04 all proven by tests. Plan 02-00's canonical findings.ts and detect/type-map.ts are imported (not duplicated).</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -261,7 +296,7 @@ Canary-leak helper:
   <read_first>
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-RESEARCH.md §10 (audit record schema + append discipline)
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-CONTEXT.md §Audit Log
-    - src/detect/findings.ts (Finding shape — already in place from Task 1 / Plan 02-01)
+    - **src/detect/findings.ts (Plan 02-00 — Finding shape; IMPORT for the type)**
     - src/placeholder/manager.ts (Task 1 output — PlaceholderEntry provides redactedHash via Finding.redactedHash)
   </read_first>
   <behavior>
@@ -286,7 +321,7 @@ Canary-leak helper:
   </behavior>
   <action>
     Step 1 — `src/audit/log.ts`:
-    - Import `appendFile` from `node:fs/promises` and `join` from `node:path`.
+    - **Imports:** `import { appendFile } from 'node:fs/promises'; import { join } from 'node:path'; import type { Finding } from '../detect/findings.js';`
     - Export `AuditRecord` interface per interfaces block (locked).
     - Export `async function writeAuditRecord(cwd: string, record: AuditRecord): Promise<void>`:
       - logPath = `join(cwd, '.mrclean', 'audit.jsonl')`.
@@ -385,6 +420,7 @@ Canary-leak helper:
 - PlaceholderManager: 1000-unique-value test hits overflow path; OVF placeholder format correct.
 - PlaceholderManager: stability test (same value twice → same placeholder) PASSES.
 - substituteFindings: JSON-context test produces parseable JSON output.
+- The Wave 1 contract is honored: `src/detect/findings.ts` and `src/detect/type-map.ts` are Plan 02-00 owned and NOT touched here. `src/placeholder/type-map.ts` is a thin re-export and is DISJOINT from the canonical detect/type-map.ts.
 </verification>
 
 <success_criteria>
@@ -403,4 +439,5 @@ After completion, create `.planning/phases/02-live-redaction-layers-1-4-one-way/
 - AuditRecord shape with redaction-discipline rules.
 - The canary-leak contract for downstream CI tests (Plan 02-06 + Phase 3 QA-03).
 - substituteFindings algorithm + tested context-survival cases (JSON, Markdown, diff).
+- Note: this plan IMPORTS from Plan 02-00's canonical `src/detect/findings.ts` and `src/detect/type-map.ts`. The `src/placeholder/type-map.ts` file in this plan is a thin re-export only — no duplicate vocabulary.
 </output>

@@ -17,6 +17,7 @@ must_haves:
     - "runDetection runs Layers 1→2→3→4 in fixed order with span-coverage dedup between layers"
     - "Each finding gets a resolved placeholder allocated from the session-scoped PlaceholderManager"
     - "Every finding produces one audit log record (action reflects effective config)"
+    - "Layer 4 'warn' action is normalized to effectiveAction='audit' at the orchestrator (logs but does not substitute)"
     - "When `dry_run = true` every effective action becomes 'audit'; placeholders are still computed but substitution does NOT change the output text"
     - "When 5 pattern-timeouts occur in a single hook invocation, the orchestrator returns a budgetExhausted flag for the hook to translate into a deny path"
     - "One-way only: no restoration paths exist in this plan"
@@ -80,8 +81,8 @@ Imports this plan depends on:
 - `PlaceholderManager` + `PlaceholderEntry` (Plan 02-03)
 - `substituteFindings` (Plan 02-03)
 - `writeAuditRecord` + `findingToAuditRecord` + `AuditRecord` (Plan 02-03)
-- `getTypeForRuleId` (Plan 02-01 / 02-03)
-- `dedupBySpan` + `Finding` (Plan 02-01)
+- `getTypeForRuleId` (Plan 02-00 — canonical `src/detect/type-map.ts`)
+- `dedupBySpan` + `Finding` (Plan 02-00 — canonical `src/detect/findings.ts`)
 
 Plan-locked behaviors:
 
@@ -90,14 +91,31 @@ Layer ordering (CONTEXT §Detection-Layer Ordering):
 - After each layer, accumulate findings; pass `coveredSpans = findings.map(f => f.span)` to the next layer.
 - After all layers run, `dedupBySpan` resolves any residual overlap (defense in depth).
 
-Effective action resolution:
-- Each Finding may already carry `.action` (set by Plan 02-01's `runLayer1` from `config.rules` overrides, or by Plan 02-02's `runLayer4Words` from `word|action`).
-- If `.action` is undefined, the orchestrator assigns:
-  - CRITICAL/HIGH → `'block'`
-  - MEDIUM → `'substitute'`
-  - LOW → `'audit'`
-- Then if `config.dry_run === true`, applyDryRun forces every effective action to `'audit'`.
-- The `block` action is meaningful ONLY in `UserPromptSubmit` hook context — for PreToolUse/PostToolUse it's treated as `'substitute'`. The orchestrator does NOT downgrade; that translation lives in Plan 02-05's handlers.
+### Effective action resolution (LOCKED — applied in this exact order)
+
+For each Finding, derive `effectiveAction` via the pipeline below. The mapping is deterministic and tests/acceptance criteria reference it by name.
+
+1. **Pre-normalization (Layer 4 `warn` → `audit`):**
+   - Layer 4 (`runLayer4Words`) is allowed to emit `Finding.action = 'warn'` (per RESEARCH §7 / CONTEXT §Layer 4 word-list syntax).
+   - The orchestrator NORMALIZES this immediately: `if (finding.action === 'warn') finding.action = 'audit'`.
+   - Rationale: `warn` is a user-friendly word-list token, but the downstream effectiveAction space is strictly `'block' | 'substitute' | 'audit'`. The semantic of `warn` is "log it but do not substitute" — which is exactly `audit`.
+   - **Acceptance criterion (LOCKED):** `Layer 4 wordEntry.action == warn produces a finding with effectiveAction == audit`. Proven by orchestrator test 4 expected value.
+
+2. **Action-defined path:**
+   - If `finding.action` is defined (after step 1 normalization) → `effectiveAction = finding.action`.
+   - Possible sources of `finding.action`: Layer 1 from `config.rules` override, Layer 4 from `word|action` syntax (after warn→audit normalization).
+
+3. **Severity-default path (when `finding.action` is undefined):**
+   - `CRITICAL` → `'block'`
+   - `HIGH` → `'block'`
+   - `MEDIUM` → `'substitute'`
+   - `LOW` → `'audit'`
+
+4. **dry_run coercion (`config.dry_run === true`):**
+   - After steps 1–3, if `config.dry_run === true`, run `applyDryRun(resolvedFindings)` to FORCE `effectiveAction = 'audit'` for every entry.
+
+5. **Hook-translation (NOT this plan):**
+   - The `'block'` action is meaningful ONLY in `UserPromptSubmit` hook context. For PreToolUse/PostToolUse it is treated as `'substitute'`. The orchestrator does NOT downgrade; that translation lives in Plan 02-05's handlers.
 
 DetectionResult shape (this plan's main export):
 ```typescript
@@ -109,7 +127,7 @@ export interface DetectionContext {
 
 export interface ResolvedFinding extends Finding {
   placeholder: string          // allocated by PlaceholderManager
-  effectiveAction: 'block' | 'substitute' | 'audit'   // post-dry_run coercion
+  effectiveAction: 'block' | 'substitute' | 'audit'   // post-dry_run coercion (NEVER 'warn' here — normalized in step 1)
 }
 
 export interface DetectionResult {
@@ -144,8 +162,8 @@ WorkerPool lifetime:
     - src/placeholder/manager.ts (Plan 02-03 — PlaceholderManager)
     - src/placeholder/substitute.ts (Plan 02-03)
     - src/audit/log.ts (Plan 02-03 — writeAuditRecord + findingToAuditRecord)
-    - src/detect/findings.ts (Plan 02-01 — Finding, dedupBySpan, redactedHash, fingerprint)
-    - src/detect/type-map.ts (Plan 02-01 — getTypeForRuleId)
+    - **src/detect/findings.ts (Plan 02-00 — Finding, dedupBySpan, redactedHash, fingerprint, sha256hex)**
+    - **src/detect/type-map.ts (Plan 02-00 — getTypeForRuleId)**
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-CONTEXT.md §Detection-Layer Ordering + §Modes
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-RESEARCH.md §9 (hook outputs) + §11 (dry_run)
   </read_first>
@@ -158,11 +176,10 @@ WorkerPool lifetime:
     5. Run Layer 3: `const l3 = runLayer3Env(text, sessionState.envBlocklist, findings.map(f => f.span))`. Append.
     6. Run Layer 4: `const l4 = runLayer4Words(text, sessionState.wordEntries, findings.map(f => f.span))`. Append.
     7. `findings = dedupBySpan(findings)` (defense-in-depth — each layer already gets coveredSpans, but cross-layer pathological overlaps may slip through).
-    8. For each finding, assign effective action:
-      - If `finding.action` is defined → use it.
-      - Else if severity is CRITICAL or HIGH → `'block'`.
-      - Else if MEDIUM → `'substitute'`.
-      - Else (LOW) → `'audit'`.
+    8. **Action resolution per finding (in this exact order):**
+      - **8a — `warn` normalization:** if `finding.action === 'warn'` → set `finding.action = 'audit'`. This is the SINGLE point where Layer 4's `'warn'` token is mapped into the orchestrator-level `'audit'` effectiveAction.
+      - **8b — Action-defined:** if `finding.action` is defined (after 8a) → `effectiveAction = finding.action`.
+      - **8c — Severity-default (action undefined):** CRITICAL/HIGH → `'block'`; MEDIUM → `'substitute'`; LOW → `'audit'`.
     9. Allocate placeholder for each finding: `const type = getTypeForRuleId(finding.ruleId); const entry = manager.allocate(finding.value, type); const resolved = { ...finding, placeholder: entry.placeholder, effectiveAction }`.
     10. If `config.dry_run === true`, run `applyDryRun(resolvedFindings)` to coerce every effectiveAction to `'audit'`. Substituted text becomes the ORIGINAL text (no substitution).
     11. If not dry_run: `substitutedText = substituteFindings(text, resolvedFindings)`.
@@ -188,6 +205,13 @@ WorkerPool lifetime:
     - Define and export `DetectionContext`, `ResolvedFinding`, `DetectionResult` interfaces.
     - Implement `getOrCreatePool` + `getOrCreateManager` + `shutdownDetection` per behavior block.
     - Implement `runDetection(text, config, sessionState, ctx): Promise<DetectionResult>` per behavior block.
+    - **EXPLICIT IMPLEMENTATION NOTE:** Step 8a (warn → audit normalization) MUST be implemented as an in-place rewrite of `finding.action` BEFORE step 8b reads it. The simplest form is:
+      ```
+      for (const f of findings) {
+        if (f.action === 'warn') f.action = 'audit';
+      }
+      ```
+      placed between dedupBySpan and the effectiveAction-assignment loop. Tests assert against this normalization.
     - The Layer 1 worker pool must be passed through: `runLayer1(text, config, getOrCreatePool())`.
     - The action-assignment + placeholder-allocation loop must call `getTypeForRuleId(finding.ruleId)` and `manager.allocate(value, type)`.
     - Audit log writes use `Promise.allSettled` and log rejection reasons to stderr as `JSON.stringify({ warn: 'mrclean audit write failed', reason }) + '\n'`.
@@ -200,7 +224,11 @@ WorkerPool lifetime:
     1. **Layer 1 fires, places placeholder, writes audit record**: text with AWS fixture → result has 1 finding, `effectiveAction: 'block'` (HIGH default), `placeholder: '<MRCLEAN:AWS_KEY:001>'`, `substitutedText.includes('<MRCLEAN:AWS_KEY:001>')`. Verify `.mrclean/audit.jsonl` (in tmpdir cwd) has 1 line. Use temp dir as `ctx.cwd`.
     2. **Span-dedup proven**: text where Layer 1 catches a span [0,20], assert Layer 2 entropy does NOT produce an overlapping finding. (Use a synthesized fixture where the AWS key would also be high-entropy.)
     3. **Layer 3 fires when env value present**: sessionState with `envBlocklist.values = new Set(['secretvalue12345'])`; text `"the secretvalue12345 leaked"` → 1 finding with `source: 'env'`, placeholder TYPE `'ENV'`.
-    4. **Layer 4 fires when word present**: sessionState with `wordEntries = [{ word: 'ACME', action: 'warn', re: /\bACME\b/gi }]`; text `"contact ACME today"` → 1 finding with `source: 'words'`, `effectiveAction: 'warn'`... WAIT: 'warn' is a Layer 4 action but DetectionResult specifies `'block'|'substitute'|'audit'`. Resolution: this orchestrator treats `'warn'` as a synonym for `'audit'` (it logs but does not substitute). Document this mapping and add a normalization step: `if (finding.action === 'warn') finding.action = 'audit'`. Adjust the test accordingly.
+    4. **Layer 4 `warn` action normalizes to `effectiveAction: 'audit'`** (LOCKED — unambiguous expected value):
+       - Build sessionState with `wordEntries = [{ word: 'ACME', action: 'warn', re: /\bACME\b/gi }]`.
+       - Input text: `"contact ACME today"`.
+       - Expected result: exactly 1 finding with `source: 'words'`, `ruleId: 'word:acme'`, AND `effectiveAction === 'audit'` (NOT `'warn'` — normalized by step 8a). The finding's pre-normalization `action` ('warn') is NOT exposed on the ResolvedFinding; only `effectiveAction === 'audit'` is asserted.
+       - Also assert `substitutedText` STILL CONTAINS the placeholder (`<MRCLEAN:WORD:001>`) — `'audit'` effectiveAction does NOT mean "don't substitute"; substitution is always applied in non-dry_run mode. (dry_run is what suppresses substitution. The orchestrator-level distinction: `'audit'` means "log it, severity is lower priority"; substitution happens regardless of effectiveAction in non-dry_run mode.)
     5. **dry_run=true coerces every action to audit**: config with `dry_run: true`; AWS fixture in text → result has 1 finding with `effectiveAction: 'audit'`; `substitutedText === text` (original).
     6. **Budget bail-out flag**: mock `runLayer1` to return `{ findings: [], timeoutCount: 5 }`; result has `budgetExhausted: true`, `rawTimeoutCount: 5`.
     7. **Placeholder stability across calls**: call runDetection twice with the same sessionId + same secret value → both calls return the same placeholder string.
@@ -222,6 +250,7 @@ WorkerPool lifetime:
       grep -c "PlaceholderManager" src/detect/index.ts &&
       grep -cE "runLayer1|runLayer2Entropy|runLayer3Env|runLayer4Words" src/detect/index.ts &&
       grep -c "Promise.allSettled" src/detect/index.ts &&
+      grep -cE "'warn'" src/detect/index.ts &&
       npx vitest run tests/detect/orchestrator.test.ts tests/detect/dry-run.test.ts 2>&1 | grep -E "Tests +[0-9]+ passed" &&
       git log -1 --format=%s | grep -E "^feat\(02-04\)"
     </automated>
@@ -234,10 +263,12 @@ WorkerPool lifetime:
     - Orchestrator calls `writeAuditRecord` (grep >= 1).
     - Orchestrator uses `Promise.allSettled` for audit writes (grep = 1).
     - Orchestrator calls `dedupBySpan` once after Layer 4 (grep >= 1).
+    - Orchestrator references the literal `'warn'` token AT LEAST ONCE (the normalization branch — grep `'warn'` >= 1).
     - applyDryRun does not mutate inputs (verified by test).
 
     Behavior assertions:
     - All ~11 tests across orchestrator.test.ts + dry-run.test.ts pass.
+    - **EXPLICIT LOCKED CRITERION:** `Layer 4 wordEntry.action == 'warn' produces a ResolvedFinding with effectiveAction == 'audit'`. Proven by orchestrator test 4's exact expected value (`effectiveAction === 'audit'`).
     - dry_run test proves MODE-01: every action becomes 'audit', substitutedText equals original.
     - Budget bail-out test proves the flag surfaces correctly (Plan 02-05 will use it).
     - Audit log resilience: a write failure does NOT throw out of runDetection.
@@ -245,7 +276,7 @@ WorkerPool lifetime:
     Commit assertion:
     - `git log -1 --format=%s` matches `^feat\(02-04\):`.
   </acceptance_criteria>
-  <done>runDetection orchestrator is the single entry point for hook handlers; dry_run mode proven; budget bail-out signal exposed; audit log integration end-to-end.</done>
+  <done>runDetection orchestrator is the single entry point for hook handlers; dry_run mode proven; budget bail-out signal exposed; audit log integration end-to-end. Layer 4 'warn' → effectiveAction 'audit' normalization is explicit + tested + asserted in acceptance criteria.</done>
 </task>
 
 </tasks>
@@ -273,6 +304,7 @@ WorkerPool lifetime:
 <verification>
 - `npx vitest run tests/detect/orchestrator.test.ts tests/detect/dry-run.test.ts` — all ~11 tests pass.
 - Layer-ordering proof: Layer 1's covered span suppresses Layer 2 entropy on the same span (test 2).
+- **LOCKED — warn→audit normalization proof:** Layer 4 `wordEntry.action: 'warn'` produces a ResolvedFinding with `effectiveAction === 'audit'` (orchestrator test 4, unambiguous expected value).
 - MODE-01 dry_run proof: with `config.dry_run = true`, the AWS fixture produces a finding with `effectiveAction: 'audit'` AND `result.substitutedText === text` (no substitution).
 - MODE-02 one-way enforcement: there is no `restore` / `undo` / `unsubstitute` function in `src/detect/`. `grep -rE "restore|unsubstitute|reverse" src/detect/` (excluding comment lines) returns no implementation matches.
 - Detection budget: `runLayer1` returning `timeoutCount: 5` surfaces `budgetExhausted: true` in DetectionResult.
@@ -286,12 +318,13 @@ WorkerPool lifetime:
 - Plan 02-05 has a stable contract (`runDetection`, `DetectionResult`, `shutdownDetection`) for the hook handler integration.
 - Span-coverage dedup proven (Pitfall #6 defended).
 - Detection-budget bail-out flag is observable + actionable.
+- Layer 4 `warn` action is normalized to `effectiveAction: 'audit'` at the orchestrator — proven by test 4's unambiguous expected value.
 </success_criteria>
 
 <output>
 After completion, create `.planning/phases/02-live-redaction-layers-1-4-one-way/02-04-SUMMARY.md` documenting:
 - runDetection algorithm steps + interface contract.
-- effectiveAction resolution rules (action → severity-default → dry_run coercion).
+- effectiveAction resolution rules (warn → audit normalization → action → severity-default → dry_run coercion).
 - Module-level pool + manager cache design.
 - Plan 02-05's integration points (getOrCreatePool, runDetection, shutdownDetection).
 </output>

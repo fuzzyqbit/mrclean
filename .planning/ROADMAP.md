@@ -38,7 +38,7 @@
 **Depends on**: Phase 1
 **Requirements**: DET1-01, DET1-02, DET1-03, DET1-04, DET2-01, DET2-02, DET2-03, DET3-01, DET3-02, DET3-03, DET4-01, DET4-02, DET4-03, PH-01, PH-02, PH-03, PH-04, HOOK-02, HOOK-03, HOOK-04, AUDIT-01, AUDIT-02, MODE-01, MODE-02, CFG-02, CFG-04
 **Success Criteria** (what must be TRUE):
-  1. Operator pastes a real-shape AWS access key into a Claude Code prompt and the prompt is blocked with a structured `permissionDecisionReason` naming the rule and a redacted snippet — the unredacted value never reaches the model
+  1. Operator pastes a real-shape AWS access key into a Claude Code prompt and the prompt is blocked with a structured top-level `reason` field naming the rule and a redacted snippet — the unredacted value never reaches the model
   2. Operator runs a `Bash` tool call containing a `Bearer sk_live_…` token and the executed command sees `<MRCLEAN:STRIPE_KEY:001>` in place of the secret; the same token referenced twice in the session yields the same placeholder both times
   3. Operator drops a value into `.env` and a project-specific term into `.mrclean/words.txt`, restarts the session, then references both in a prompt — both are caught by Layer 3 / Layer 4 with no manual config beyond the two files
   4. Operator points mrclean at the committed fixture corpus (real package-lock.json, git diffs, OpenAPI spec) and observes 100% recall on the positive-secret fixtures and zero false positives on the UUID/git-SHA/hash negative corpus

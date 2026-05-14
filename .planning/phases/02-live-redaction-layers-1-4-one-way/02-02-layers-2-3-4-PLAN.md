@@ -26,7 +26,7 @@ must_haves:
     - "words.txt is parsed at SessionStart with case-insensitive whole-word matching and per-line action overrides"
     - "User-global ~/.mrclean/words.txt is layered with project-local .mrclean/words.txt; project entries override same-word global entries"
     - "secrets_files config array supplies additional KV-shaped files to Layer 3 beyond .env*"
-    - "Every Layer 2/3/4 detection emits the same normalized Finding shape as Layer 1"
+    - "Every Layer 2/3/4 detection emits the canonical Finding shape IMPORTED from src/detect/findings.ts (owned by Plan 02-00)"
   artifacts:
     - path: "src/detect/shape-allowlist.ts"
       provides: "Shared shape-allowlist patterns + isShapeAllowlisted helper"
@@ -56,14 +56,20 @@ must_haves:
       to: "fast-glob"
       via: "discoverEnvFiles via fast-glob"
       pattern: "from 'fast-glob'"
+    - from: "src/detect/layer2-entropy.ts AND layer3-env.ts AND layer4-words.ts"
+      to: "src/detect/findings.ts"
+      via: "IMPORT canonical Finding + redactedHash + fingerprint from Plan 02-00"
+      pattern: "from './findings'"
 ---
 
 <objective>
-Implement Layers 2 (Shannon entropy), 3 (.env value extraction), and 4 (user dirty-word list) of the detection engine. Each layer is a stateless function returning the same normalized `Finding[]` shape as Layer 1. Layer 3 + 4 build their session-scoped state at `SessionStart` and the orchestrator (Plan 02-04) carries that state across PreToolUse / PostToolUse invocations.
+Implement Layers 2 (Shannon entropy), 3 (.env value extraction), and 4 (user dirty-word list) of the detection engine. Each layer is a stateless function returning the canonical `Finding[]` shape from `src/detect/findings.ts` (owned by Plan 02-00). Layer 3 + 4 build their session-scoped state at `SessionStart` and the orchestrator (Plan 02-04) carries that state across PreToolUse / PostToolUse invocations.
 
 Purpose: Satisfies DET2-01..03 (entropy + shape allowlist + keyword requirement), DET3-01..03 (`.env*` discovery + parse-only + skip rules), DET4-01..03 (words.txt + `word|action` syntax + SessionStart hot-reload). Together with Layer 1 these complete the four detection layers required by the Phase 2 success criteria.
 
 Output: Three stateless layer functions, a shared shape-allowlist module, a SessionState contract that Plan 02-04 consumes, and tests covering each layer's positive + negative behavior + the layering semantics.
+
+**Wave 1 → Wave 2 contract:** This plan IMPORTS `Finding`, `redactedHash`, `fingerprint` from `src/detect/findings.ts` (owned by Plan 02-00). DO NOT create or modify that file. If you need a new helper, revise Plan 02-00 first.
 </objective>
 
 <execution_context>
@@ -75,10 +81,13 @@ Output: Three stateless layer functions, a shared shape-allowlist module, a Sess
 @.planning/REQUIREMENTS.md
 @.planning/phases/02-live-redaction-layers-1-4-one-way/02-CONTEXT.md
 @.planning/phases/02-live-redaction-layers-1-4-one-way/02-RESEARCH.md
+@.planning/phases/02-live-redaction-layers-1-4-one-way/02-00-deps-config-schema-toml-migration-PLAN.md
 @CLAUDE.md
 
 <interfaces>
-Finding shape (from src/detect/findings.ts — Plan 02-01 owns this file; this plan IMPORTS it):
+**OWNED ELSEWHERE (Plan 02-00 — Wave 1; import only, DO NOT CREATE OR MODIFY):**
+
+From `src/detect/findings.ts` (canonical, owned by Plan 02-00):
 ```typescript
 export interface Finding {
   ruleId: string
@@ -88,10 +97,16 @@ export interface Finding {
   redactedHash: string
   fingerprint: string
   source: 'secretlint' | 'gitleaks' | 'entropy' | 'env' | 'words'
-  action?: 'block' | 'substitute' | 'audit' | 'off'
+  action?: 'block' | 'substitute' | 'audit' | 'off' | 'warn'   // 'warn' is Layer 4-emittable; orchestrator (02-04) normalizes to 'audit'
 }
+
+export function redactedHash(value: string): string;
+export function fingerprint(ruleId: string, value: string): string;
 ```
-This plan must NOT redefine Finding. It IMPORTS from `src/detect/findings.ts`. If Plan 02-01 has not yet run (Wave 2 parallel execution), the executor for this plan should: (a) create a minimal stub for findings.ts that exports the type + redactedHash + fingerprint helpers; (b) make those helpers a known-stable contract; (c) when Plan 02-01 lands its richer version, the stub is replaced. Recommendation: Plan 02-01 ALSO touches findings.ts as its first file — runtime races are avoided by Plan 02-04 (Wave 3) waiting for both. **For safety, this plan's Task 1 creates findings.ts ONLY IF it does not already exist, and writes the minimal shape; Plan 02-01 must already do the same defensively.** Document this in a comment.
+
+This plan IMPORTS the Finding type and the two helpers. It does NOT redefine them. If executor finds `findings.ts` missing, that is an INVARIANT VIOLATION — Plan 02-00 is meant to be Wave 1 and must complete first. STOP and surface a runtime error rather than re-creating a stub.
+
+---
 
 MrcleanConfig fields used (from src/shared/types.ts — Plan 02-00 owns):
 - `config.entropy.threshold: number` (default 4.5)
@@ -126,11 +141,11 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
 
 <task type="auto" tdd="true">
   <name>Task 1: Shape allowlist + Layer 2 entropy</name>
-  <files>src/detect/shape-allowlist.ts, src/detect/layer2-entropy.ts, src/detect/findings.ts, tests/detect/shape-allowlist.test.ts, tests/detect/layer2-entropy.test.ts</files>
+  <files>src/detect/shape-allowlist.ts, src/detect/layer2-entropy.ts, tests/detect/shape-allowlist.test.ts, tests/detect/layer2-entropy.test.ts</files>
   <read_first>
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-RESEARCH.md §5 (Shannon entropy + shape allowlist + keyword requirement)
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-CONTEXT.md §Layer 2
-    - src/detect/findings.ts (if Plan 02-01 has created it — read for compatibility; otherwise this task creates the minimal version)
+    - **src/detect/findings.ts (Plan 02-00 — IMPORT `Finding`, `redactedHash`, `fingerprint`. DO NOT create or modify.)**
     - src/shared/types.ts (read MrcleanConfig.entropy fields from Plan 02-00 — confirm `threshold: number` and `min_length: number`)
   </read_first>
   <behavior>
@@ -147,13 +162,12 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
     - Tunable: `config.entropy.threshold = 5.0` raises the bar; what was a hit at 4.5 may not be at 5.0.
   </behavior>
   <action>
-    Step 0 — DEFENSIVE: check if `src/detect/findings.ts` exists. If yes (Plan 02-01 finished first in Wave 2), import from it. If no, create a minimal version with the locked Finding interface + redactedHash + fingerprint helpers (per the interfaces block); Plan 02-01 will extend the file later, but the exports must be stable. Add a comment `// Created defensively; Plan 02-01 may extend with dedupBySpan + sha256hex`.
-
     Step 1 — `src/detect/shape-allowlist.ts`:
     - Export `SHAPE_ALLOWLIST_PATTERNS: readonly RegExp[]` exactly per RESEARCH §5.2 (locked literal in interfaces block).
     - Export `isShapeAllowlisted(value: string): boolean` that checks all patterns; returns true on any match.
 
     Step 2 — `src/detect/layer2-entropy.ts`:
+    - **Imports:** `import type { Finding } from './findings.js'; import { redactedHash, fingerprint } from './findings.js'; import { isShapeAllowlisted } from './shape-allowlist.js';`
     - Inline `shannonEntropy(s: string): number` per RESEARCH §5.1 (the 10-line implementation; no external pkg per CLAUDE.md). Export it for re-use and testing.
     - Inline `ENTROPY_KEYWORDS` regex per RESEARCH §5.3: `/\b(?:secret|key|token|password|bearer|api[_-]?key|access[_-]?token|client[_-]?secret|private[_-]?key|auth)\b/i`.
     - Inline `hasEntropyContext(text, tokenStart, tokenEnd)` per RESEARCH §5.3 — checks ±40 chars (excluding the token itself) for any keyword.
@@ -194,6 +208,8 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
       grep -cE "SHAPE_ALLOWLIST_PATTERNS" src/detect/shape-allowlist.ts &&
       grep -cE "export function shannonEntropy|export function runLayer2Entropy" src/detect/layer2-entropy.ts &&
       grep -c "ENTROPY_KEYWORDS\|api_key\|access_token" src/detect/layer2-entropy.ts &&
+      grep -cE "from ['\"]\\./findings" src/detect/layer2-entropy.ts &&
+      test -f src/detect/findings.ts &&
       npx vitest run tests/detect/shape-allowlist.test.ts tests/detect/layer2-entropy.test.ts 2>&1 | grep -E "Tests +[0-9]+ passed" &&
       git log -1 --format=%s | grep -E "^feat\(02-02\)"
     </automated>
@@ -203,6 +219,8 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
     - `src/detect/shape-allowlist.ts` exports `isShapeAllowlisted` and `SHAPE_ALLOWLIST_PATTERNS`.
     - `src/detect/layer2-entropy.ts` exports `shannonEntropy`, `runLayer2Entropy`; contains an ENTROPY_KEYWORDS regex that includes `secret`, `key`, `token`, `password`, `bearer`.
     - `src/detect/layer2-entropy.ts` calls `isShapeAllowlisted` before any entropy comparison (grep `isShapeAllowlisted`).
+    - `src/detect/layer2-entropy.ts` imports `Finding`, `redactedHash`, `fingerprint` from `./findings` (grep verified).
+    - `src/detect/findings.ts` exists (Plan 02-00 invariant) — verified by `test -f`.
 
     Behavior assertions:
     - All ~13 tests across shape-allowlist + layer2-entropy pass.
@@ -212,7 +230,7 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
     Commit assertion:
     - `git log -1 --format=%s` matches `^feat\(02-02\)`.
   </acceptance_criteria>
-  <done>Shape allowlist + Layer 2 entropy implemented per RESEARCH §5; DET2-01..03 all proven by tests.</done>
+  <done>Shape allowlist + Layer 2 entropy implemented per RESEARCH §5; DET2-01..03 all proven by tests. Finding shape IMPORTED from Plan 02-00.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -222,7 +240,7 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-RESEARCH.md §6 (dotenv + fast-glob) + §7 (words.txt parser)
     - .planning/phases/02-live-redaction-layers-1-4-one-way/02-CONTEXT.md §Layer 3 + §Layer 4
     - src/detect/shape-allowlist.ts (Task 1 — re-use for DET3-03 skip rule)
-    - src/detect/findings.ts (Finding shape, redactedHash, fingerprint)
+    - **src/detect/findings.ts (Plan 02-00 — IMPORT `Finding`, `redactedHash`, `fingerprint`. DO NOT create.)**
     - src/config/index.ts (loadEffectiveConfig — Plan 02-00 extension; this task does NOT call it, but its caller will)
   </read_first>
   <behavior>
@@ -247,7 +265,7 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
   </behavior>
   <action>
     Step 1 — `src/detect/layer3-env.ts`:
-    - Import `fast-glob` (default export) and `parse` from `dotenv`.
+    - **Imports:** `import type { Finding } from './findings.js'; import { redactedHash, fingerprint } from './findings.js'; import { isShapeAllowlisted } from './shape-allowlist.js'; import fastGlob from 'fast-glob'; import { parse as dotenvParse } from 'dotenv';`
     - Define and export `EnvBlocklist` interface above.
     - Define exclusion glob list (locked literal from RESEARCH §6.3):
       ```
@@ -275,6 +293,7 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
       - Audit-log integration (Plan 02-03 will consume): the Finding does NOT carry the sourceFile NAME — RESEARCH and CONTEXT both lock that env-var names are NEVER in the audit log. The `blocklist.meta` Map is consulted by Plan 02-03 to populate `location.hookEvent` only (NOT a file path).
 
     Step 2 — `src/detect/layer4-words.ts`:
+    - **Imports:** `import type { Finding } from './findings.js'; import { redactedHash, fingerprint } from './findings.js';`
     - `interface WordEntry { word: string; action: 'block'|'warn'|'audit'; re: RegExp }`.
     - `function parseWordsFile(content: string): WordEntry[]` — per RESEARCH §7.1:
       - Split lines; strip `# trailing comment` (regex `/#.*$/`); trim; skip blanks.
@@ -290,7 +309,7 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
     - `function runLayer4Words(text: string, entries: WordEntry[], coveredSpans = []): Finding[]`:
       - For each entry, run `entry.re.exec(text)` in a loop. For each match, build Finding: `source: 'words'`, `ruleId: 'word:' + entry.word.toLowerCase()`, severity HIGH, action `entry.action`, span, value (the matched text), redactedHash, fingerprint.
       - Skip if span overlaps coveredSpans.
-      - The Finding.action field IS set here directly (Layer 4 owns the per-word action mapping; Plan 02-04 orchestrator does NOT override).
+      - The Finding.action field IS set here directly (Layer 4 owns the per-word action mapping; Plan 02-04 orchestrator does NOT override; orchestrator DOES normalize `'warn'` → `'audit'` for downstream effectiveAction).
 
     Step 3 — `src/detect/session-state.ts`:
     - Export the SessionState interface from interfaces block.
@@ -328,6 +347,8 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
       grep -c "from 'fast-glob'" src/detect/layer3-env.ts &&
       grep -cE "ENV_EXCLUDE_GLOBS|env.example" src/detect/layer3-env.ts &&
       grep -c "isShapeAllowlisted" src/detect/layer3-env.ts &&
+      grep -cE "from ['\"]\\./findings" src/detect/layer3-env.ts &&
+      grep -cE "from ['\"]\\./findings" src/detect/layer4-words.ts &&
       grep -cE "export function parseWordsFile|export async function loadWordsList|export function runLayer4Words" src/detect/layer4-words.ts &&
       grep -cE "^export interface SessionState|^export async function initSessionState" src/detect/session-state.ts &&
       grep -v '^#' src/detect/layer3-env.ts | grep -cE "dotenv\.config" | grep -E "^0$" &&
@@ -338,11 +359,14 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
   <acceptance_criteria>
     Source assertions:
     - `src/detect/layer3-env.ts` imports `dotenv` and `fast-glob`; uses `dotenv.parse` and NEVER `dotenv.config` (grep-verified: 0 occurrences of `dotenv.config` after stripping `#` comment lines).
+    - `src/detect/layer3-env.ts` imports `Finding`, `redactedHash`, `fingerprint` from `./findings` (grep verified — Plan 02-00 module).
     - `src/detect/layer3-env.ts` calls `isShapeAllowlisted` in the skip-rule pipeline.
     - `src/detect/layer3-env.ts` declares exclusion globs covering `.env.example`, `.env.sample`, `.env.template`.
     - `src/detect/layer4-words.ts` exports `parseWordsFile`, `loadWordsList`, `runLayer4Words`, `WordEntry`.
+    - `src/detect/layer4-words.ts` imports `Finding`, `redactedHash`, `fingerprint` from `./findings` (grep verified — Plan 02-00 module).
     - `src/detect/layer4-words.ts` compiles regexes with `'gi'` flag (case-insensitive global) — grep `'gi'`.
     - `src/detect/session-state.ts` exports `SessionState`, `initSessionState`, `getCachedSessionState`, `setCachedSessionState`.
+    - **Wave 1 contract:** `src/detect/findings.ts` is NOT in this plan's git diff (Plan 02-00 owns it).
 
     Behavior assertions:
     - All 12+ Layer 3/4 tests pass.
@@ -355,7 +379,7 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
     Commit assertion:
     - `git log -1 --format=%s` matches `^feat\(02-02\):`.
   </acceptance_criteria>
-  <done>Layers 3 and 4 implemented per RESEARCH §6–§7; SessionState bootstrap exported for Plan 02-04 to consume; DET3-01..03 and DET4-01..03 all proven by tests.</done>
+  <done>Layers 3 and 4 implemented per RESEARCH §6–§7; SessionState bootstrap exported for Plan 02-04 to consume; DET3-01..03 and DET4-01..03 all proven by tests. Finding shape IMPORTED from Plan 02-00.</done>
 </task>
 
 </tasks>
@@ -387,6 +411,7 @@ const SHAPE_ALLOWLIST_PATTERNS: RegExp[] = [
 - shape-allowlist correctly drops UUID, git SHA, npm integrity, MD5/SHA, base64-image headers.
 - words.txt parser handles word-only, `word|action`, comments, blanks, and invalid actions (default to block).
 - Plan 02-04 can import `runLayer2Entropy`, `runLayer3Env`, `runLayer4Words`, `initSessionState`, `getCachedSessionState`, `setCachedSessionState` from this plan's outputs.
+- The Wave 1 contract is honored: `src/detect/findings.ts` is owned by Plan 02-00, NOT touched here.
 </verification>
 
 <success_criteria>
@@ -408,4 +433,5 @@ After completion, create `.planning/phases/02-live-redaction-layers-1-4-one-way/
 - `.env*` discovery rules + skip semantics + secrets_files behavior.
 - words.txt grammar + layering semantics (user-global + project-local).
 - SessionState contract for Plan 02-04 consumption.
+- Confirmation that this plan imports Finding/redactedHash/fingerprint from `src/detect/findings.ts` (Plan 02-00 owned) — no duplicate definitions.
 </output>
