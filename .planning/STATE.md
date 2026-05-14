@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 3 Plan 03 fully complete — Task 4 operator checkpoint resolved (LICENSE updated to 'mrclean-claude contributors', repo URL known placeholder for 03-05). Advancing to 03-04.
-last_updated: "2026-05-14T19:40:00.000Z"
+status: Advancing to 03-05 (npm publish + release smoke)
+stopped_at: Plan 03-04 FULLY COMPLETE (2 tasks: @hook-integration tags + CI workflows).
+last_updated: "2026-05-14T20:00:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 19
-  completed_plans: 18
-  percent: 95
+  completed_plans: 19
+  percent: 99
 ---
 
 # State: mrclean
@@ -32,7 +32,7 @@ Plan: 4 of 6
 **Phase:** Phase 3 IN PROGRESS (03-03 fully complete — Task 4 checkpoint resolved)
 **Plan:** 03-03-PLAN.md COMPLETE (docs: README, THREAT_MODEL, LICENSE, CHANGELOG + changesets bootstrap; Task 4 approved)
 **Status:** Advancing to 03-04 (quality gates + canary-leak CI)
-**Progress:** [█████████░] 95%
+**Progress:** [██████████] 95%
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
@@ -99,6 +99,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 4/6 plans
 - [x] Execute Plan 03-01 (mrclean_check/redact/status + supervisor + delete Phase 1 stubs) — COMPLETE
 - [x] Execute Plan 03-02 (vitest perf gate + PERF-03 compile-once + CI workflow) — COMPLETE
 - [x] Execute Plan 03-03 (docs: README, THREAT_MODEL, LICENSE, CHANGELOG + changesets bootstrap) — COMPLETE (Task 4 checkpoint resolved: LICENSE='mrclean-claude contributors', repo URL placeholder for 03-05, package name approved)
+- [x] Execute Plan 03-04 (quality gates: >=80% coverage + @hook-integration tags + test.yml + canary-leak.yml) — COMPLETE (QA-01/02/03 satisfied; 2 tasks committed b92f4d3, 82a1dcd)
 
 ### Blockers
 
@@ -110,6 +111,13 @@ None.
 - Phase 2's placeholder manager (PH-01..04) is the contract that Phase 3's `mcp__mrclean__redact` tool returns; designed once in Phase 2.
 - Phase 3's performance gate measures the Phase 1+2 system; perf budget breaches surface as build failures, not warnings.
 - Audit log schema (Phase 1 gitignore + Phase 2 record format) must be settled before Phase 3's canary-leak CI test can be authored.
+
+### Additional Decisions (Phase 3 — Plan 04)
+
+- **@hook-integration prefix pattern in describe names** — `describe('@hook-integration UserPromptSubmit', ...)` puts the tag before the event name so CI grep `@hook-integration.*$ev` matches. Suffix pattern (`EventName @hook-integration`) would require reverse regex.
+- **Coverage gap-fill tests not created** — All four thresholds (lines 84.32%, stmts 83.07%, funcs 82.37%, branches 73.43%) already passing at plan start. tests/coverage-gap-fill.test.ts deliberately omitted.
+- **canary-leak.yml uses --project=integration** — fixture corpus tests import dist/ artefacts; integration project globalSetup runs tsup --clean to rebuild. Unit project context would cause import failures.
+- **Coverage only on 20.x matrix slot** — V8 adds ~30% runtime overhead. Three slots with coverage = 3x redundant signal. Primary slot 20.x sufficient.
 
 ### Additional Decisions (Phase 3 — Plan 02)
 
@@ -186,10 +194,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 03-03 continuation — Task 4 checkpoint resolved)
-**Last action:** Updated 03-03-SUMMARY.md to reflect Task 4 approval. LICENSE copyright updated to 'mrclean-claude contributors' by orchestrator (702e66c). Repository URL confirmed as known placeholder for 03-05.
-**Stopped at:** Plan 03-03 FULLY COMPLETE (all 4 tasks done, including Task 4 checkpoint).
-**Next action:** Execute Plan 03-04 (quality gates: >=80% coverage enforcement + integration coverage tagging + canary-leak CI workflow).
+**Last command:** `/gsd-execute-phase` (plan 03-04 — quality gates + CI workflows)
+**Last action:** Task 1 (b92f4d3): @hook-integration tags in integration-detection.test.ts. Task 2 (82a1dcd): test.yml matrix workflow + canary-leak.yml security gate. 03-04-SUMMARY.md committed. QA-01/02/03 requirements marked complete.
+**Stopped at:** Plan 03-04 FULLY COMPLETE (all 2 tasks done).
+**Next action:** Execute Plan 03-05 (npm publish + release smoke + repo URL finalization).
 
 ---
-*Last updated: 2026-05-14 after plan 03-03 execution*
+*Last updated: 2026-05-14 after plan 03-04 execution*
