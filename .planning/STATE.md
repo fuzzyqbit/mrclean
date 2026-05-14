@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 1 complete — all 6 plans done.
-last_updated: "2026-05-14T13:39:14.036Z"
+last_updated: "2026-05-14T13:40:07.011Z"
 progress:
   total_phases: 3
   completed_phases: 1
@@ -21,17 +21,17 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** Phase 1 — wired-skeleton
+**Current Focus:** Phase 2 — live-redaction-layers-1-4-one-way
 **Project Mode:** mvp (vertical slices)
 **Granularity:** coarse (3 phases)
 
 ## Current Position
 
-Phase: 1 (wired-skeleton) — COMPLETE
-Plan: 6 of 6 DONE
+Phase: 2 (live-redaction-layers-1-4-one-way) — EXECUTING
+Plan: 1 of 7
 **Phase:** COMPLETE — Phase 1 (Wired Skeleton — all 6 plans: 01-01, 01-02, 01-02b, 01-03, 01-04, 01-05)
 **Plan:** 01-05-PLAN.md COMPLETE
-**Status:** Ready to execute
+**Status:** Executing Phase 2
 **Progress:** [██████████] 100% (6/6 plans complete — Phase 1 done)
 
 ```
