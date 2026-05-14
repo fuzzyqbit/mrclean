@@ -64,12 +64,24 @@ describe('readConfigLayer', () => {
     expect(result).toEqual({})
   })
 
-  // Test 3: install-time stub returns empty object (round-trip with project-dir.ts)
-  it('resolves to {} when file is the install-time stub (all sections commented out)', async () => {
+  // Test 3: install-time stub round-trip (updated for Phase 2: smol-toml parses [allowlist]
+  // header as an empty table, producing allowlist with all-empty arrays; this is semantically
+  // equivalent to {} for mergeConfigs since empty arrays produce no contribution).
+  it('resolves to empty allowlist shape when file is the install-time stub', async () => {
     const stubPath = join(tmpDir, 'config.toml')
     await writeFile(stubPath, INSTALL_STUB)
     const result = await readConfigLayer(stubPath)
-    expect(result).toEqual({})
+    // smol-toml sees [allowlist] header → allowlist: {} → normalized to all-empty axes.
+    // All other sections ([words], [detection]) are unknown and ignored.
+    // The result is either {} or { allowlist: emptyAxes } — both are valid empty configs.
+    const al = (result as { allowlist?: { rules: string[]; paths: string[] } }).allowlist
+    if (al !== undefined) {
+      expect(al.rules).toEqual([])
+      expect(al.paths).toEqual([])
+    }
+    expect((result as { dry_run?: boolean }).dry_run).toBeUndefined()
+    expect((result as { entropy?: unknown }).entropy).toBeUndefined()
+    expect((result as { secrets_files?: unknown }).secrets_files).toBeUndefined()
   })
 
   // Test 4: dry_run override parses correctly
@@ -88,7 +100,8 @@ describe('readConfigLayer', () => {
     expect((result as { allowlist?: { rules: string[] } }).allowlist?.rules).toEqual(['RULE-A', 'RULE-B'])
   })
 
-  // Test 6: malformed TOML throws ConfigReadError
+  // Test 6: malformed TOML throws ConfigReadError (updated for Phase 2: smol-toml error
+  // messages do not contain "malformed line" — they include smol-toml's own parse error text).
   it('throws ConfigReadError with path and reason when TOML is malformed', async () => {
     const configPath = join(tmpDir, 'config.toml')
     await writeFile(configPath, 'this is not toml = = =\n')
@@ -102,7 +115,7 @@ describe('readConfigLayer', () => {
       expect(configErr.path).toBe(configPath)
       expect(configErr.reason).toBeTruthy()
       expect(configErr.message).toContain(configPath)
-      expect(configErr.message).toContain('malformed line')
+      // smol-toml provides its own error text; we don't assert a specific prefix.
     }
   })
 })

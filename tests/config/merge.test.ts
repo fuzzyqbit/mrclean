@@ -50,8 +50,9 @@ describe('mergeConfigs', () => {
     expect(result.allowlist.rules).toEqual(['USR'])
   })
 
-  // Test 11: project allowlist replaces user allowlist wholesale (Phase 1 simplification)
-  it('replaces user allowlist wholesale when project layer provides its own allowlist', () => {
+  // Test 11: Updated for Phase 2: allowlist arrays now CONCAT across layers per RESEARCH §11.4.
+  // Phase 1 used wholesale replacement; Phase 2 concatenates so allowlist entries accumulate.
+  it('concatenates user and project allowlist arrays across layers', () => {
     const userAllowlist: MrcleanAllowlist = { ...EMPTY_ALLOWLIST, rules: ['USR'] }
     const projAllowlist: MrcleanAllowlist = { ...EMPTY_ALLOWLIST, rules: ['PRJ'] }
     const result = mergeConfigs(
@@ -59,7 +60,7 @@ describe('mergeConfigs', () => {
       { allowlist: userAllowlist },
       { allowlist: projAllowlist },
     )
-    expect(result.allowlist.rules).toEqual(['PRJ'])
+    expect(result.allowlist.rules).toEqual(['USR', 'PRJ'])
   })
 })
 

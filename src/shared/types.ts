@@ -143,26 +143,48 @@ export type HookOutput =
 // Configuration Types
 // ---------------------------------------------------------------------------
 // REQUIREMENTS.md CFG-02 defines the full v1 schema.
-// Phase 1 implements only the dry_run + allowlist subset that is needed for
-// no-op behavior and testable end-to-end config merging. Phase 2 will extend
-// this interface (detection.entropy_threshold, secrets_files, etc.) without
-// breaking the reader contract established in Plan 01-02b.
+// Phase 1 implemented only the dry_run + allowlist subset.
+// Phase 2 extends with entropy, secrets_files, and [[rules]] array-of-tables.
 
 /**
- * Phase 1 allowlist configuration.
- * Phase 2 will add processing logic; Phase 1 stores the values and round-trips them.
+ * Allowlist configuration — 5-axis suppression (CFG-04).
+ * All axes are concatenated across config layers (RESEARCH §11.4).
  */
 export interface MrcleanAllowlist {
   /** Rule IDs (secretlint/gitleaks) to skip — e.g. "generic-api-key". */
   rules: string[]
-  /** Glob patterns to exclude from scanning (Phase 2 consumer). */
+  /** Glob patterns to exclude from scanning. */
   paths: string[]
-  /** Literal stopwords to ignore (Phase 2 consumer). */
+  /** Literal stopwords to ignore. */
   stopwords: string[]
-  /** Regex pattern strings to ignore (Phase 2 consumer). */
+  /** Regex pattern strings to ignore. */
   regexes: string[]
-  /** SHA-256 fingerprints of allowed secrets (Phase 2 consumer). */
+  /** SHA-256 fingerprints of allowed secrets (CFG-04 target). */
   fingerprints: string[]
+}
+
+/**
+ * Phase 2 entropy detection configuration.
+ * Tunable via `[entropy]` TOML sub-table (CFG-02).
+ */
+export interface MrcleanEntropyConfig {
+  /** Shannon bits-per-char threshold. Default: 4.5 */
+  threshold: number
+  /** Minimum string length for entropy check. Default: 20 */
+  min_length: number
+}
+
+/**
+ * Per-rule action override from [[rules]] array-of-tables (CFG-02).
+ * Operator sets per-rule actions to block | substitute | audit | off.
+ */
+export interface MrcleanRuleOverride {
+  /** Rule ID string — matches secretlint messageId or gitleaks:rule-id. */
+  id: string
+  /** Effective action for this rule. */
+  action: 'block' | 'substitute' | 'audit' | 'off'
+  /** Severity assignment for the finding. */
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
 }
 
 /**
@@ -170,15 +192,26 @@ export interface MrcleanAllowlist {
  *
  * REQUIREMENTS.md CFG-01: project-local .mrclean/config.toml is optional — missing file ≡ no overrides.
  * REQUIREMENTS.md CFG-03: precedence is defaults < ~/.mrclean/config.toml < ./.mrclean/config.toml.
+ * REQUIREMENTS.md CFG-02: Phase 2 schema adds entropy, secrets_files, [[rules]].
  *
- * Phase 2 will add: detection.entropy_threshold, detection.entropy_min_length, secrets_files, etc.
- * Do NOT add Phase 2 fields here — extend the interface in Phase 2 to avoid breaking reader tests.
+ * Merge semantics (RESEARCH §11.4):
+ *   - scalar fields (dry_run, entropy.*, secrets_files, rules): last layer wins
+ *   - allowlist arrays (5 axes): concatenated across all layers
  */
 export interface MrcleanConfig {
   /**
-   * Dry-run mode — when true the hook logs redactions without modifying the payload.
-   * MODE-01 stub: Phase 2 wires this flag into rule actions.
+   * Dry-run mode — when true all findings are audit-logged but payloads are NOT modified.
+   * MODE-01 / MODE-02.
    */
   dry_run: boolean
   allowlist: MrcleanAllowlist
+  /** Shannon entropy detection settings (Layer 2). */
+  entropy: MrcleanEntropyConfig
+  /**
+   * Additional secret files for Layer 3 (dotenv-format KV files).
+   * Flattened from `[secrets_files] paths = [...]` in TOML for ergonomics.
+   */
+  secrets_files: string[]
+  /** Per-rule action overrides from [[rules]] array-of-tables (CFG-02). */
+  rules: MrcleanRuleOverride[]
 }
