@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env",
+            "args": ["/usr/local/bin/my-custom-hook", "check"]
+          }
+        ]
+      }
+    ]
+  }
+}

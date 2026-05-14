@@ -1,0 +1,13 @@
+{
+  "projects": {
+    "/other/project": {
+      "mcpServers": {
+        "someserver": {
+          "type": "stdio",
+          "command": "/usr/bin/node",
+          "args": ["/path/to/someserver"]
+        }
+      }
+    }
+  }
+}
