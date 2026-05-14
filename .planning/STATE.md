@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 Plan 06 complete — fixture corpus + bundle smoke + canary-leak guard + doctor --bench stub.
-last_updated: "2026-05-14T18:48:11.821Z"
+stopped_at: Phase 3 Plan 00 complete — package metadata + vitest projects split + coverage thresholds.
+last_updated: "2026-05-14T19:10:00Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 19
-  completed_plans: 13
-  percent: 68
+  completed_plans: 14
+  percent: 74
 ---
 
 # State: mrclean
@@ -21,23 +21,23 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** Phase 2 — live-redaction-layers-1-4-one-way
+**Current Focus:** Phase 3 — mcp-tools-performance-gate-public-release
 **Project Mode:** mvp (vertical slices)
 **Granularity:** coarse (3 phases)
 
 ## Current Position
 
-Phase: 2 (live-redaction-layers-1-4-one-way) — COMPLETE
-Plan: 7 of 7
-**Phase:** Phase 2 COMPLETE (02-06 complete)
-**Plan:** 02-06-PLAN.md COMPLETE (fixture corpus + bundle smoke + canary-leak guard + doctor --bench stub)
-**Status:** Ready to execute
-**Progress:** [██████████] 100%
+Phase: 3 (mcp-tools-performance-gate-public-release) — IN PROGRESS
+Plan: 1 of 6
+**Phase:** Phase 3 IN PROGRESS (03-00 complete)
+**Plan:** 03-00-PLAN.md COMPLETE (package metadata + vitest projects split + coverage thresholds)
+**Status:** Ready to execute 03-01
+**Progress:** [███████░░░] 74%
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
 Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ COMPLETE — 7/7 plans done ]
-Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
+Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 1/6 plans done ]
 ```
 
 ## Performance Metrics
@@ -48,7 +48,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 | PostToolUse hook latency (p95, 50 KB tool result) | < 200 ms | not measured |
 | Detection recall on positive fixture corpus | 100% | 100% (12/12 — 02-06 fixture corpus) |
 | False-positive rate on negative fixture corpus | 0% | 0% (0/10 — 02-06 fixture corpus) |
-| Line coverage on `src/` | ≥ 80% | not measured |
+| Line coverage on `src/` | ≥ 80% | 84.01% lines / 82.89% stmts / 82.12% funcs / 73.22% branches (03-00 baseline) |
 
 ## Accumulated Context
 
@@ -95,6 +95,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - [x] Execute Plan 02-04 (detection orchestrator + dry_run + warn→audit + budget bail-out) — COMPLETE
 - [x] Execute Plan 02-05 (hook handlers: hook-level routing + banner upgrade) — COMPLETE
 - [x] Execute Plan 02-06 (fixture corpus + bundle smoke + canary-leak guard + --bench stub) — COMPLETE
+- [x] Execute Plan 03-00 (package metadata + vitest projects split + coverage thresholds) — COMPLETE
 
 ### Blockers
 
@@ -106,6 +107,16 @@ None.
 - Phase 2's placeholder manager (PH-01..04) is the contract that Phase 3's `mcp__mrclean__redact` tool returns; designed once in Phase 2.
 - Phase 3's performance gate measures the Phase 1+2 system; perf budget breaches surface as build failures, not warnings.
 - Audit log schema (Phase 1 gitignore + Phase 2 record format) must be settled before Phase 3's canary-leak CI test can be authored.
+
+### Additional Decisions (Phase 3 — Plan 00)
+
+- **npm package name is mrclean-claude** — `mrclean` taken on npm since 2012 by jackhq/beautifulnode; `mrclean-claude` verified available; locked per RESEARCH §Pitfall 2.
+- **Version 1.0.0-rc.1 for release candidate** — plan 03-05 bumps to 1.0.0 at publish time.
+- **repository/homepage/bugs URLs are placeholders** — `github.com/anthropics/mrclean-claude`; operator must confirm before publish.
+- **vitest projects API: unit + integration split** — unit project runs in parallel; integration project has fileParallelism:false and owns globalSetup (tsup --clean). Fixes Phase 2 parallel-pollution race on dist/ mid-run-delete.
+- **Coverage thresholds all passing at baseline** — lines 84.01%, statements 82.89%, functions 82.12%, branches 73.22%; all above their respective thresholds (80/80/75/70).
+- **Banner regex updated for semver pre-release** — `v\d+\.\d+\.\d+[^ ]*` pattern in 3 test files; required for 1.0.0-rc.1 compatibility.
+- **tests/perf/** pre-wired in integration include globs** — plan 03-02 creates the files; config doesn't need touching.
 
 ### Additional Decisions (Phase 2 — Plan 04)
 
@@ -148,10 +159,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 02-06)
-**Last action:** Completed 02-06-PLAN.md — 22 fixture files + 29 new tests (388 total). 100% recall on positive corpus; 0 FP on negative corpus; canary-leak proven; doctor --bench prints p50=0.6ms p95=17.4ms.
-**Stopped at:** Phase 2 Plan 06 complete — fixture corpus + bundle smoke + canary-leak guard + doctor --bench stub.
-**Next action:** Execute Phase 3 (MCP Tools, Performance Gate, Public Release).
+**Last command:** `/gsd-execute-phase` (plan 03-00)
+**Last action:** Completed 03-00-PLAN.md — package renamed to mrclean-claude@1.0.0-rc.1, vitest split into unit/integration projects, coverage thresholds all passing, 359 tests pass.
+**Stopped at:** Phase 3 Plan 00 complete — package metadata + vitest projects split + coverage thresholds.
+**Next action:** Execute Plan 03-01 (MCP tools: check/redact/status + delete Phase 1 stubs).
 
 ---
-*Last updated: 2026-05-14 after plan 02-06 execution*
+*Last updated: 2026-05-14 after plan 03-00 execution*
