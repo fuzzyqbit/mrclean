@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 Plan 01 complete — mrclean_check/redact/status tools + supervisor + Phase 1 stubs deleted.
-last_updated: "2026-05-14T19:10:00.000Z"
+stopped_at: Phase 3 Plan 02 complete — vitest perf gate (PERF-01/02/03) + CI workflow.
+last_updated: "2026-05-14T20:00:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 19
-  completed_plans: 16
-  percent: 84
+  completed_plans: 17
+  percent: 89
 ---
 
 # State: mrclean
@@ -28,16 +28,16 @@ progress:
 ## Current Position
 
 Phase: 3 (mcp-tools-performance-gate-public-release) — IN PROGRESS
-Plan: 2 of 6
-**Phase:** Phase 3 IN PROGRESS (03-01 complete)
-**Plan:** 03-01-PLAN.md COMPLETE (mrclean_check/redact/status + supervisor + Phase 1 stubs deleted)
-**Status:** Ready to execute 03-02
-**Progress:** [████████░░] 84%
+Plan: 3 of 6
+**Phase:** Phase 3 IN PROGRESS (03-02 complete)
+**Plan:** 03-02-PLAN.md COMPLETE (vitest perf gate PERF-01/02/03 + CI workflow)
+**Status:** Ready to execute 03-03
+**Progress:** [█████████░] 89%
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
 Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ COMPLETE — 7/7 plans done ]
-Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 2/6 plans done ]
+Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 3/6 plans done ]
 ```
 
 ## Performance Metrics
@@ -45,7 +45,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 2/6 plans
 | Metric | Target | Current |
 |--------|--------|---------|
 | UserPromptSubmit hook latency (p95, 4 KB prompt) | < 100 ms | 17.4 ms (bench run 2026-05-14) |
-| PostToolUse hook latency (p95, 50 KB tool result) | < 200 ms | not measured |
+| PostToolUse hook latency (p95, 50 KB tool result) | < 200 ms | 4.82 ms (perf gate 03-02, executor machine, 50 iterations) |
 | Detection recall on positive fixture corpus | 100% | 100% (12/12 — 02-06 fixture corpus) |
 | False-positive rate on negative fixture corpus | 0% | 0% (0/10 — 02-06 fixture corpus) |
 | Line coverage on `src/` | ≥ 80% | 84.01% lines / 82.89% stmts / 82.12% funcs / 73.22% branches (03-00 baseline) |
@@ -97,6 +97,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 2/6 plans
 - [x] Execute Plan 02-06 (fixture corpus + bundle smoke + canary-leak guard + --bench stub) — COMPLETE
 - [x] Execute Plan 03-00 (package metadata + vitest projects split + coverage thresholds) — COMPLETE
 - [x] Execute Plan 03-01 (mrclean_check/redact/status + supervisor + delete Phase 1 stubs) — COMPLETE
+- [x] Execute Plan 03-02 (vitest perf gate + PERF-03 compile-once + CI workflow) — COMPLETE
 
 ### Blockers
 
@@ -108,6 +109,13 @@ None.
 - Phase 2's placeholder manager (PH-01..04) is the contract that Phase 3's `mcp__mrclean__redact` tool returns; designed once in Phase 2.
 - Phase 3's performance gate measures the Phase 1+2 system; perf budget breaches surface as build failures, not warnings.
 - Audit log schema (Phase 1 gitignore + Phase 2 record format) must be settled before Phase 3's canary-leak CI test can be authored.
+
+### Additional Decisions (Phase 3 — Plan 02)
+
+- **Vitest 4 test signature is test(name, opts, fn) not test(name, fn, opts)** — three-argument form with options as last arg was deprecated in Vitest 3 and removed in Vitest 4. Perf tests updated to use `{ timeout: 60_000 }` as second argument.
+- **PERF-03 compile-once gate uses file-level + line-level exemptions** — template literal worker source files use PERF-03-FILE-EXEMPT; per-call compilations that are correct by design use `// PERF-03: <reason>` inline annotation.
+- **Perf gate uses test() + performance.now() + manual p95** — vitest bench() does not expose p95 field (only p50/p75/p99/p995/p999). Plain test() with N=50 iterations and manual percentile computation matches src/doctor/bench.ts pattern.
+- **Measured p95 values: UserPromptSubmit 2.91ms, PostToolUse 4.82ms** (executor machine, 50 iterations, 2026-05-14). 97-98% headroom vs 100ms/200ms thresholds.
 
 ### Additional Decisions (Phase 3 — Plan 01)
 
@@ -168,10 +176,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 03-01)
-**Last action:** Completed 03-01-PLAN.md — mrclean_check/redact/status tools wired; Phase 1 stubs deleted; supervisor added; 364 tests pass.
-**Stopped at:** Phase 3 Plan 01 complete — mrclean_check/redact/status tools + supervisor + Phase 1 stubs deleted.
-**Next action:** Execute Plan 03-02 (performance gate).
+**Last command:** `/gsd-execute-phase` (plan 03-02)
+**Last action:** Completed 03-02-PLAN.md — vitest perf gate (PERF-01/02/03); 367 tests pass; CI workflow wired.
+**Stopped at:** Phase 3 Plan 02 complete — vitest perf gate (PERF-01/02/03) + CI workflow.
+**Next action:** Execute Plan 03-03 (docs: README, THREAT_MODEL, CHANGELOG, LICENSE).
 
 ---
 *Last updated: 2026-05-14 after plan 03-01 execution*

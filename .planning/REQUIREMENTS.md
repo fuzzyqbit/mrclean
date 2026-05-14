@@ -79,9 +79,9 @@
 
 ### Performance & Hardening
 
-- [ ] **PERF-01**: Hook adds ≤ 100 ms (p95) to a typical `UserPromptSubmit` (4 KB prompt) and ≤ 200 ms (p95) to a typical `PostToolUse` (50 KB tool result) on the maintainer's reference machine
-- [ ] **PERF-02**: A vitest perf suite with assertion gates runs in CI and fails the build on regression; benchmarks publish per-commit so latency creep is visible
-- [ ] **PERF-03**: Regex patterns are compiled once at startup (or first-use cache), never per-invocation, and Layer 1 detection uses ReDoS-safe execution (DET1-04)
+- [x] **PERF-01**: Hook adds ≤ 100 ms (p95) to a typical `UserPromptSubmit` (4 KB prompt) and ≤ 200 ms (p95) to a typical `PostToolUse` (50 KB tool result) on the maintainer's reference machine
+- [x] **PERF-02**: A vitest perf suite with assertion gates runs in CI and fails the build on regression; benchmarks publish per-commit so latency creep is visible
+- [x] **PERF-03**: Regex patterns are compiled once at startup (or first-use cache), never per-invocation, and Layer 1 detection uses ReDoS-safe execution (DET1-04)
 
 ### Modes & Trust-Building
 
@@ -176,9 +176,9 @@
 | AUDIT-01 | Phase 2 | Pending |
 | AUDIT-02 | Phase 2 | Pending |
 | AUDIT-03 | Phase 1 | Pending |
-| PERF-01 | Phase 3 | Pending |
-| PERF-02 | Phase 3 | Pending |
-| PERF-03 | Phase 3 | Pending |
+| PERF-01 | Phase 3 | Complete (03-02) |
+| PERF-02 | Phase 3 | Complete (03-02) |
+| PERF-03 | Phase 3 | Complete (03-02) |
 | MODE-01 | Phase 2 | Pending |
 | MODE-02 | Phase 2 | Pending |
 | DOC-01 | Phase 3 | Pending |

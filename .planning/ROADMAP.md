@@ -65,9 +65,9 @@
   4. Operator runs `npm install -g mrclean-claude` from the public npm registry, then `npx mrclean install` on a clean machine, and reaches the same Phase 1 + Phase 2 success criteria with no source checkout — the published artifact is the working artifact
   5. Operator runs `npm test` and observes ≥ 80% line coverage on `src/`, integration tests passing for every hook event in HOOK-01, and the CI canary-leak test confirming no fixture secret string appears in any audit log entry
 **Plans**: 6 plans
-  - [ ] 03-00-PLAN.md — package.json publish metadata + vitest projects API (parallel-pollution fix) + coverage thresholds (QA-01 infrastructure)
-  - [ ] 03-01-PLAN.md — MCP tool rename (mrclean_check / mrclean_redact / mrclean_status) + supervisor + structured output (MCP-02, MCP-03)
-  - [ ] 03-02-PLAN.md — Performance gate (vitest assertion suite + 4 KB + 50 KB fixtures + perf.yml + compile-once grep gate) (PERF-01, PERF-02, PERF-03)
+  - [x] 03-00-PLAN.md — package.json publish metadata + vitest projects API (parallel-pollution fix) + coverage thresholds (QA-01 infrastructure)
+  - [x] 03-01-PLAN.md — MCP tool rename (mrclean_check / mrclean_redact / mrclean_status) + supervisor + structured output (MCP-02, MCP-03)
+  - [x] 03-02-PLAN.md — Performance gate (vitest assertion suite + 4 KB + 50 KB fixtures + perf.yml + compile-once grep gate) (PERF-01, PERF-02, PERF-03)
   - [ ] 03-03-PLAN.md — README + THREAT_MODEL + LICENSE + CHANGELOG + .changeset/ bootstrap (DOC-01, DOC-02)
   - [ ] 03-04-PLAN.md — Quality gates: ≥80% coverage enforcement + integration coverage tagging per hook event + canary-leak CI workflow (QA-01, QA-02, QA-03)
   - [ ] 03-05-PLAN.md — Publish pipeline: release.yml (changesets/action) + release-smoke.yml + initial-release changeset + docs/RELEASE.md + first manual publish (DOC-03)
