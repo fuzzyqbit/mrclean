@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-14T04:36:00Z"
+last_updated: "2026-05-14T00:55:00Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # State: mrclean
@@ -27,14 +27,14 @@ progress:
 ## Current Position
 
 Phase: 1 (wired-skeleton) — EXECUTING
-Plan: 5 of 6
-**Phase:** In progress (Phase 1 — Wired Skeleton — plans 01-01, 01-02, 01-02b, 01-03 complete)
-**Plan:** 01-03-PLAN.md COMPLETE → advancing to 01-04-PLAN.md
+Plan: 6 of 6
+**Phase:** In progress (Phase 1 — Wired Skeleton — plans 01-01, 01-02, 01-02b, 01-03, 01-04 complete)
+**Plan:** 01-04-PLAN.md COMPLETE → advancing to 01-05-PLAN.md
 **Status:** Executing Phase 1
-**Progress:** [███████░░░] 67% (4/6 plans complete)
+**Progress:** [█████████░] 83% (5/6 plans complete)
 
 ```
-Phase 1: Wired Skeleton                              [ executing — 4/5 plans done ]
+Phase 1: Wired Skeleton                              [ executing — 5/6 plans done ]
 Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ pending ]
 Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 ```
@@ -72,6 +72,9 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - **Phase 1 short-form HOOK-07 banner** — `mrclean active v{VERSION} (no-op mode — detection not yet enabled)` emitted via additionalContext; long-form with rule/allowlist counts deferred to Phase 2.
 - **Stdin timeout exits 0 silently** — 10s timeout guard for Windows/Git Bash pipe stalls (Pitfall #4); StdinTimeoutError triggers exit 0, not exit 2.
 - **tsx for failclosed child process tests** — bare `node --input-type=module -e` cannot import .ts files via .js extensions; tsx handles ESM+TS at dev time.
+- **SDK v1.29 export paths via ./* wildcard** — `/server/mcp.js` and `/server/stdio.js` resolve via the wildcard pattern, not named subpaths. RESEARCH A2 closed: both paths confirmed working at runtime. `LATEST_PROTOCOL_VERSION = '2025-11-25'` (not hardcoded anywhere in mrclean).
+- **InMemoryTransport for MCP unit tests** — `InMemoryTransport.createLinkedPair()` enables in-process tool invocation; integration tests use `StdioClientTransport` for full stdio round-trip.
+- **Single shutdown registration site** — `installShutdownHandlers()` in lifecycle.ts is the ONLY place SIGINT/SIGTERM are registered; server.ts adds zero signal listeners. Verified by grep gate and lifecycle tests.
 
 ### Open Todos
 
@@ -79,7 +82,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - [x] Execute Plan 01-02 (install subcommand + MCP registration) — COMPLETE
 - [x] Execute Plan 01-02b (three-layer config reader) — COMPLETE
 - [x] Execute Plan 01-03 (hook stdin/stdout handler) — COMPLETE
-- [ ] Execute Plan 01-04 (MCP server with tool stubs)
+- [x] Execute Plan 01-04 (MCP server with tool stubs) — COMPLETE
 - [ ] Execute Plan 01-05 (doctor canary round-trip)
 
 ### Blockers
@@ -95,10 +98,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 01-03)
-**Last action:** Completed 01-03-PLAN.md — hook handler with fail-closed, stdin timeout, dispatcher, 4 handlers; 23 new tests (96 total); created 01-03-SUMMARY.md.
-**Stopped at:** Completed Plan 01-03; advancing to Plan 01-04 (MCP server with tool stubs).
-**Next action:** Execute Plan 01-04 (MCP server: mrclean_status tool stub, StdioServerTransport, graceful shutdown).
+**Last command:** `/gsd-execute-phase` (plan 01-04)
+**Last action:** Completed 01-04-PLAN.md — McpServer + StdioServerTransport with 3 Zod v4 tool stubs (sanitize, restore, audit_query), installShutdownHandlers, and 26 new tests (122 total); created 01-04-SUMMARY.md.
+**Stopped at:** Completed Plan 01-04; advancing to Plan 01-05 (doctor canary round-trip).
+**Next action:** Execute Plan 01-05 (doctor subcommand: canary round-trip, hook/MCP check, version report).
 
 ---
-*Last updated: 2026-05-14 after plan 01-03 execution*
+*Last updated: 2026-05-14 after plan 01-04 execution*
