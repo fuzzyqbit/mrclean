@@ -1,0 +1,64 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch so successive pushes don't queue
+# redundant test runs. This workflow has no write permissions and uses no secrets.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # 15 minutes is 3x the expected ~5 min wall time (build + test + coverage)
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20.18', '20.x', '22.x']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm test
+
+      - name: QA-02 enforcement — integration tests cover every HOOK-01 event
+        run: |
+          EVENTS="SessionStart UserPromptSubmit PreToolUse PostToolUse"
+          for ev in $EVENTS; do
+            if ! grep -q "@hook-integration.*$ev" tests/hook/integration-detection.test.ts; then
+              echo "::error::QA-02 missing integration coverage tag for hook event: $ev"
+              exit 1
+            fi
+          done
+          echo "QA-02 enforcement passed."
+
+      - name: Coverage with thresholds
+        # Run coverage on one matrix slot only to avoid 3x redundant V8 overhead.
+        # Node 20.x is the primary signal slot; 20.18 tests the floor; 22.x tests
+        # forward compat. V8 coverage adds ~30% to test runtime — running once is enough.
+        if: matrix.node-version == '20.x'
+        run: npm run test:coverage
+
+      - name: Upload coverage artifact
+        if: matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
