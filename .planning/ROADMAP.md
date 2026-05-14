@@ -44,7 +44,14 @@
   4. Operator points mrclean at the committed fixture corpus (real package-lock.json, git diffs, OpenAPI spec) and observes 100% recall on the positive-secret fixtures and zero false positives on the UUID/git-SHA/hash negative corpus
   5. Operator inspects `.mrclean/audit.jsonl` after a session and finds one JSONL record per detection containing `redactedHash` and `fingerprint` only — `grep` for any seeded fixture secret string returns zero hits
   6. Operator sets `dry_run = true` in `.mrclean/config.toml` and re-runs the same secret-laden prompt — detections appear in the audit log but nothing is blocked or substituted (trust-building first-run mode works)
-**Plans**: TBD
+**Plans**: 7 plans
+  - [ ] 02-00-deps-config-schema-toml-migration-PLAN.md — Phase 2 runtime deps + smol-toml migration + MrcleanConfig extension (CFG-02 schema)
+  - [ ] 02-01-layer1-regex-engine-PLAN.md — Secretlint + vendored gitleaks rule pack + ReDoS-safe worker pool (DET1-01..04)
+  - [ ] 02-02-layers-2-3-4-PLAN.md — Shannon entropy + .env extraction + words.txt + SessionState (DET2/3/4)
+  - [ ] 02-03-placeholder-manager-audit-log-PLAN.md — `<MRCLEAN:TYPE:NNN>` manager + JSONL audit log + canary-leak helper (PH-01..04, AUDIT-01/02)
+  - [ ] 02-04-detection-orchestrator-dry-run-PLAN.md — runDetection orchestrator + dry_run coercion (MODE-01/02)
+  - [ ] 02-05-hook-integration-PLAN.md — UserPromptSubmit block + PreToolUse/PostToolUse substitute + long-form banner + `mrclean ignore` (HOOK-02/03/04, CFG-04)
+  - [ ] 02-06-fixtures-bench-stub-PLAN.md — Positive + negative fixture corpus + doctor `--bench` stub (proves success criterion #4)
 
 ### Phase 3: MCP Tools, Performance Gate, Public Release
 **Goal**: Close the loop from "works on the maintainer's machine" to "anyone can `npm install -g mrclean` and get the same result." Ship the explicit on-demand MCP tool surface, a CI-enforced performance budget, the documentation that prevents user confusion (gitleaks layering FAQ, threat model), and the actual npm release. After this phase mrclean is publicly usable and its perf/security guarantees survive future commits.
@@ -64,7 +71,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Wired Skeleton | 0/5 | Planned, not started | - |
-| 2. Live Redaction (Layers 1-4 + One-Way) | 0/0 | Not started | - |
+| 2. Live Redaction (Layers 1-4 + One-Way) | 0/7 | Planned, not started | - |
 | 3. MCP Tools, Performance Gate, Public Release | 0/0 | Not started | - |
 
 ## Coverage Validation
