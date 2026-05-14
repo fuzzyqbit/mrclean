@@ -5,8 +5,8 @@
  *   containing CANARY_STRING, asserts the hook exits 0 and stdout contains the
  *   "mrclean active" wiring banner in hookSpecificOutput.additionalContext.
  *
- * runMcpCanary: spawns dist/mcp.js via StdioClientTransport, calls the `sanitize`
- *   tool with CANARY_STRING, asserts the response echoes it back unchanged.
+ * runMcpCanary: spawns dist/mcp.js via StdioClientTransport, calls `mrclean_check`
+ *   with CANARY_STRING, asserts structuredContent.count is a number (no error).
  *
  * Neither function terminates the process — they return { ok, detail }.
  *
@@ -95,14 +95,19 @@ export async function runHookCanary(
 }
 
 /**
- * Round-trip a canary payload through the mrclean MCP server's `sanitize` tool.
+ * Round-trip a canary payload through the mrclean MCP server's `mrclean_check` tool.
  *
  * Spawns dist/mcp.js via StdioClientTransport, performs the MCP initialize handshake,
- * calls `sanitize({ text: CANARY_STRING })`, and asserts:
- *   1. content[0].text === CANARY_STRING (echo semantics)
+ * calls `mrclean_check({ text: CANARY_STRING })`, and asserts:
+ *   1. structuredContent.count === 0 (no findings for the canary string)
+ *   2. isError is falsy
  *
  * Returns { ok: true, detail } on success; { ok: false, detail } on any failure.
  * Closes the client in a finally block to avoid process leaks.
+ *
+ * Plan 03-01: updated from `sanitize` (Phase 1 stub, deleted) to `mrclean_check`
+ * (production tool). The canary assertion changes from echo-check to no-findings-check
+ * because mrclean_check is a detection tool, not a pass-through.
  */
 export async function runMcpCanary(
   nodePath: string,
@@ -121,22 +126,32 @@ export async function runMcpCanary(
     await client.connect(transport)
 
     const result = await client.callTool({
-      name: 'sanitize',
+      name: 'mrclean_check',
       arguments: { text: CANARY_STRING },
     })
 
-    const echoed = (
-      result.content as Array<{ type: string; text: string }>
-    )?.[0]?.text
-
-    if (echoed !== CANARY_STRING) {
+    if (result.isError) {
+      const errText = (result.content as Array<{ type: string; text: string }>)?.[0]?.text ?? ''
       return {
         ok: false,
-        detail: `MCP sanitize did not echo canary string; got: ${String(echoed).slice(0, 100)}`,
+        detail: `MCP mrclean_check returned isError: ${errText.slice(0, 100)}`,
       }
     }
 
-    return { ok: true, detail: 'MCP canary round-tripped through sanitize tool' }
+    const structured = (result as unknown as { structuredContent?: { count?: number } })
+      .structuredContent
+
+    if (typeof structured?.count !== 'number') {
+      return {
+        ok: false,
+        detail: `MCP mrclean_check structuredContent missing count field`,
+      }
+    }
+
+    return {
+      ok: true,
+      detail: `MCP canary round-tripped through mrclean_check tool (findings: ${String(structured.count)})`,
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return { ok: false, detail: `MCP client error: ${msg}` }

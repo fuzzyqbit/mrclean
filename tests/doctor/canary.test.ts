@@ -55,11 +55,11 @@ describe('canary helpers', () => {
     expect(result.detail.length).toBeGreaterThan(0)
   }, 10000)
 
-  it('Test 10: runMcpCanary PASS — connects to dist/mcp.js, sanitize echoes CANARY_STRING', async () => {
-    const { runMcpCanary, CANARY_STRING } = await import('../../src/doctor/canary.js')
+  it('Test 10: runMcpCanary PASS — connects to dist/mcp.js, mrclean_check round-trips CANARY_STRING', async () => {
+    const { runMcpCanary } = await import('../../src/doctor/canary.js')
     const result = await runMcpCanary(process.execPath, DIST_MCP)
 
     expect(result.ok).toBe(true)
-    expect(result.detail).toMatch(/MCP canary|round-trip|sanitize/i)
+    expect(result.detail).toMatch(/MCP canary|round-trip|mrclean_check/i)
   }, 30000)
 })

@@ -8,6 +8,16 @@
  *   runMcpServer() must NOT register additional signal listeners.
  * - The stdio transport's internal read loop keeps the event loop alive after
  *   server.connect() returns — no redundant keepalive construct is needed.
+ *
+ * Tool surface (Plan 03-01 — MCP-02, MCP-03):
+ *   Exactly three tools are registered: mrclean_check, mrclean_redact, mrclean_status.
+ *   The Phase 1 stubs (sanitize, restore, audit_query) are deleted — NO aliases retained.
+ *   The absence of unredact / disable / add_word / config_write / ignore tools is the
+ *   MCP-03 invariant, enforced by tests/mcp/tools-list.test.ts.
+ *
+ * Shutdown (Plan 03-01):
+ *   shutdownMcpSupervisor() (from supervisor.ts) is called BEFORE transport.close().
+ *   This is the SINGLE shutdown point for detection resources (WorkerPool + PlaceholderManager).
  */
 
 import { VERSION } from '../shared/version.js'
@@ -18,16 +28,35 @@ export async function runMcpServer(): Promise<void> {
   const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js')
   const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js')
 
+  // Lazy-import config + session-state setup
+  const { loadEffectiveConfig } = await import('../config/index.js')
+  const { initSessionState } = await import('../detect/session-state.js')
+
+  const cwd = process.cwd()
+  const config = await loadEffectiveConfig({ cwd })
+  const sessionState = await initSessionState({
+    sessionId: 'mcp-server',
+    homeDir: process.env['HOME'] ?? cwd,
+    cwd,
+    config,
+  })
+
+  // Closures passed to each tool registration so tools always see current state.
+  const getConfig = () => config
+  const getSessionState = () => sessionState
+  const getCwd = () => cwd
+
   const server = new McpServer({ name: 'mrclean', version: VERSION })
 
   // Lazy-import tool registrations — avoids loading zod/v4 on the CLI cold path.
-  const { registerSanitizeTool } = await import('./tools/sanitize.js')
-  const { registerRestoreTool } = await import('./tools/restore.js')
-  const { registerAuditQueryTool } = await import('./tools/audit-query.js')
+  // Plan 03-01: Phase 1 stubs (sanitize, restore, audit_query) are deleted.
+  const { registerCheckTool } = await import('./tools/check.js')
+  const { registerRedactTool } = await import('./tools/redact.js')
+  const { registerStatusTool } = await import('./tools/status.js')
 
-  registerSanitizeTool(server)
-  registerRestoreTool(server)
-  registerAuditQueryTool(server)
+  registerCheckTool(server, getConfig, getSessionState, getCwd)
+  registerRedactTool(server, getConfig, getSessionState, getCwd)
+  registerStatusTool(server, getConfig, getSessionState, getCwd)
 
   const transport = new StdioServerTransport()
 
@@ -35,7 +64,13 @@ export async function runMcpServer(): Promise<void> {
   // Do NOT add any process.on('SIGINT'/'SIGTERM') calls here or anywhere else in
   // the MCP server code path — doing so would cause MaxListenersExceededWarning
   // and a signal-handler race condition.
+  //
+  // Shutdown order (Plan 03-01):
+  //   1. shutdownMcpSupervisor() — terminates WorkerPool + clears PlaceholderManager cache
+  //   2. transport.close() — closes the stdio transport
+  const { shutdownMcpSupervisor } = await import('./supervisor.js')
   installShutdownHandlers(async () => {
+    await shutdownMcpSupervisor()
     await transport.close()
   })
 
@@ -44,5 +79,7 @@ export async function runMcpServer(): Promise<void> {
   // server.connect() resolves once the transport is wired. The stdio transport's
   // internal readline loop keeps the Node.js event loop alive, reading from stdin
   // until EOF or until installShutdownHandlers fires process.exit(0) on signal.
-  process.stderr.write(`mrclean-mcp v${VERSION} running on stdio\n`)
+  process.stderr.write(
+    `mrclean-mcp v${VERSION} running on stdio — tools: mrclean_check, mrclean_redact, mrclean_status\n`,
+  )
 }
