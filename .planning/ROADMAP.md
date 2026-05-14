@@ -25,7 +25,12 @@
   3. Operator runs `npx mrclean install` a second time, then `npx mrclean uninstall`, and `~/.claude/settings.json` ends up byte-identical to the pre-install backup (idempotent + clean removal)
   4. Operator deliberately corrupts the mrclean bin (e.g., `chmod -x`) and observes that Claude Code blocks the next tool call with exit code 2 and a structured stderr message — never silently passes through
   5. `.mrclean/` exists in the project after first run with a `.gitignore` entry for itself, the audit log, and session artifacts; `git status` shows nothing to commit
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 01-01-PLAN.md — Project scaffold (package.json, tsup, vitest, src/ skeleton with two bin entrypoints)
+  - [ ] 01-02-PLAN.md — `mrclean install` / `uninstall` with atomic JSON edits, absolute-path resolution, `.mrclean/` setup, gitignore
+  - [ ] 01-03-PLAN.md — Hook handler (no-op detection) with fail-closed exit semantics + "mrclean active" wiring banner via additionalContext
+  - [ ] 01-04-PLAN.md — Long-lived stdio MCP server with three no-op tool stubs (sanitize, restore, audit_query) and Zod v4 schemas
+  - [ ] 01-05-PLAN.md — `mrclean doctor` orchestrator: install-state checks, canary round-trip through hook + MCP, Claude Code version compatibility report
 
 ### Phase 2: Live Redaction (Layers 1-4 + One-Way)
 **Goal**: Operator pastes a real AWS key, GitHub token, JWT, or `.env`-derived value into a Claude Code prompt or tool argument and observes mrclean catching it in-session. This is the value-delivery slice — the moment mrclean stops being a wired-up shell and starts actually preventing leaks. Layers 1-4 ship together with the placeholder manager and one-way hook integration so an end-to-end proof exists in one phase.
@@ -58,7 +63,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Wired Skeleton | 0/0 | Not started | - |
+| 1. Wired Skeleton | 0/5 | Planned, not started | - |
 | 2. Live Redaction (Layers 1-4 + One-Way) | 0/0 | Not started | - |
 | 3. MCP Tools, Performance Gate, Public Release | 0/0 | Not started | - |
 
@@ -85,4 +90,4 @@ All 54 v1 requirements mapped to exactly one phase. No orphans. No duplicates. v
 | **Total** | **54** | **17** | **26** | **11** |
 
 ---
-*Last updated: 2026-05-13 after initialization*
+*Last updated: 2026-05-13 after Phase 1 plan-phase*
