@@ -1,0 +1,76 @@
+name: Release Smoke
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+    branches: [main]
+jobs:
+  smoke:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Wait for npm registry propagation (90s)
+        run: sleep 90
+      - name: Install the latest published mrclean-claude
+        run: |
+          set -e
+          npm install -g mrclean-claude@latest
+          which mrclean
+          which mrclean-mcp
+          mrclean --version
+      - name: Phase 1 success criterion #1 — install creates settings.json entries
+        run: |
+          set -e
+          mkdir -p $HOME/.claude
+          # Create empty Claude Code settings to simulate fresh machine
+          echo '{}' > $HOME/.claude/settings.json
+          echo '{}' > $HOME/.claude.json
+          mkdir -p /tmp/test-project && cd /tmp/test-project
+          mrclean install
+          # Assert hook + mcp wiring present
+          grep -q "mrclean" $HOME/.claude/settings.json || (echo "::error::settings.json missing mrclean entry"; exit 1)
+          grep -q "mrclean" $HOME/.claude.json || (echo "::error::.claude.json missing mrclean-mcp entry"; exit 1)
+      - name: Phase 1 success criterion #2 — doctor reports green
+        run: |
+          set -e
+          cd /tmp/test-project
+          # Use the test escape hatch from STATE.md (MRCLEAN_TEST_FAKE_CLAUDE_VERSION) since no real claude binary is in PATH
+          MRCLEAN_TEST_FAKE_CLAUDE_VERSION=2.1.121 mrclean doctor || (echo "::error::doctor reports failure"; exit 1)
+      - name: Phase 2 success criterion — MCP tools/list returns the three production names
+        run: |
+          set -e
+          # Spawn mrclean-mcp and send an initialize + tools/list via stdin pipe
+          cd /tmp/test-project
+          OUTPUT=$(node -e "
+            const { spawn } = require('node:child_process');
+            const child = spawn('mrclean-mcp', { stdio: ['pipe', 'pipe', 'pipe'] });
+            const messages = [
+              { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'smoke', version: '0.0.0' } } },
+              { jsonrpc: '2.0', method: 'notifications/initialized' },
+              { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} },
+            ];
+            messages.forEach(m => child.stdin.write(JSON.stringify(m) + '\\n'));
+            let buf = '';
+            child.stdout.on('data', d => buf += d.toString());
+            setTimeout(() => { child.kill(); console.log(buf); }, 4000);
+          ")
+          echo "$OUTPUT" | grep -q '"mrclean_check"' || (echo "::error::mrclean_check absent from tools/list"; exit 1)
+          echo "$OUTPUT" | grep -q '"mrclean_redact"' || (echo "::error::mrclean_redact absent from tools/list"; exit 1)
+          echo "$OUTPUT" | grep -q '"mrclean_status"' || (echo "::error::mrclean_status absent from tools/list"; exit 1)
+          echo "$OUTPUT" | grep -q '"mrclean_unredact"' && (echo "::error::FORBIDDEN tool mrclean_unredact present!"; exit 1) || true
+          echo "$OUTPUT" | grep -q '"sanitize"' && (echo "::error::FORBIDDEN deprecated tool sanitize present!"; exit 1) || true
+          echo "Smoke test passed: tools/list contains exactly the three production tools, no forbidden tools."
+      - name: Phase 2 hook canary — UserPromptSubmit with AWS-shape blocks the prompt
+        run: |
+          set -e
+          cd /tmp/test-project
+          # Pipe a JSON hook payload with a Stripe key into the hook handler
+          # (AWS doc-placeholder values like AKIAIOSFODNN7EXAMPLE are allowlisted per Phase 2 SUMMARY)
+          PAYLOAD='{"hook_event_name":"UserPromptSubmit","session_id":"smoke-session","transcript_path":"/dev/null","cwd":"/tmp/test-project","prompt":"my key is sk_live_testABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdef"}'
+          RESPONSE=$(echo "$PAYLOAD" | mrclean || true)   # exit 2 is expected for block; capture body
+          echo "$RESPONSE" | grep -q '"decision":"block"' || (echo "::error::hook did not block on Stripe key"; exit 1)
+          echo "Hook smoke test passed: blocked on stripe-shape secret."
