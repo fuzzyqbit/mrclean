@@ -173,6 +173,88 @@ function severityToDefaultAction(severity: Finding['severity']): 'block' | 'subs
 }
 
 // ---------------------------------------------------------------------------
+// runDetectionReadOnly — audit-skipping variant for mrclean_check (Plan 03-01)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run all four detection layers against `text` and return a fully-resolved
+ * DetectionResult WITHOUT writing any audit log records.
+ *
+ * This is the read-only variant used by `mrclean_check` (MCP-02). The check tool
+ * is speculative — operators may be sampling text — so writing audit records for
+ * every call would pollute the audit log with non-actionable entries.
+ *
+ * Threat model: T-03-01-03 — check.ts audit-log invariant (mrclean_check MUST NOT
+ * write audit records). tests/mcp/check.test.ts verifies this at the file-system level.
+ *
+ * Implementation: identical to runDetection steps 1-11; Step 12 (Promise.allSettled
+ * audit writes) is deliberately omitted. The returned DetectionResult shape is the same.
+ *
+ * @param text         - The raw input text to scan.
+ * @param config       - Effective mrclean configuration.
+ * @param sessionState - Session-scoped state (envBlocklist, wordEntries).
+ * @param ctx          - Detection context (sessionId, hookEvent, cwd).
+ * @returns            - DetectionResult with findings + substitutedText but NO audit writes.
+ */
+export async function runDetectionReadOnly(
+  text: string,
+  config: MrcleanConfig,
+  sessionState: SessionState,
+  ctx: DetectionContext,
+): Promise<DetectionResult> {
+  const workerPool = getOrCreatePool()
+  const manager = getOrCreateManager(ctx.sessionId)
+
+  const l1 = await runLayer1(text, config, workerPool)
+  const findings: Finding[] = [...l1.findings]
+  const timeoutCount = l1.timeoutCount
+
+  const l2 = runLayer2Entropy(text, config, findings.map((f) => f.span))
+  findings.push(...l2)
+
+  const l3 = runLayer3Env(text, sessionState.envBlocklist, findings.map((f) => f.span))
+  findings.push(...l3)
+
+  const l4 = runLayer4Words(text, sessionState.wordEntries, findings.map((f) => f.span))
+  findings.push(...l4)
+
+  const deduped = dedupBySpan(findings)
+
+  for (const f of deduped) {
+    if (f.action === 'warn') {
+      f.action = 'audit'
+    }
+  }
+
+  const resolvedFindings: ResolvedFinding[] = deduped.map((f) => {
+    const effectiveAction: 'block' | 'substitute' | 'audit' =
+      f.action !== undefined
+        ? (f.action as 'block' | 'substitute' | 'audit')
+        : severityToDefaultAction(f.severity)
+
+    const type = getTypeForRuleId(f.ruleId)
+    const entry = manager.allocate(f.value, type)
+
+    return { ...f, placeholder: entry.placeholder, effectiveAction }
+  })
+
+  const finalFindings = config.dry_run ? applyDryRun(resolvedFindings) : resolvedFindings
+
+  const substitutedText = config.dry_run
+    ? text
+    : substituteFindings(text, finalFindings)
+
+  // Step 12 deliberately OMITTED — no audit writes for read-only check tool.
+
+  return {
+    findings: finalFindings,
+    substitutedText,
+    budgetExhausted: timeoutCount >= 5,
+    rawTimeoutCount: timeoutCount,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // runDetection — main entry point
 // ---------------------------------------------------------------------------
 
