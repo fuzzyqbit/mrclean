@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-05-14T00:55:00Z"
+status: phase-complete
+stopped_at: Completed Plan 01-05 (doctor canary round-trip). Phase 1 complete.
+last_updated: "2026-05-14T01:12:00Z"
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # State: mrclean
@@ -26,15 +27,15 @@ progress:
 
 ## Current Position
 
-Phase: 1 (wired-skeleton) — EXECUTING
-Plan: 6 of 6
-**Phase:** In progress (Phase 1 — Wired Skeleton — plans 01-01, 01-02, 01-02b, 01-03, 01-04 complete)
-**Plan:** 01-04-PLAN.md COMPLETE → advancing to 01-05-PLAN.md
-**Status:** Executing Phase 1
-**Progress:** [█████████░] 83% (5/6 plans complete)
+Phase: 1 (wired-skeleton) — COMPLETE
+Plan: 6 of 6 DONE
+**Phase:** COMPLETE — Phase 1 (Wired Skeleton — all 6 plans: 01-01, 01-02, 01-02b, 01-03, 01-04, 01-05)
+**Plan:** 01-05-PLAN.md COMPLETE
+**Status:** Phase 1 done; ready for Phase 2
+**Progress:** [██████████] 100% (6/6 plans complete — Phase 1 done)
 
 ```
-Phase 1: Wired Skeleton                              [ executing — 5/6 plans done ]
+Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
 Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ pending ]
 Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 ```
@@ -75,6 +76,9 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - **SDK v1.29 export paths via ./* wildcard** — `/server/mcp.js` and `/server/stdio.js` resolve via the wildcard pattern, not named subpaths. RESEARCH A2 closed: both paths confirmed working at runtime. `LATEST_PROTOCOL_VERSION = '2025-11-25'` (not hardcoded anywhere in mrclean).
 - **InMemoryTransport for MCP unit tests** — `InMemoryTransport.createLinkedPair()` enables in-process tool invocation; integration tests use `StdioClientTransport` for full stdio round-trip.
 - **Single shutdown registration site** — `installShutdownHandlers()` in lifecycle.ts is the ONLY place SIGINT/SIGTERM are registered; server.ts adds zero signal listeners. Verified by grep gate and lifecycle tests.
+- **extractRegisteredPaths() for canary bin resolution** — `computeDoctorReport` reads installed bin paths from settings.json/claude.json rather than calling `resolveMrcleanBinPath()`. Under vitest, `process.argv[1]` is the vitest binary, which caused `resolveMrcleanBinPath()` to return the wrong path. Reading from the installed JSON is also architecturally correct — it verifies the INSTALLED configuration.
+- **MRCLEAN_TEST_FAKE_CLAUDE_VERSION env var** — TEST-ONLY escape hatch in `computeDoctorReport` allows hermetic CI tests to inject a synthetic Claude version without requiring a real `claude` binary.
+- **computeDoctorReport / runDoctor split** — `computeDoctorReport` is pure (testable, never exits); `runDoctor` is the ONLY function in the doctor subsystem that exits the process. Grep-verified: `grep -cE "process\.exit" src/doctor/index.ts` = 1, = 0 in all helper files.
 
 ### Open Todos
 
@@ -83,7 +87,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - [x] Execute Plan 01-02b (three-layer config reader) — COMPLETE
 - [x] Execute Plan 01-03 (hook stdin/stdout handler) — COMPLETE
 - [x] Execute Plan 01-04 (MCP server with tool stubs) — COMPLETE
-- [ ] Execute Plan 01-05 (doctor canary round-trip)
+- [x] Execute Plan 01-05 (doctor canary round-trip) — COMPLETE
 
 ### Blockers
 
@@ -98,10 +102,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 01-04)
-**Last action:** Completed 01-04-PLAN.md — McpServer + StdioServerTransport with 3 Zod v4 tool stubs (sanitize, restore, audit_query), installShutdownHandlers, and 26 new tests (122 total); created 01-04-SUMMARY.md.
-**Stopped at:** Completed Plan 01-04; advancing to Plan 01-05 (doctor canary round-trip).
-**Next action:** Execute Plan 01-05 (doctor subcommand: canary round-trip, hook/MCP check, version report).
+**Last command:** `/gsd-execute-phase` (plan 01-05)
+**Last action:** Completed 01-05-PLAN.md — `mrclean doctor` with 6 structured checks, computeDoctorReport (pure core), runDoctor (single process.exit site), 29 new tests (151 total). Phase 1 complete.
+**Stopped at:** Phase 1 complete — all 6 plans done.
+**Next action:** Execute Phase 2 (Live Redaction — Layers 1-4 + One-Way detection).
 
 ---
-*Last updated: 2026-05-14 after plan 01-04 execution*
+*Last updated: 2026-05-14 after plan 01-05 execution — Phase 1 complete*
