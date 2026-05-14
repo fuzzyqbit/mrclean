@@ -70,7 +70,7 @@ function getCompiledAllowlistRegexes(rule: CompiledGitleaksRule): RegExp[] {
 
   rule._compiledAllowlistRegexes = patterns.map((p) => {
     try {
-      return new RegExp(p)
+      return new RegExp(p) // PERF-03: allowlist regexes compiled once per rule, cached on rule._compiledAllowlistRegexes; subsequent calls return the cached array (see check at function top).
     } catch {
       return null
     }

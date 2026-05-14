@@ -48,7 +48,7 @@ function isAllowlisted(finding: Finding, config: MrcleanConfig): boolean {
   if (al.fingerprints.includes(finding.fingerprint)) return true
   if (al.regexes.some((pattern) => {
     try {
-      return new RegExp(pattern).test(finding.value)
+      return new RegExp(pattern).test(finding.value) // PERF-03: user-supplied allowlist patterns from config — per-finding; config.allowlist.regexes is typically empty or very short (0-5 entries); caching is a plan 03-04+ optimization.
     } catch {
       return false
     }

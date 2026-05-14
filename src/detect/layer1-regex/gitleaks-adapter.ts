@@ -161,7 +161,7 @@ export function loadGitleaksRules(): CompiledGitleaksRule[] {
 
     // Validate: try constructing the RegExp to catch POSIX classes [[:alnum:]] etc.
     try {
-      new RegExp(adapted.pattern, adapted.flags + 'g')
+      new RegExp(adapted.pattern, adapted.flags + 'g') // PERF-03: validation-only compile inside loadGitleaksRules() which is memoized via _cachedRules; never executed after first load.
     } catch (err) {
       skipped.push({
         id: rule.id,

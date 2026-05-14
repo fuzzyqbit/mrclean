@@ -1,3 +1,4 @@
+// PERF-03-FILE-EXEMPT: worker source template literals (POOL_WORKER_CODE, SINGLE_SHOT_CODE) contain `new RegExp(` as stringified worker source code — not runtime calls in this module's hot path.
 /**
  * Worker pool for ReDoS-safe regex execution.
  *

@@ -87,7 +87,7 @@ export function parseWordsFile(content: string): WordEntry[] {
     const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
     // Step 7: Compile case-insensitive whole-word regex
-    const re = new RegExp(`\\b${escaped}\\b`, 'gi')
+    const re = new RegExp(`\\b${escaped}\\b`, 'gi') // PERF-03: per-word pattern from words.txt; parseWordsFile called once at session init (initSessionState), not on the hook hot path.
 
     entries.push({ word, action, re })
   }

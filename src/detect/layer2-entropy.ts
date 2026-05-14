@@ -150,7 +150,7 @@ export function runLayer2Entropy(
 
   // Token regex: alphanumeric + safe punctuation that appears in secrets (_-./+=)
   // Minimum length enforced via the {N,} quantifier.
-  const tokenRe = new RegExp(`[A-Za-z0-9_.\\-./+=]{${min_length},}`, 'g')
+  const tokenRe = new RegExp(`[A-Za-z0-9_.\\-./+=]{${min_length},}`, 'g') // PERF-03: dynamic min_length from config — cannot be module-scope constant; compiled once per runLayer2Entropy invocation, not per token.
 
   let match: RegExpExecArray | null
   // eslint-disable-next-line no-cond-assign

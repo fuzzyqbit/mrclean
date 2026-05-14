@@ -1,3 +1,4 @@
+// PERF-03-FILE-EXEMPT: WORKER_CODE template literal contains `new RegExp(` as stringified worker source code — not a runtime call in this module's hot path.
 /**
  * ReDoS-safe regex execution via worker_threads.
  *
