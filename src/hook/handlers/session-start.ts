@@ -1,35 +1,55 @@
 /**
- * SessionStart hook handler — Phase 1.
+ * SessionStart hook handler — Phase 2 wired (Plan 02-05).
  *
- * Emits the "mrclean active" wiring banner via additionalContext (HOOK-07).
+ * Replaces Phase 1's static short-form banner with the full HOOK-07 long-form:
+ *   `mrclean active vN.N.N (rules: NNN, allowlist: NN, mode: active|dry-run)`
  *
- * RESEARCH.md §1.4 (Pitfall #2): The banner MUST go through additionalContext
- * in the JSON stdout (exit 0). Writing the banner to stderr on exit 0 sends it
- * only to the debug log and is invisible to the operator.
+ * Execution steps:
+ *   1. Load effective config (all 3 layers: defaults < user < project).
+ *   2. Initialize SessionState: loads Layer 3 env blocklist + Layer 4 words.txt.
+ *   3. Cache the SessionState for subsequent hook events (UserPromptSubmit etc.)
+ *   4. Build long-form banner from live rule count + allowlist count + mode.
+ *   5. Return banner via additionalContext.
+ *
+ * On ConfigReadError: re-throw — installCrashGuards catches this and exits 2 (fail-closed).
+ *
+ * HOOK-07 deliverable: This is the plan that upgrades the Phase 1 short banner to the
+ * full live-rule-count form. Phase 1's "no-op mode" string is removed.
  */
 
-import { VERSION } from '../../shared/version.js'
+import { homedir } from 'node:os'
+import { loadEffectiveConfig } from '../../config/index.js'
+import { initSessionState, setCachedSessionState } from '../../detect/session-state.js'
+import { getRuleCount } from '../../detect/layer1-regex/index.js'
+import { buildBanner, computeAllowlistCount } from '../banner.js'
 import type { SessionStartInput, SessionStartOutput } from '../../shared/types.js'
 
-/**
- * Phase 1 short form per 01-03-PLAN HOOK-07 scope note.
- *
- * REQUIREMENTS.md HOOK-07 specifies the long-form banner:
- *   `mrclean active vN.N.N (rules: NNN, allowlist: NN)`
- * Phase 1 deliberately delivers the shorter form because rule/allowlist counts
- * cannot be computed until Phase 2 ships the detection engine (Layers 1–4) and
- * the config-driven allowlist (CFG-02). The wiring-signal intent of HOOK-07
- * (operator-visible banner so silent-misconfig is impossible) IS satisfied in
- * Phase 1 — only the format string is reduced. Phase 2 will swap in the
- * long-form banner once DET1-01..DET4-03 and CFG-02 land.
- */
-const PHASE1_BANNER = `mrclean active v${VERSION} (no-op mode — detection not yet enabled)`
+export async function handleSessionStart(input: SessionStartInput): Promise<SessionStartOutput> {
+  // Step 1: Load effective config (3 layers merged)
+  // ConfigReadError propagates — fail-closed via installCrashGuards → exit 2
+  const config = await loadEffectiveConfig({ homeDir: homedir(), cwd: input.cwd })
 
-export function handleSessionStart(_input: SessionStartInput): SessionStartOutput {
+  // Step 2: Initialize session state (Layer 3 env blocklist + Layer 4 words.txt)
+  const state = await initSessionState({
+    sessionId: input.session_id,
+    homeDir: homedir(),
+    cwd: input.cwd,
+    config,
+  })
+
+  // Step 3: Cache for subsequent hook events in the same process
+  setCachedSessionState(state)
+
+  // Step 4: Build long-form banner (HOOK-07)
+  const ruleCount = getRuleCount().total
+  const allowlistCount = computeAllowlistCount(config)
+  const banner = buildBanner(config, ruleCount, allowlistCount)
+
+  // Step 5: Return banner via additionalContext
   return {
     hookSpecificOutput: {
       hookEventName: 'SessionStart',
-      additionalContext: PHASE1_BANNER,
+      additionalContext: banner,
     },
   }
 }

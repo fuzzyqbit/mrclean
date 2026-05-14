@@ -60,8 +60,9 @@ export async function runHook(): Promise<void> {
   }
 
   // Dispatch to the appropriate handler and write the result to stdout
+  // Phase 2 (Plan 02-05): dispatch is now async (handlers call runDetection, etc.)
   try {
-    const result = dispatch(input)
+    const result = await dispatch(input)
     if (result !== null) {
       process.stdout.write(JSON.stringify(result))
     }

@@ -120,11 +120,16 @@ export interface PreToolUseOutput {
 /**
  * PostToolUse output — optionally inject additional context after a tool runs.
  * PostToolUse is non-blocking: exit 2 only shows stderr, it cannot stop execution.
+ *
+ * `updatedToolOutput` requires Claude Code >= v2.1.121 (Plan 02-05 doctor floor bump).
+ * When present, it replaces the tool output that re-enters the model context.
  */
 export interface PostToolUseOutput {
   hookSpecificOutput?: {
     hookEventName: 'PostToolUse'
     additionalContext?: string
+    /** Placeholder-substituted version of the tool output (CC >= v2.1.121). */
+    updatedToolOutput?: string
   }
 }
 

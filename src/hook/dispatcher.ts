@@ -1,6 +1,9 @@
 /**
  * Hook event dispatcher — routes HookInput to the appropriate per-event handler.
  *
+ * Phase 2 update (Plan 02-05): handlers are now async (they call runDetection, initSessionState, etc.).
+ * The dispatcher is updated to return Promise<HookOutput> and use await.
+ *
  * HOOK-01: handlers registered for all four Claude Code hook events.
  */
 
@@ -13,14 +16,14 @@ import { handlePostToolUse } from './handlers/post-tool-use.js'
 /**
  * Dispatch a hook event to its handler.
  *
- * Returns the handler's output (a typed HookOutput or null for pass-through).
+ * Returns a Promise of the handler's output (a typed HookOutput or null for pass-through).
  * Throws `Error('unknown hook event: ...')` for unrecognized event names.
  *
  * TEST-ONLY escape hatch: if `process.env.MRCLEAN_TEST_THROW` is set, a
  * synthetic crash is thrown to verify fail-closed crash guard behaviour.
  * This env var MUST NOT be set in production. See integration tests.
  */
-export function dispatch(input: HookInput): HookOutput {
+export async function dispatch(input: HookInput): Promise<HookOutput> {
   // TEST-ONLY: synthetic crash injection for integration test 7
   if (process.env['MRCLEAN_TEST_THROW']) {
     throw new Error('synthetic mrclean crash')
@@ -28,16 +31,16 @@ export function dispatch(input: HookInput): HookOutput {
 
   switch (input.hook_event_name) {
     case 'SessionStart':
-      return handleSessionStart(input)
+      return await handleSessionStart(input)
 
     case 'UserPromptSubmit':
-      return handleUserPromptSubmit(input)
+      return await handleUserPromptSubmit(input)
 
     case 'PreToolUse':
-      return handlePreToolUse(input)
+      return await handlePreToolUse(input)
 
     case 'PostToolUse':
-      return handlePostToolUse(input)
+      return await handlePostToolUse(input)
 
     default: {
       // TypeScript exhaustiveness: cast to access the discriminant for error message
