@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 Plan 00 complete — smol-toml migration + detection shared types.
-last_updated: "2026-05-14T13:48:53Z"
+stopped_at: Phase 2 Plan 01 complete — Layer 1 regex engine (secretlint + gitleaks + worker pool).
+last_updated: "2026-05-14T14:08:29.931Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 7
-  percent: 54
+  completed_plans: 8
+  percent: 62
 ---
 
 # State: mrclean
@@ -29,14 +29,14 @@ progress:
 
 Phase: 2 (live-redaction-layers-1-4-one-way) — EXECUTING
 Plan: 2 of 7
-**Phase:** Phase 2 in progress (02-00 complete)
-**Plan:** 02-00-PLAN.md COMPLETE (smol-toml + Phase 2 infra)
-**Status:** Executing Phase 2 — Plan 02-01 is next
-**Progress:** [███████░░░] 54% (7/13 plans complete)
+**Phase:** Phase 2 in progress (02-01 complete)
+**Plan:** 02-01-PLAN.md COMPLETE (Layer 1: secretlint + gitleaks + worker pool)
+**Status:** Executing Phase 2 — Plan 02-02 is next
+**Progress:** [████████░░] 62% (8/13 plans complete)
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
-Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ executing — 1/7 plans done ]
+Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ executing — 2/7 plans done ]
 Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 ```
 
@@ -89,7 +89,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - [x] Execute Plan 01-04 (MCP server with tool stubs) — COMPLETE
 - [x] Execute Plan 01-05 (doctor canary round-trip) — COMPLETE
 - [x] Execute Plan 02-00 (deps + smol-toml + shared detection types) — COMPLETE
-- [ ] Execute Plan 02-01 (Layer 1: secretlint + gitleaks adapter)
+- [x] Execute Plan 02-01 (Layer 1: secretlint + gitleaks adapter) — COMPLETE
 - [ ] Execute Plan 02-02 (Layer 2: entropy + Layer 3: env + Layer 4: words)
 - [ ] Execute Plan 02-03 (placeholder manager)
 - [ ] Execute Plan 02-04 (hook integration: one-way redaction)
@@ -115,13 +115,18 @@ None.
 - **src/detect/findings.ts and src/detect/type-map.ts owned by 02-00** — canonical single-source-of-truth modules; Wave 2 plans import, never re-create.
 - **dedupBySpan precedence: longer-span-wins, then source-order** — secretlint > gitleaks > entropy > env > words for equal-length overlap resolution.
 - **dotenv 17.x (not 16.x) installed** — RESEARCH allowed 17.x; backward-compatible for parse-only usage.
+- **secretlint enableIDScanRule:true for AWS rule** — disabled by default; mrclean enables it via individual rule creator registration (not preset wrapper) to detect bare AWS access keys in hook payloads.
+- **gitleaks TOML pinned at SHA 9febafb62** — 222 rules, 183 usable after JS adaptation, 39 skipped (JS-incompatible inline mode flags); SHA-256 checksum committed for tamper detection.
+- **WorkerPool size 4 default** — amortizes 2–5ms per-worker spawn cost across the keyword-filtered hot path (5–20 rules typically execute per hook invocation).
+- **vendor/ copied to dist/ via tsup onSuccess** — bundled artifact path resolution requires dist/vendor/gitleaks-rules.toml.
+- **package.json files[] explicit enumeration** — excludes dist/detect-layer1* from npm tarball; test-only bundle entry not published.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 02-00)
-**Last action:** Completed 02-00-PLAN.md — smol-toml migration, Phase 2 schema, canonical findings.ts + type-map.ts, 42 new tests (193 total).
-**Stopped at:** Phase 2 Plan 00 complete — smol-toml migration + detection shared types.
-**Next action:** Execute Plan 02-01 (Layer 1: secretlint + gitleaks adapter).
+**Last command:** `/gsd-execute-phase` (plan 02-01)
+**Last action:** Completed 02-01-PLAN.md — Layer 1 regex engine: secretlint + gitleaks adapter + worker pool + bundle test, 27 new tests (220 total).
+**Stopped at:** Phase 2 Plan 01 complete — Layer 1 regex engine (secretlint + gitleaks + worker pool).
+**Next action:** Execute Plan 02-02 (Layer 2: entropy + Layer 3: env + Layer 4: words).
 
 ---
-*Last updated: 2026-05-14 after plan 02-00 execution*
+*Last updated: 2026-05-14 after plan 02-01 execution*

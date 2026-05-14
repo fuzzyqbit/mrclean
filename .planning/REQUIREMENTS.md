@@ -17,10 +17,10 @@
 
 ### Detection Engine — Layer 1 (Regex Rules)
 
-- [ ] **DET1-01**: Layer 1 ships with the `@secretlint/secretlint-rule-preset-recommend` rule set bundled and runs purely in-process (no shell-out to gitleaks/trufflehog binaries)
-- [ ] **DET1-02**: Layer 1 also ships with the upstream `gitleaks/config/gitleaks.toml` rule pack vendored at build time, parsed with `smol-toml`, and executed in-process so the long-tail (~200 patterns) is covered without a Go runtime
-- [ ] **DET1-03**: Each Layer 1 detection emits a normalized finding `{ ruleId, severity, span, value, redactedHash, fingerprint }` shared with all other layers
-- [ ] **DET1-04**: Regex execution uses an engine resistant to ReDoS (e.g., `re2` Node bindings or per-pattern timeout) so adversarial inputs cannot hang the hook
+- [x] **DET1-01**: Layer 1 ships with the `@secretlint/secretlint-rule-preset-recommend` rule set bundled and runs purely in-process (no shell-out to gitleaks/trufflehog binaries)
+- [x] **DET1-02**: Layer 1 also ships with the upstream `gitleaks/config/gitleaks.toml` rule pack vendored at build time, parsed with `smol-toml`, and executed in-process so the long-tail (~200 patterns) is covered without a Go runtime
+- [x] **DET1-03**: Each Layer 1 detection emits a normalized finding `{ ruleId, severity, span, value, redactedHash, fingerprint }` shared with all other layers
+- [x] **DET1-04**: Regex execution uses an engine resistant to ReDoS (e.g., `re2` Node bindings or per-pattern timeout) so adversarial inputs cannot hang the hook
 
 ### Detection Engine — Layer 2 (Entropy)
 
@@ -141,10 +141,10 @@
 | INST-06 | Phase 1 | Pending |
 | INST-07 | Phase 1 | Complete (01-02) |
 | INST-08 | Phase 1 | Pending |
-| DET1-01 | Phase 2 | Pending |
-| DET1-02 | Phase 2 | Pending |
-| DET1-03 | Phase 2 | Pending |
-| DET1-04 | Phase 2 | Pending |
+| DET1-01 | Phase 2 | Complete |
+| DET1-02 | Phase 2 | Complete |
+| DET1-03 | Phase 2 | Complete |
+| DET1-04 | Phase 2 | Complete |
 | DET2-01 | Phase 2 | Pending |
 | DET2-02 | Phase 2 | Pending |
 | DET2-03 | Phase 2 | Pending |

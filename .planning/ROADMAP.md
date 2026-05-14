@@ -45,8 +45,8 @@
   5. Operator inspects `.mrclean/audit.jsonl` after a session and finds one JSONL record per detection containing `redactedHash` and `fingerprint` only — `grep` for any seeded fixture secret string returns zero hits
   6. Operator sets `dry_run = true` in `.mrclean/config.toml` and re-runs the same secret-laden prompt — detections appear in the audit log but nothing is blocked or substituted (trust-building first-run mode works)
 **Plans**: 7 plans
-  - [ ] 02-00-deps-config-schema-toml-migration-PLAN.md — Phase 2 runtime deps + smol-toml migration + MrcleanConfig extension (CFG-02 schema)
-  - [ ] 02-01-layer1-regex-engine-PLAN.md — Secretlint + vendored gitleaks rule pack + ReDoS-safe worker pool (DET1-01..04)
+  - [x] 02-00-deps-config-schema-toml-migration-PLAN.md — Phase 2 runtime deps + smol-toml migration + MrcleanConfig extension (CFG-02 schema)
+  - [x] 02-01-layer1-regex-engine-PLAN.md — Secretlint + vendored gitleaks rule pack + ReDoS-safe worker pool (DET1-01..04)
   - [ ] 02-02-layers-2-3-4-PLAN.md — Shannon entropy + .env extraction + words.txt + SessionState (DET2/3/4)
   - [ ] 02-03-placeholder-manager-audit-log-PLAN.md — `<MRCLEAN:TYPE:NNN>` manager + JSONL audit log + canary-leak helper (PH-01..04, AUDIT-01/02)
   - [ ] 02-04-detection-orchestrator-dry-run-PLAN.md — runDetection orchestrator + dry_run coercion (MODE-01/02)
@@ -71,7 +71,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Wired Skeleton | 0/5 | Planned, not started | - |
-| 2. Live Redaction (Layers 1-4 + One-Way) | 0/7 | Planned, not started | - |
+| 2. Live Redaction (Layers 1-4 + One-Way) | 2/7 | In Progress|  |
 | 3. MCP Tools, Performance Gate, Public Release | 0/0 | Not started | - |
 
 ## Coverage Validation
