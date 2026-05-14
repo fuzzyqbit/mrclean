@@ -1,0 +1,43 @@
+{
+  "name": "mrclean",
+  "version": "0.1.0",
+  "description": "In-session sanitizer that prevents sensitive data from leaking out of Claude Code sessions to remote services",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.18.0"
+  },
+  "bin": {
+    "mrclean": "./dist/cli.js",
+    "mrclean-mcp": "./dist/mcp.js"
+  },
+  "main": "./dist/cli.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev:cli": "tsx src/cli.ts",
+    "dev:mcp": "tsx src/mcp.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "commander": "^13.1.0",
+    "picocolors": "^1.1.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.18.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "tsx": "^4.20.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.6"
+  }
+}
