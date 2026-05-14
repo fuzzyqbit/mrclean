@@ -10,7 +10,7 @@
 
 - [x] **Phase 1: Wired Skeleton** - `npx mrclean install` lands a working hook + MCP server in Claude Code; operator sees the "mrclean active" banner and `mrclean doctor` reports green — no real detection yet, but the integration is provably alive
 - [x] **Phase 2: Live Redaction (Layers 1-4 + One-Way)** - Real secrets pasted into a Claude Code session are blocked-with-reason on prompts and substituted with stable `<MRCLEAN:TYPE:NNN>` placeholders in tool calls; `.env` values, regex hits, entropy, and project word-list all caught; audit log records hash-only entries
-- [ ] **Phase 3: MCP Tools, Performance Gate, Public Release** - Operator can invoke `mrclean_check / mrclean_redact / mrclean_status` from inside Claude Code; CI enforces `<100ms / <200ms` budgets; README + THREAT_MODEL ship; `npm install -g mrclean` installs the published 1.0.0 package
+- [ ] **Phase 3: MCP Tools, Performance Gate, Public Release** - Operator can invoke `mrclean_check / mrclean_redact / mrclean_status` from inside Claude Code; CI enforces `<100ms / <200ms` budgets; README + THREAT_MODEL ship; `npm install -g mrclean-claude` installs the published 1.0.0 package
 
 ## Phase Details
 
@@ -54,7 +54,7 @@
   - [x] 02-06-fixtures-bench-stub-PLAN.md — Positive + negative fixture corpus + doctor `--bench` stub (proves success criterion #4)
 
 ### Phase 3: MCP Tools, Performance Gate, Public Release
-**Goal**: Close the loop from "works on the maintainer's machine" to "anyone can `npm install -g mrclean` and get the same result." Ship the explicit on-demand MCP tool surface, a CI-enforced performance budget, the documentation that prevents user confusion (gitleaks layering FAQ, threat model), and the actual npm release. After this phase mrclean is publicly usable and its perf/security guarantees survive future commits.
+**Goal**: Close the loop from "works on the maintainer's machine" to "anyone can `npm install -g mrclean-claude` and get the same result." Ship the explicit on-demand MCP tool surface, a CI-enforced performance budget, the documentation that prevents user confusion (gitleaks layering FAQ, threat model), and the actual npm release. After this phase mrclean is publicly usable and its perf/security guarantees survive future commits.
 **Mode:** mvp
 **Depends on**: Phase 2
 **Requirements**: MCP-02, MCP-03, PERF-01, PERF-02, PERF-03, DOC-01, DOC-02, DOC-03, QA-01, QA-02, QA-03
@@ -62,9 +62,15 @@
   1. Inside a real Claude Code session the operator can invoke `mcp__mrclean__check`, `mcp__mrclean__redact`, and `mcp__mrclean__status` and get back the expected findings/text/version payloads — and `mcp__mrclean__unredact` does not exist (model-facing surface is read/transform only)
   2. Operator runs the CI suite locally and the vitest perf gate fails the build if a `UserPromptSubmit` on a 4 KB prompt exceeds 100 ms p95 or a `PostToolUse` on a 50 KB tool result exceeds 200 ms p95 on the reference machine
   3. Operator opens the published README and finds the explicit "gitleaks for what reaches your repo, mrclean for what reaches the model" layering FAQ plus a `THREAT_MODEL.md` enumerating what mrclean does NOT defend against (multimodal images, model memorization, etc.)
-  4. Operator runs `npm install -g mrclean` from the public npm registry, then `npx mrclean install` on a clean machine, and reaches the same Phase 1 + Phase 2 success criteria with no source checkout — the published artifact is the working artifact
+  4. Operator runs `npm install -g mrclean-claude` from the public npm registry, then `npx mrclean install` on a clean machine, and reaches the same Phase 1 + Phase 2 success criteria with no source checkout — the published artifact is the working artifact
   5. Operator runs `npm test` and observes ≥ 80% line coverage on `src/`, integration tests passing for every hook event in HOOK-01, and the CI canary-leak test confirming no fixture secret string appears in any audit log entry
-**Plans**: TBD
+**Plans**: 6 plans
+  - [ ] 03-00-PLAN.md — package.json publish metadata + vitest projects API (parallel-pollution fix) + coverage thresholds (QA-01 infrastructure)
+  - [ ] 03-01-PLAN.md — MCP tool rename (mrclean_check / mrclean_redact / mrclean_status) + supervisor + structured output (MCP-02, MCP-03)
+  - [ ] 03-02-PLAN.md — Performance gate (vitest assertion suite + 4 KB + 50 KB fixtures + perf.yml + compile-once grep gate) (PERF-01, PERF-02, PERF-03)
+  - [ ] 03-03-PLAN.md — README + THREAT_MODEL + LICENSE + CHANGELOG + .changeset/ bootstrap (DOC-01, DOC-02)
+  - [ ] 03-04-PLAN.md — Quality gates: ≥80% coverage enforcement + integration coverage tagging per hook event + canary-leak CI workflow (QA-01, QA-02, QA-03)
+  - [ ] 03-05-PLAN.md — Publish pipeline: release.yml (changesets/action) + release-smoke.yml + initial-release changeset + docs/RELEASE.md + first manual publish (DOC-03)
 
 ## Progress
 
@@ -72,7 +78,7 @@
 |-------|----------------|--------|-----------|
 | 1. Wired Skeleton | 0/5 | Planned, not started | - |
 | 2. Live Redaction (Layers 1-4 + One-Way) | 2/7 | In Progress|  |
-| 3. MCP Tools, Performance Gate, Public Release | 0/0 | Not started | - |
+| 3. MCP Tools, Performance Gate, Public Release | 0/6 | Planned, not started | - |
 
 ## Coverage Validation
 
@@ -97,4 +103,4 @@ All 54 v1 requirements mapped to exactly one phase. No orphans. No duplicates. v
 | **Total** | **54** | **17** | **26** | **11** |
 
 ---
-*Last updated: 2026-05-13 after Phase 1 plan-phase*
+*Last updated: 2026-05-14 after Phase 3 plan-phase (6 plans created)*
