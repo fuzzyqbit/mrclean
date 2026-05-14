@@ -10,10 +10,12 @@ import { describe, it, expect } from 'vitest'
 import { spawnSync } from 'node:child_process'
 import { writeFailClosedError } from '../../src/hook/failclosed.js'
 
-// Helper: build a node -e script that installs crash guards and throws/rejects
+// Helper: run a TS script in a child process using tsx (required for ESM + TypeScript imports)
 function runInChildProcess(script: string): { status: number | null; stderrLine: string } {
+  // tsx is the dev-time TS runner; it handles .ts imports via the .js extension aliases
+  const tsxBin = new URL('../../node_modules/.bin/tsx', import.meta.url).pathname
   const result = spawnSync(
-    process.execPath,
+    tsxBin,
     [
       '--input-type=module',
       '-e',
@@ -21,7 +23,7 @@ function runInChildProcess(script: string): { status: number | null; stderrLine:
     ],
     {
       encoding: 'utf8',
-      timeout: 5000,
+      timeout: 10000,
     },
   )
   const firstLine = (result.stderr ?? '').split('\n')[0] ?? ''
