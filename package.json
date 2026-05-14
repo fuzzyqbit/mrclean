@@ -1,8 +1,29 @@
 {
-  "name": "mrclean",
-  "version": "0.1.0",
-  "description": "In-session sanitizer that prevents sensitive data from leaking out of Claude Code sessions to remote services",
+  "name": "mrclean-claude",
+  "version": "1.0.0-rc.1",
+  "description": "In-session sanitizer for Claude Code that prevents secrets and proprietary terms from reaching Anthropic, MCP servers, or cloud agents. Local, deterministic, no telemetry.",
   "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anthropics/mrclean-claude.git"
+  },
+  "homepage": "https://github.com/anthropics/mrclean-claude#readme",
+  "bugs": {
+    "url": "https://github.com/anthropics/mrclean-claude/issues"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "mcp",
+    "security",
+    "secrets",
+    "redaction",
+    "sanitizer",
+    "hook",
+    "anthropic",
+    "dlp"
+  ],
   "type": "module",
   "engines": {
     "node": ">=20.18.0"
@@ -23,7 +44,9 @@
     "vendor/gitleaks-rules.toml.sha256",
     "vendor/SKIPPED_GITLEAKS_RULES.md",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "THREAT_MODEL.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsup",
@@ -33,7 +56,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release": "npm run build && changeset publish --provenance --access public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
