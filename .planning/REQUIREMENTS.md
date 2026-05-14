@@ -90,8 +90,8 @@
 
 ### Documentation & Release
 
-- [ ] **DOC-01**: README explains the layering relationship to gitleaks ("gitleaks for what reaches your repo, mrclean for what reaches the model") to prevent overlap confusion (Pitfall #12)
-- [ ] **DOC-02**: A `THREAT_MODEL.md` documents what mrclean does NOT defend against (multimodal images, model memorization, prompt-injection of the operator, etc.) so users have correct expectations
+- [x] **DOC-01**: README explains the layering relationship to gitleaks ("gitleaks for what reaches your repo, mrclean for what reaches the model") to prevent overlap confusion (Pitfall #12)
+- [x] **DOC-02**: A `THREAT_MODEL.md` documents what mrclean does NOT defend against (multimodal images, model memorization, prompt-injection of the operator, etc.) so users have correct expectations
 - [ ] **DOC-03**: CHANGELOG is generated via `changesets` and the package publishes to npm as `mrclean` under MIT license
 
 ### Quality Gates

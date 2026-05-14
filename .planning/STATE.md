@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 Plan 02 complete — vitest perf gate (PERF-01/02/03) + CI workflow.
-last_updated: "2026-05-14T20:00:00.000Z"
+stopped_at: Phase 3 Plan 03 complete — docs (README, THREAT_MODEL, LICENSE, CHANGELOG) + changesets bootstrap. Awaiting Task 4 operator checkpoint.
+last_updated: "2026-05-14T19:30:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 19
-  completed_plans: 17
-  percent: 89
+  completed_plans: 18
+  percent: 95
 ---
 
 # State: mrclean
@@ -28,16 +28,16 @@ progress:
 ## Current Position
 
 Phase: 3 (mcp-tools-performance-gate-public-release) — IN PROGRESS
-Plan: 3 of 6
-**Phase:** Phase 3 IN PROGRESS (03-02 complete)
-**Plan:** 03-02-PLAN.md COMPLETE (vitest perf gate PERF-01/02/03 + CI workflow)
-**Status:** Ready to execute 03-03
-**Progress:** [█████████░] 89%
+Plan: 4 of 6
+**Phase:** Phase 3 IN PROGRESS (03-03 complete — awaiting Task 4 operator checkpoint)
+**Plan:** 03-03-PLAN.md COMPLETE (docs: README, THREAT_MODEL, LICENSE, CHANGELOG + changesets bootstrap)
+**Status:** Checkpoint reached — operator must approve LICENSE holder + repository URL before 03-04
+**Progress:** [█████████░] 95%
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
 Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ COMPLETE — 7/7 plans done ]
-Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 3/6 plans done ]
+Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 4/6 plans done ]
 ```
 
 ## Performance Metrics
@@ -98,6 +98,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 3/6 plans
 - [x] Execute Plan 03-00 (package metadata + vitest projects split + coverage thresholds) — COMPLETE
 - [x] Execute Plan 03-01 (mrclean_check/redact/status + supervisor + delete Phase 1 stubs) — COMPLETE
 - [x] Execute Plan 03-02 (vitest perf gate + PERF-03 compile-once + CI workflow) — COMPLETE
+- [x] Execute Plan 03-03 (docs: README, THREAT_MODEL, LICENSE, CHANGELOG + changesets bootstrap) — COMPLETE (awaiting Task 4 operator checkpoint)
 
 ### Blockers
 
@@ -174,12 +175,21 @@ None.
 - **runBenchmark uses unique sessionId per invocation:** avoids polluting module-level PlaceholderManager cache across bench iterations; sessionId = `bench-${Date.now()}`.
 - **UserPromptSubmit p50=0.6ms, p95=17.4ms:** calibration point for Phase 3 PERF gate (target < 100 ms).
 
+### Additional Decisions (Phase 3 — Plan 03)
+
+- **README section numbering adjusted for flow** — Uninstall (section 6) and Modes (section 7) precede MCP Tools (section 8) for natural operator reading order. Plan spec had 12 sections; all 12 are present, numbering shifted by one for two sections.
+- **THREAT_MODEL.md uses H3 numbered sections (not bullet list)** — nine `### 1. Title` headings provide better anchoring and scanability than a flat bullet list, matching trufflehog/semgrep tone target from RESEARCH §OQ-5.
+- **COPYRIGHT HOLDER PLACEHOLDER: 'anthropics'** — Task 4 checkpoint requires operator confirmation before publish; SUMMARY documents this explicitly.
+- **REPOSITORY URL PLACEHOLDER: github.com/anthropics/mrclean-claude** — set in Plan 03-00; Task 4 checkpoint for operator to confirm/replace.
+- **@changesets/cli resolved to 2.31.0** — RESEARCH expected 2.29.x; 2.31.0 installed (later minor, compatible); ^2.31.0 range written to package.json.
+- **CHANGELOG uses ASCII >= instead of Unicode >=** — avoids character encoding edge cases in terminal environments and diff views.
+
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 03-02)
-**Last action:** Completed 03-02-PLAN.md — vitest perf gate (PERF-01/02/03); 367 tests pass; CI workflow wired.
-**Stopped at:** Phase 3 Plan 02 complete — vitest perf gate (PERF-01/02/03) + CI workflow.
-**Next action:** Execute Plan 03-03 (docs: README, THREAT_MODEL, CHANGELOG, LICENSE).
+**Last command:** `/gsd-execute-phase` (plan 03-03)
+**Last action:** Completed 03-03-PLAN.md — docs (README, THREAT_MODEL, LICENSE, CHANGELOG) + changesets bootstrap. Stopped at Task 4 operator checkpoint.
+**Stopped at:** Phase 3 Plan 03 complete — public docs + changesets. Task 4 checkpoint: operator review LICENSE holder + repository URL.
+**Next action:** After operator approves Task 4 — execute Plan 03-04 (quality gates + CI canary-leak).
 
 ---
-*Last updated: 2026-05-14 after plan 03-01 execution*
+*Last updated: 2026-05-14 after plan 03-03 execution*
