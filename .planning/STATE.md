@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 complete — all 6 plans done.
-last_updated: "2026-05-14T13:40:07.011Z"
+stopped_at: Phase 2 Plan 00 complete — smol-toml migration + detection shared types.
+last_updated: "2026-05-14T13:48:53Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 6
-  percent: 46
+  completed_plans: 7
+  percent: 54
 ---
 
 # State: mrclean
@@ -28,15 +28,15 @@ progress:
 ## Current Position
 
 Phase: 2 (live-redaction-layers-1-4-one-way) — EXECUTING
-Plan: 1 of 7
-**Phase:** COMPLETE — Phase 1 (Wired Skeleton — all 6 plans: 01-01, 01-02, 01-02b, 01-03, 01-04, 01-05)
-**Plan:** 01-05-PLAN.md COMPLETE
-**Status:** Executing Phase 2
-**Progress:** [██████████] 100% (6/6 plans complete — Phase 1 done)
+Plan: 2 of 7
+**Phase:** Phase 2 in progress (02-00 complete)
+**Plan:** 02-00-PLAN.md COMPLETE (smol-toml + Phase 2 infra)
+**Status:** Executing Phase 2 — Plan 02-01 is next
+**Progress:** [███████░░░] 54% (7/13 plans complete)
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
-Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ pending ]
+Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ executing — 1/7 plans done ]
 Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 ```
 
@@ -88,6 +88,13 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - [x] Execute Plan 01-03 (hook stdin/stdout handler) — COMPLETE
 - [x] Execute Plan 01-04 (MCP server with tool stubs) — COMPLETE
 - [x] Execute Plan 01-05 (doctor canary round-trip) — COMPLETE
+- [x] Execute Plan 02-00 (deps + smol-toml + shared detection types) — COMPLETE
+- [ ] Execute Plan 02-01 (Layer 1: secretlint + gitleaks adapter)
+- [ ] Execute Plan 02-02 (Layer 2: entropy + Layer 3: env + Layer 4: words)
+- [ ] Execute Plan 02-03 (placeholder manager)
+- [ ] Execute Plan 02-04 (hook integration: one-way redaction)
+- [ ] Execute Plan 02-05 (audit log + dry_run mode)
+- [ ] Execute Plan 02-06 (Phase 2 integration tests + banner upgrade)
 
 ### Blockers
 
@@ -100,12 +107,21 @@ None.
 - Phase 3's performance gate measures the Phase 1+2 system; perf budget breaches surface as build failures, not warnings.
 - Audit log schema (Phase 1 gitignore + Phase 2 record format) must be settled before Phase 3's canary-leak CI test can be authored.
 
+### Additional Decisions (Phase 2)
+
+- **smol-toml ^1.6.1 replaces hand-rolled TOML parser** — Phase 2 requires [[rules]] array-of-tables and [entropy] sub-tables that the Phase 1 hand-rolled parser could not handle.
+- **secrets_files flattened from [secrets_files].paths** — `readConfigLayer` hoists `paths` to `config.secrets_files: string[]` for ergonomics; Layer 3 consumers see a flat string array.
+- **allowlist arrays CONCAT across merge layers** — Phase 2 changes Phase 1's wholesale-replacement behavior; user allowlist + project allowlist both accumulate.
+- **src/detect/findings.ts and src/detect/type-map.ts owned by 02-00** — canonical single-source-of-truth modules; Wave 2 plans import, never re-create.
+- **dedupBySpan precedence: longer-span-wins, then source-order** — secretlint > gitleaks > entropy > env > words for equal-length overlap resolution.
+- **dotenv 17.x (not 16.x) installed** — RESEARCH allowed 17.x; backward-compatible for parse-only usage.
+
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 01-05)
-**Last action:** Completed 01-05-PLAN.md — `mrclean doctor` with 6 structured checks, computeDoctorReport (pure core), runDoctor (single process.exit site), 29 new tests (151 total). Phase 1 complete.
-**Stopped at:** Phase 1 complete — all 6 plans done.
-**Next action:** Execute Phase 2 (Live Redaction — Layers 1-4 + One-Way detection).
+**Last command:** `/gsd-execute-phase` (plan 02-00)
+**Last action:** Completed 02-00-PLAN.md — smol-toml migration, Phase 2 schema, canonical findings.ts + type-map.ts, 42 new tests (193 total).
+**Stopped at:** Phase 2 Plan 00 complete — smol-toml migration + detection shared types.
+**Next action:** Execute Plan 02-01 (Layer 1: secretlint + gitleaks adapter).
 
 ---
-*Last updated: 2026-05-14 after plan 01-05 execution — Phase 1 complete*
+*Last updated: 2026-05-14 after plan 02-00 execution*
