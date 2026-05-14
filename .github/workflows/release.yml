@@ -1,0 +1,41 @@
+name: Release
+on:
+  push:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false   # do NOT cancel in-progress releases
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      id-token: write       # REQUIRED for npm --provenance via OIDC
+      contents: write       # REQUIRED for changesets to create/update PRs
+      pull-requests: write  # REQUIRED for changesets to create/update PRs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # changesets needs full history
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Create Release PR or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: npm run release   # invokes `npm run build && changeset publish --provenance --access public` (set in package.json by plan 03-00)
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}   # actions/setup-node uses this var per RESEARCH §Pitfall 6
+      - name: Trigger release-smoke if published
+        if: steps.changesets.outputs.published == 'true'
+        run: echo "::notice::Published — release-smoke workflow will follow"
