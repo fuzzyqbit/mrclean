@@ -32,7 +32,8 @@ program
   .option('--scope <scope>', 'Registration scope: user or project', 'user')
   .action(async (opts: { scope: string }) => {
     const { runInstall } = await import('./install/index.js')
-    await runInstall({ scope: opts.scope })
+    const scope = opts.scope === 'project' ? 'project' : 'user'
+    await runInstall({ scope })
   })
 
 // uninstall subcommand
