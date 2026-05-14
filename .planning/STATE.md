@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 Plan 03 complete — PlaceholderManager + substituteFindings + writeAuditRecord + assertNoCanaryLeak.
-last_updated: "2026-05-14T10:29:00.000Z"
+stopped_at: Phase 2 Plan 04 complete — runDetection orchestrator + applyDryRun + warn→audit normalization + budget bail-out.
+last_updated: "2026-05-14T11:00:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 10
-  percent: 77
+  completed_plans: 12
+  percent: 92
 ---
 
 # State: mrclean
@@ -28,11 +28,11 @@ progress:
 ## Current Position
 
 Phase: 2 (live-redaction-layers-1-4-one-way) — EXECUTING
-Plan: 3 of 7
-**Phase:** Phase 2 in progress (02-03 complete)
-**Plan:** 02-03-PLAN.md COMPLETE (PlaceholderManager + substituteFindings + writeAuditRecord + assertNoCanaryLeak)
-**Status:** Executing Phase 2 — Plan 02-04 is next
-**Progress:** [██████████] 77% (10/13 plans complete)
+Plan: 4 of 7
+**Phase:** Phase 2 in progress (02-04 complete)
+**Plan:** 02-04-PLAN.md COMPLETE (runDetection orchestrator + applyDryRun + warn→audit normalization + budget bail-out)
+**Status:** Executing Phase 2 — Plan 02-05 is next
+**Progress:** [████████████] 92% (12/13 plans complete)
 
 ```
 Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
@@ -92,8 +92,8 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ pending ]
 - [x] Execute Plan 02-01 (Layer 1: secretlint + gitleaks adapter) — COMPLETE
 - [x] Execute Plan 02-02 (Layer 2: entropy + Layer 3: env + Layer 4: words) — COMPLETE
 - [x] Execute Plan 02-03 (placeholder manager)
-- [ ] Execute Plan 02-04 (hook integration: one-way redaction)
-- [ ] Execute Plan 02-05 (audit log + dry_run mode)
+- [x] Execute Plan 02-04 (detection orchestrator + dry_run + warn→audit + budget bail-out) — COMPLETE
+- [ ] Execute Plan 02-05 (hook handlers: hook-level routing + banner upgrade)
 - [ ] Execute Plan 02-06 (Phase 2 integration tests + banner upgrade)
 
 ### Blockers
@@ -107,7 +107,15 @@ None.
 - Phase 3's performance gate measures the Phase 1+2 system; perf budget breaches surface as build failures, not warnings.
 - Audit log schema (Phase 1 gitignore + Phase 2 record format) must be settled before Phase 3's canary-leak CI test can be authored.
 
-### Additional Decisions (Phase 2)
+### Additional Decisions (Phase 2 — Plan 04)
+
+- **warn→audit normalization in orchestrator (not Layer 4):** Step 8a of runDetection normalises Layer 4's 'warn' action token to 'audit' in-place before effectiveAction assignment; single normalization point, LOCKED by test 4.
+- **applyDryRun uses generic constraint** `T extends { effectiveAction: ... }` to avoid circular module import between dry-run.ts and index.ts.
+- **budgetExhausted is a signal, not an early exit:** findings collected before Layer 1 timeouts still populate DetectionResult; Plan 02-05 decides on deny path.
+- **Promise.allSettled for audit writes:** write failures logged to stderr as JSON warning; hook response always returned regardless of audit log state.
+- **Module-level WorkerPool + PlaceholderManager cache:** Map<sessionId, PlaceholderManager> ensures placeholder stability across calls; shutdownDetection() resets both on process exit.
+
+
 
 - **smol-toml ^1.6.1 replaces hand-rolled TOML parser** — Phase 2 requires [[rules]] array-of-tables and [entropy] sub-tables that the Phase 1 hand-rolled parser could not handle.
 - **secrets_files flattened from [secrets_files].paths** — `readConfigLayer` hoists `paths` to `config.secrets_files: string[]` for ergonomics; Layer 3 consumers see a flat string array.
@@ -132,10 +140,10 @@ None.
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 02-03)
-**Last action:** Completed 02-03-PLAN.md — PlaceholderManager + substituteFindings + writeAuditRecord + assertNoCanaryLeak, 25 new tests (296 total).
-**Stopped at:** Phase 2 Plan 03 complete — PlaceholderManager + substituteFindings + writeAuditRecord + assertNoCanaryLeak.
-**Next action:** Execute Plan 02-04 (hook integration: one-way redaction).
+**Last command:** `/gsd-execute-phase` (plan 02-04)
+**Last action:** Completed 02-04-PLAN.md — runDetection orchestrator + applyDryRun + 11 tests (307 total). warn→audit normalization LOCKED; dry_run proven; budget bail-out flagged.
+**Stopped at:** Phase 2 Plan 04 complete — runDetection orchestrator + applyDryRun + warn→audit normalization + budget bail-out.
+**Next action:** Execute Plan 02-05 (hook handlers: UserPromptSubmit + PreToolUse + PostToolUse routing).
 
 ---
 *Last updated: 2026-05-14 after plan 02-02 execution*
