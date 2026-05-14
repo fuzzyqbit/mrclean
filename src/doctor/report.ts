@@ -7,7 +7,7 @@
  * computeExitCode: returns 0 if all checks PASS, otherwise the first failing
  *   check's exitCodeOnFail (preserving the priority order of the results array).
  *
- * No process.exit is called here. Only runDoctor (index.ts) may call process.exit.
+ * This module never terminates the process — only runDoctor (index.ts) may do so.
  *
  * Plan 01-05.
  */

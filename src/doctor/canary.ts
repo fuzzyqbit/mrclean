@@ -8,7 +8,7 @@
  * runMcpCanary: spawns dist/mcp.js via StdioClientTransport, calls the `sanitize`
  *   tool with CANARY_STRING, asserts the response echoes it back unchanged.
  *
- * Neither function calls process.exit — they return { ok, detail }.
+ * Neither function terminates the process — they return { ok, detail }.
  *
  * Plan 01-05, RESEARCH §4.2.
  */

@@ -13,7 +13,7 @@
  *   3 — registered binary path not executable
  *   4 — canary round-trip failed
  *
- * No check function calls process.exit. Only runDoctor (index.ts) may call process.exit.
+ * No check function terminates the process — only runDoctor (index.ts) may do so.
  *
  * Plan 01-05.
  */
@@ -148,8 +148,12 @@ export async function checkMcpRegistered(
  * and in claude.json (MCP server entry).
  *
  * Returns a deduplicated array of absolute paths.
+ *
+ * @public — used by computeDoctorReport in index.ts to pass the registered paths
+ * to the canary checks rather than re-resolving from the running process (which
+ * would return the wrong path when invoked from within vitest).
  */
-async function collectRegisteredBinPaths(
+export async function collectRegisteredBinPaths(
   settingsPath: string,
   claudeJsonPath: string,
   projectCwd: string,
@@ -192,6 +196,59 @@ async function collectRegisteredBinPaths(
   }
 
   return [...paths]
+}
+
+/**
+ * Extract the node binary path and hook/MCP script paths from the registered
+ * settings.json and claude.json. Used by computeDoctorReport to run canaries
+ * against the installed paths (not the running process argv[1]).
+ *
+ * Returns:
+ *   nodePath    — the registered node binary path (from the first hook command)
+ *   hookBinPath — the mrclean CLI bin (first arg of the hook command)
+ *   mcpBinPath  — the MCP server bin (first arg of the MCP entry)
+ *
+ * Returns process.execPath / empty strings if the entries are not found (graceful).
+ */
+export async function extractRegisteredPaths(
+  settingsPath: string,
+  claudeJsonPath: string,
+  projectCwd: string,
+): Promise<{ nodePath: string; hookBinPath: string; mcpBinPath: string }> {
+  const settingsData = await readJsonOrEmpty(settingsPath)
+  const hooks = settingsData.hooks as Record<string, unknown[]> | undefined
+
+  let nodePath = process.execPath
+  let hookBinPath = ''
+
+  if (hooks && typeof hooks === 'object') {
+    outer: for (const event of REQUIRED_EVENTS) {
+      const entries = hooks[event]
+      if (!Array.isArray(entries)) continue
+      for (const entry of entries) {
+        if (!isMrcleanEntry(entry)) continue
+        const hookCmds = (entry as Record<string, unknown>).hooks as Array<Record<string, unknown>>
+        if (!Array.isArray(hookCmds)) continue
+        for (const cmd of hookCmds) {
+          const command = cmd.command as string | undefined
+          const args = cmd.args as string[] | undefined
+          if (typeof command === 'string') nodePath = command
+          if (Array.isArray(args) && typeof args[0] === 'string') hookBinPath = args[0]
+          if (hookBinPath) break outer
+        }
+      }
+    }
+  }
+
+  const claudeData = await readJsonOrEmpty(claudeJsonPath)
+  const projects = claudeData.projects as Record<string, Record<string, unknown>> | undefined
+  const project = projects?.[projectCwd] as Record<string, unknown> | undefined
+  const mcpServers = project?.mcpServers as Record<string, unknown> | undefined
+  const mrcleanEntry = mcpServers?.mrclean as Record<string, unknown> | undefined
+  const mcpArgs = mrcleanEntry?.args as string[] | undefined
+  const mcpBinPath = Array.isArray(mcpArgs) && typeof mcpArgs[0] === 'string' ? mcpArgs[0] : ''
+
+  return { nodePath, hookBinPath, mcpBinPath }
 }
 
 /**
