@@ -6,11 +6,11 @@
   "author": "",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anthropics/mrclean-claude.git"
+    "url": "git+https://github.com/fuzzyqbit/mrclean-claude.git"
   },
-  "homepage": "https://github.com/anthropics/mrclean-claude#readme",
+  "homepage": "https://github.com/fuzzyqbit/mrclean-claude#readme",
   "bugs": {
-    "url": "https://github.com/anthropics/mrclean-claude/issues"
+    "url": "https://github.com/fuzzyqbit/mrclean-claude/issues"
   },
   "keywords": [
     "claude-code",
