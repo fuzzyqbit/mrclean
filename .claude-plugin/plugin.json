@@ -1,6 +1,6 @@
 {
   "name": "mrclean",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "In-session secret sanitizer for Claude Code — redacts secrets and proprietary terms before they reach Anthropic, MCP servers, or cloud agents. Local, deterministic, no telemetry.",
   "author": { "name": "fuzzyqbit", "url": "https://github.com/fuzzyqbit" },
   "homepage": "https://github.com/fuzzyqbit/mrclean#readme",
