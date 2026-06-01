@@ -1,177 +1,162 @@
 # Project Research Summary
 
 **Project:** mrclean
-**Domain:** In-session sanitizer / DLP for Claude Code (npm-distributed Node/TypeScript hook + MCP server)
-**Researched:** 2026-05-13
-**Confidence:** HIGH on stack/architecture/pitfalls; MEDIUM-HIGH on features (prior art on the exact "in-session redactor for AI coding agents" niche is < 12 months old).
+**Domain:** Opt-in, native-Node PII/NER detection layer for an in-session LLM-boundary sanitizer (milestone v2.0)
+**Researched:** 2026-06-01
+**Confidence:** HIGH
+
+> Scope: This summary covers ONLY the v2.0 "Native-Node PII/NER Layer" milestone. The v1 whole-product summary is preserved at `SUMMARY.v1.md`. All four research files treat the existing v1 substrate (secretlint/gitleaks/entropy/.env/words.txt secret layers, `<MRCLEAN:*>` placeholder manager, audit log, 5-axis allowlist, hook + MCP wiring, tsup/Vitest) as a fixed foundation the PII layer plugs into.
 
 ## Executive Summary
 
-mrclean is a **two-surface, single-core** product: a Claude Code hook adapter (spawned per event over stdin/stdout) and a long-lived MCP server, both wrapping the same in-process detection engine. Experts in this space (gitleaks, secretlint, Microsoft Presidio, ggshield, mcp-redact) consistently converge on the same architecture: a **layered detection pipeline** (regex → entropy → env-extract → user-words → optional LLM) feeding a **stable, collision-free placeholder substitution** layer, with hard separation between the always-on enforcement surface (hook) and the on-demand convenience surface (MCP). The differentiator vs. existing scanners (gitleaks, trufflehog) is **runtime in-memory interception** plus **reversible round-trip restoration** — gitleaks-style tools are pre-commit/CI scanners and never had to solve the placeholder-stability or restore problem.
+mrclean v2.0 adds an opt-in PII/NER tier that catches what the deterministic secret layers can't: free-text **names, orgs, and locations** (which have no regex signature) plus **structured PII** (email/SSN/credit-card/phone/IP, which do). Experts build this exactly the way Microsoft Presidio does — regex+checksum recognizers for closed-class entities, an ML NER model for open-class ones, per-finding confidence scores with thresholds — but mrclean must achieve that *behavior* without Presidio's Python/cloud stack. The recommended approach: run NER in-process via `@huggingface/transformers@^4.2.0` (the maintained successor to the frozen `@xenova/transformers`) on ONNX through native `onnxruntime-node`, with `Xenova/bert-base-NER` int8 (~108 MB) as the default model, lazy-fetched and SHA-pinned to `~/.mrclean/models/`. Structured PII stays pure-JS: a small hand-rolled regex pack confirmed by the `validator` library plus a Luhn check.
 
-The recommended approach is a **boring, file-backed, fail-closed** Node 20 + TypeScript 5.6 stack: `@modelcontextprotocol/sdk` v1, Zod v4, commander, secretlint preset-recommend (engine + rules) plus the vendored gitleaks TOML rule pack (rules only, no engine), `smol-toml`, `dotenv.parse`, picocolors, tsup, vitest 4. Reversible-mode session state lives in `~/.claude/mrclean/sessions/<session_id>.json` under `flock` — **not** an in-process daemon (defer that until profiling demands it). Layer 5 LLM classifier uses `@anthropic-ai/sdk` lazy-imported, claude-haiku-4-5, opt-in only.
+The single load-bearing architectural decision is that **NER cannot run in the hook**. Claude Code spawns a fresh OS process per hook event, so a 108 MB model would cold-load (hundreds of ms to seconds) on *every* prompt and tool result — 10–100× over the < 100 ms / < 200 ms budget. The resolution is a two-lane Layer 6: **L6a regex-PII is pure-JS and joins the hot path**, while **L6b NER runs ONLY in the warm, long-lived MCP server** as a lazy-loaded warm singleton, perf-exempt exactly like the existing Layer-5 `--deep` LLM pass. PII findings flow through the existing placeholder manager, audit log, and 5-axis allowlist unchanged — the only schema additions are new `PII_*` TYPEs and `pii-regex`/`pii-ner` finding sources.
 
-Key risks cluster around five themes: **(1) false-positive avalanche** from naive entropy on UUIDs/git-SHAs (kills adoption in week one); **(2) false-negative bypass** from base64/URL/JSON-encoded payloads and chunk-boundary splits; **(3) silent misconfiguration** (Claude Code only treats exit code 2 as blocking; everything else passes through); **(4) the reversible map IS the secret** — any disk leak is catastrophic; and **(5) prompt-injection bypass** via reversible mode. Mitigations are well-understood: built-in shape allowlist before entropy ever fires, decode-then-scan recursive pipeline, fail-closed exit semantics + `npx mrclean doctor` canary, in-memory-only map by default with OS-keychain encryption as opt-in, and the architectural invariant that **no model-facing MCP tool returns map values**.
+The key risks are all about not over-trusting a probabilistic detector in a security tool. NER is **advisory by default** (warn/audit), never a hard gate — secrets remain the only default hard block, with checksum'd entities (SSN/CC) allowed to block. The ML dependency tree must be declared as **optionalDependencies** so a failed native build (musl/Alpine, exotic arch — onnxruntime-node is glibc-linked and does NOT auto-fall-back to WASM in Node) never breaks the core secret tool. The model download must be explicit, consented, SHA-256-verified, and cached to a stable user-level path (never cwd-relative `./.cache`). Raw PII must never reach the audit log or error paths. And the milestone needs a hard scope fence to avoid drifting into "a worse Presidio in Node." Cloud PII APIs (AWS Comprehend, GCP DLP, Azure) and `redact-pii` (pulls `@google-cloud/dlp` = cloud egress) are explicitly banned.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Single Node 20+ runtime, pure ESM, single npm package with two bins (or one bin sub-dispatched). Bundler: tsup. Tests: vitest 4 + V8 coverage. Detection engine reuses the secretlint engine and preset-recommend (programmatic via `@secretlint/node`) plus the vendored gitleaks TOML rule pack (parsed with `smol-toml`, regexes run by ~150 LOC of in-house TS). MCP via the official `@modelcontextprotocol/sdk` v1 with stdio (default) and Streamable HTTP transports. Layer 5 LLM is lazy-imported `@anthropic-ai/sdk` with `claude-haiku-4-5` (alias) for cost/perf.
+The NER engine is `@huggingface/transformers@^4.2.0` running CPU-only in-process via native `onnxruntime-node@1.24.3` (transitively pinned — never installed directly). `@xenova/transformers` is a dead end (frozen at 2.17.2 since 2024-05-29). All ML deps must be **optionalDependencies** so the core secret tool installs and runs even when the native build fails. Structured PII is hand-rolled regex confirmed by `validator@^13.15.35` + Luhn — DRY with the existing gitleaks-TOML rule engine. Models are NOT npm deps; they lazy-download on first opt-in. `redact-pii`, Presidio sidecar, and any cloud PII API are rejected.
 
 **Core technologies:**
-- **Node.js >=20.18.0** (LTS): runtime — required floor for MCP SDK and Vitest 4; Node 18 is EOL.
-- **TypeScript ^5.6**: language — Zod v4 type instantiations and MCP SDK ergonomics work cleanly.
-- **`@modelcontextprotocol/sdk` ^1**: MCP server + transports — official Anthropic SDK; pin to `^1` (v2 is pre-alpha).
-- **Zod ^4 (via `zod/v4`)**: tool schema + hook payload validation — Standard-Schema-compatible.
-- **`commander` ^13**: CLI for `mrclean install | uninstall | doctor | check | serve | audit`.
-- **`@secretlint/core` + `@secretlint/node` + preset-recommend ^13**: Layer 1 engine + curated rules (AWS, GCP, GitHub, Slack, Stripe, OpenAI, Anthropic).
-- **Vendored `gitleaks/config/gitleaks.toml`**: Layer 1 long-tail rules (~200 patterns); parsed with `smol-toml`, ran in-process — no Go binary shell-out.
-- **`dotenv.parse` ^16**: Layer 3 `.env*` value extraction (parser only — never load into the running process).
-- **`@anthropic-ai/sdk` ^0.95** (lazy-imported, opt-in): Layer 5 LLM classifier via `claude-haiku-4-5`.
-- **tsup + vitest 4 + tsx + picocolors + fast-glob + changesets**: dev/build/test/distro toolchain.
-
-**Avoid:** Jest (slow, painful ESM); `ts-node` (replaced by tsx); `@iarna/toml` (last release 2019); `chalk` (heavier than picocolors); Vercel `ai` SDK (overkill for one-shot Haiku call); shelling out to gitleaks/trufflehog/detect-secrets binaries (breaks single-`npx` UX); hand-rolling regexes (PROJECT.md decision).
+- **`@huggingface/transformers@^4.2.0`** — in-process ONNX `token-classification` NER — maintained successor to frozen `@xenova/transformers`; exposes `env.cacheDir`, `dtype` quantization, `progress_callback` for the lazy-download UX.
+- **`onnxruntime-node@1.24.3`** (transitive, optional) — native CPU inference backend — prebuilt per-platform binaries; glibc-linked, NO auto-WASM-fallback in Node; the reason the whole NER subtree must live behind the opt-in lane and `optionalDependencies`.
+- **`Xenova/bert-base-NER` int8 (~108 MB)** — default model, PER/ORG/LOC/MISC — smallest credible NER model; lazy-fetched + SHA-pinned to `~/.mrclean/models/`. `piiranha` (~317 MB) optional tier; `gliner_multi_pii` (~349 MB zero-shot) deferred (no native pipeline support).
+- **`validator@^13.15.35`** — checksum/format confirmation behind regex pre-filter — `isEmail`/`isCreditCard` (Luhn)/`isIP`/`isMobilePhone`; zero runtime deps, MIT.
 
 ### Expected Features
 
-**Must have (table stakes):**
-- Layer 1 regex (gitleaks rule pack, embedded — not binary shell-out)
-- Layer 2 Shannon entropy with built-in allowlist (UUIDs, git SHAs, hashes, base64 image headers, npm/Cargo integrity hashes)
-- Layer 3 `.env*` value extraction at session start (the differentiator vs. generic scanners)
-- Layer 4 user dirty-word file (`.mrclean/words.txt`)
-- Block-on-detect default with structured reason payload returned to the agent
-- Stable, collision-free placeholder format `<MRCLEAN:TYPE:NNN>` (zero-padded, type-tagged, namespace-prefixed to survive JSON/Markdown/diff/code contexts)
-- Per-rule action override (block / warn / audit) and severity tiers (CRITICAL / HIGH / MEDIUM / LOW)
-- Multi-axis allowlist (per-rule + path glob + stopword + regex + per-finding fingerprint)
-- Audit log at `.mrclean/audit.jsonl` (truncated SHA-256 hash only, never raw values)
-- `npx mrclean install` zero-config installer (atomic, idempotent, backup-before-write, marker-tagged)
-- Config file `.mrclean/config.toml` (TOML for paste-compatibility with gitleaks)
-- MCP server with `mrclean_check`, `mrclean_redact`, `mrclean_status` (no `unredact`, no `disable`, no `config_write`)
-- Performance self-monitoring against the <100ms / <200ms PROJECT.md budgets
+PII/NER splits into two separable requirement clusters: a **regex structured-PII pack** (cheap, no model, hot-path-safe — ships independently) and **NER** (names/orgs/locations, drags in the ~108 MB ML runtime). The MVP ships both, but the regex half alone is a shippable PII story. NER is advisory: default action warn/audit; only checksum'd entities (SSN/CC) may block; secrets remain the only default hard gate. A per-entity `min_score` threshold is mandatory — NER without it is unshippable (FP avalanche).
 
-**Should have (competitive):**
-- Reversible mode (round-trip restoration on inbound PostToolUse) — the killer feature; requires Claude Code ≥ v2.1.121
-- Hook + MCP dual integration (hook = always-on guard rail; MCP = explicit on-demand)
-- Dry-run mode (every detection becomes `audit`, nothing is blocked) for trust-building first run
-- Manifest log (`.mrclean/manifest.jsonl`) shadowing the placeholder map for debugging
-- False-positive feedback CLI (`mrclean ignore <fingerprint>`) — local-only, no telemetry
-- `npx mrclean doctor` health check with seeded canary (catches Pitfall #7 silent misconfig)
-- Per-machine + per-project config layering (bundled defaults < user-global < project-local)
-- TOML compat layer for gitleaks rules (goodwill / ecosystem)
+**Must have (table stakes, P1 for v2.0):**
+- Opt-in flag, default OFF, perf-exempt (mirrors Layer 5) — non-negotiable guardrail.
+- Regex PII pack: email, US phone, US_SSN, credit-card+Luhn, IPv4/IPv6 — pure-JS, no model.
+- PERSON via `Xenova/bert-base-NER` int8 — the reason this is a PII/NER milestone.
+- Lazy model fetch + cache on first opt-in — protects zero-config `npx`.
+- Per-entity confidence threshold + per-entity action (block/warn/audit).
+- Findings flow into existing placeholder (`PII_*` TYPE) + audit + 5-axis allowlist — "free" reuse, no new anonymizer code.
 
-**Defer (v2+):**
-- Layer 5 LLM classifier (high cost, opt-in)
-- Cross-session deterministic placeholder naming (hash-derived, no stored map)
-- Encrypted disk persistence of reversible map (crash recovery only)
-- Team policy server / rule sync — explicitly out of scope per PROJECT.md
-- Other AI-tool integrations (Cursor, Copilot, ChatGPT) — validate Claude Code thesis first
-- Verified-secret enrichment (call AWS/GitHub APIs to confirm liveness) — at odds with local-first principle
+**Should have (competitive, P2 post-validation):**
+- ORG + LOCATION via NER — same model, mostly threshold tuning; overlaps the `words.txt` proprietary-term mission.
+- Context-word score boosting (promote marginal `dob:`/`ssn:` hits) — reuses entropy-Layer-2 keyword proximity.
+- IBAN + crypto-address (checksum-validated regex).
+- NER on size-capped PostToolUse spans (only after profiling proves a safe budget).
 
-**Anti-features to refuse:** cross-session placeholder map persistence (PROJECT.md ban), telemetry/phone-home, model-facing `unredact()` MCP tool, one-click bypass UI, auto-rotate detected secrets, local HTTP proxy.
+**Defer (v3+):**
+- Multi-language / swappable NER model — English covers the dominant case.
+- Medical/PHI entities, country-specific gov IDs — route to the deferred Presidio compliance tier, not core.
+- Model-facing `unredact`/`disable_pii` MCP tool — banned (prompt-injection bypass, same as v1 MCP-03).
 
 ### Architecture Approach
 
-mrclean is **two parallel surfaces sharing one pure core**: (a) a hook adapter (`bin/mrclean`) Claude Code spawns fresh per event over stdin/stdout, and (b) a long-lived MCP server (`bin/mrclean-mcp`) Claude calls as an explicit tool. The single hardest design question — *where does the placeholder map live across hook invocations?* — has a clean v1 answer: **per-session JSON file at `~/.claude/mrclean/sessions/<session_id>.json` under `flock`**, keyed off the `session_id` Claude Code injects into every hook payload. A sidecar daemon is **not** on the critical path.
+Layer 6 is a **two-lane pair** that mirrors the existing Layer-5 precedent. **L6a (regex-PII)** is deterministic, pure-JS, and joins the fixed hot-path chain after L4 — gated by `pii.regex.enabled`. **L6b (NER)** is only invoked when `runDetection` receives `opts.ner === true`, which **only the MCP server passes** — structurally guaranteeing NER is unreachable from the hook. The transformers.js pipeline is a lazy-`import()`ed warm singleton created once per MCP-server lifetime. Model load failure is **fail-closed-for-NER** (return `nerStatus: 'unavailable'`, fall back to L1–L4+L6a) and must never crash the secret gate. All PII findings reuse the existing placeholder manager, audit log, and 5-axis allowlist with zero new sink code.
 
-**Major components:**
-1. **Installer CLI (`mrclean install`)** — idempotent, marker-tagged JSON merge into `~/.claude/settings.json`; backup-before-write; resolves absolute path to the bin (avoids Pitfall #7 PATH issues); creates `.mrclean/` with `.gitignore` entry; registers MCP server.
-2. **Hook Adapter (the bin)** — single Node entrypoint, reads JSON from stdin, routes by `hook_event_name`, writes JSON to stdout (only). All diagnostics to stderr. Top-level catch-all: fail-closed on crash (exit 2).
-3. **Detection Engine (`core/detection/`)** — pure function `(text, config) → DetectedSpan[]`. Layers 1-4 always; layer 5 only when `--deep`. Decode-then-scan pipeline (recursive base64/URL/JSON-escape) before regex/entropy.
-4. **Placeholder Manager (`core/placeholder/`)** — owns token format and stable allocation: same value within a session → same placeholder, derived from HMAC-SHA256 of value (not a sequence counter).
-5. **Session State Adapter (`state/`)** — the **only** module that touches files for session state. Atomic write under `flock`; SessionStart janitor sweep; SessionEnd cleanup. Plaintext default; opt-in AES-GCM via OS keychain.
-6. **Audit Logger (`core/audit/`)** — append-only JSONL at `.mrclean/audit.jsonl`. Schema records hash + metadata only — **never** raw value. Canary-leak test in CI.
-7. **MCP Server (`mcp/`)** — long-lived, stdio default, Streamable HTTP opt-in. Three read/transform tools with Zod schemas; supervisor + worker-process isolation.
-8. **Doctor CLI (`mrclean doctor`)** — verifies hook wiring with seeded canary, checks Claude Code version, enumerates configured hook events.
+**Major components (all new code quarantined under `src/detect/layer6-pii/`):**
+1. **`regex.ts` + `luhn.ts` (L6a)** — deterministic structured-PII, hot-path-safe; emits `Finding[]` with `source: 'pii-regex'`.
+2. **`pipeline-singleton.ts` + `model-cache.ts`** — the single lazy `import()` boundary for `@huggingface/transformers`; `env.cacheDir = ~/.mrclean/models`; cache resolution, consented first-run download, integrity guard, typed `ModelLoadError`.
+3. **`ner.ts` + `entities.ts` (L6b)** — NER inference, subword→span aggregation, per-entity confidence filter, label→TYPE mapping; emits `source: 'pii-ner'`. MCP-only.
+4. **Modified shared core** — `detect/index.ts` (add L6a always, gate L6b by `opts.ner`), `findings.ts` (source union + precedence), `type-map.ts` (PII TYPE vocabulary), `config/defaults.ts` (`[pii]` table, off), `mcp/server.ts` (warm singleton, pass `{ner:true}`, `nerStatus` in tool output, clear on shutdown).
+5. **Unchanged reuse** — `PlaceholderManager`, `audit/log`, 5-axis allowlist, all hook handlers (they never set `opts.ner`).
 
 ### Critical Pitfalls
 
-1. **False-positive avalanche** (entropy fires on UUIDs/git-SHAs/hashes/base64-image-data) → user uninstalls within hours. **Avoid:** built-in shape allowlist *before* entropy runs; entropy never primary signal — always combined with context keyword OR length+charset constraint; fixture corpus gate.
+1. **Loading the ONNX model in the per-event hook process** — fresh process per event ⇒ full model reload every prompt, 10–100× over budget. Avoid: NER runs ONLY in the warm MCP server; hook stays regex-PII only. (Phase 1, the cardinal sin.)
+2. **`onnxruntime-node` native install failing / breaking zero-config `npx`** — glibc-linked, no WASM auto-fallback in Node; breaks on musl/Alpine/exotic arch. Avoid: ML deps as `optionalDependencies`; runtime guard + graceful "PII unavailable, secrets unaffected" degrade; CI install matrix (macOS arm64, glibc x64, **musl/Alpine**, win32). (Phase 1 + 2.)
+3. **NER treated as a hard gate / false-negative-induced leaks** — recall drops on code/logs/non-Western names; misframing makes users stop self-censoring. Avoid: NER advisory (warn/audit) only; deterministic layers + `words.txt` remain the real guarantee; copy says "best-effort hint, not a guarantee." (Phase 1 semantics + Phase 3 eval/copy.)
+4. **Unverified model download into a security tool's own process** — supply-chain attack vector; HF does no integrity check by default. Avoid: ship a pinned SHA-256 manifest, verify on load, refuse on mismatch; pin revision SHA; HTTPS-only; `optionalDependencies` isolation. (Phase 2.)
+5. **Raw PII in audit log / error paths** — turns `.mrclean/audit.jsonl` into a plaintext PII DB in the repo. Avoid: hash-only audit entries `{entity_type, severity, token_hash, engine, model_rev, offset}`; scrub all error/exception paths; leak-grep regression test. (Phase 1 schema + Phase 4 hardening.)
 
-2. **False-negative bypass via encoding/chunk boundaries** (base64, URL-encode, JSON-escape, chunk-split, multimodal images). **Avoid:** decode-then-scan recursive pipeline (cap depth 3); per-session sliding-window buffer; scan disk-spilled preview file; document image limitation; fixture corpus includes encoded variants.
-
-3. **Performance death spiral** (cold Node start + re-compile regex per call → 400ms hook latency). **Avoid:** persistent MCP does heavy work; hook is thin client; compile regexes once; `re2` for adversarial-input safety; CI benchmark gate (p95 < 80ms / 4KB prompt, < 150ms / 50KB tool result); Layer 5 strictly opt-in/out-of-band.
-
-4. **Reversible-mode map leak** (the map IS every secret in one file). **Avoid:** in-memory only by default; opt-in encrypted persistence uses OS keychain (mode 0600, never in `.mrclean/`, never in `/tmp`); atomic cleanup on `exit`/`SIGINT`/`SIGTERM`; `.gitignore` entry from installer; threat-model document required.
-
-5. **Hook silent misconfiguration** (only exit 2 blocks; everything else passes through). **Avoid:** absolute path resolved at install time; fail-closed exit 2 on any error; SessionStart canary visible in stderr; `npx mrclean doctor`; install at user-scope `~/.claude/settings.json` (avoids subdirectory bypass).
-
-Honorable mentions (full detail in PITFALLS.md): placeholder collision/instability (#4), audit log leaking secret values (#6), MCP server crash silently disabling (#8), gitleaks rule-pack drift (#9), prompt-injection bypass (#10), bypass via non-hooked surfaces / subagents (#11), pre-commit overlap with gitleaks (#12).
+Also material: FP flood shredding code/JSON (Phase 3 — default audit, confidence threshold, code-skip, structured-payload parseability tests); non-determinism breaking reproducible audit (Phase 1 — pin revision SHA + record quant/backend); warm-process memory growth from leaky onnxruntime sessions (Phase 2 — single reused session, tensor disposal, worker recycling + RSS watchdog); placeholder collisions / reversibility breakage (Phase 3 — single ordered substitution pass, exclude `<MRCLEAN:*>` ranges from NER input); scope creep into "a worse Presidio" (Phase 1 scope fence, enforced every transition).
 
 ## Implications for Roadmap
 
-### Phase 1: Foundation — Installer, MCP scaffold, project skeleton
-**Rationale:** Validates Claude Code actually invokes the bin with expected exit-code semantics before any detection logic exists. Establishes persistent MCP-server architecture from day one (avoids "spawn child per hook" anti-pattern). Makes silent misconfiguration detectable.
-**Delivers:** `npx mrclean install / uninstall / doctor` (idempotent, atomic, backup, marker-tagged); absolute-path resolution; `.gitignore`/`.gitleaksignore` snippets; MCP server scaffolding with `mrclean_status`; supervisor model + stderr-only logging; SessionStart "mrclean active" banner; project skeleton (tsup + vitest + ESM-only, two-bin package.json).
-**Avoids:** Pitfalls #3, #7, #8, #11, #12.
+Architecture's "Suggested Build Order" and the pitfalls phase-mapping converge on a clean four-phase structure. Schema/contract foundations and the cardinal architecture decisions come first; the cheap regex lane ships independently before the heavy ML lane; security hardening closes the milestone.
 
-### Phase 2: Detection Engine (Layers 1-4)
-**Rationale:** Pure logic with no I/O — fully testable in isolation. Riskiest layer (Layer 1 regex coverage) built and reviewed first. Decode-then-scan + shape allowlist must ship with first entropy implementation, not retrofitted.
-**Delivers:** `core/detection/` with all four non-LLM layers; `core/placeholder/` with HMAC-derived stable token allocation; severity tiers; multi-axis allowlist evaluator; decode-then-scan recursive pipeline; fixture corpus as test gate; `re2` regex engine with per-pattern timeout.
-**Avoids:** Pitfalls #1, #2, #4, #9.
+### Phase 1: Foundations, Contracts & Architecture Decisions
+**Rationale:** The load-bearing decisions (NER-off-the-hook, advisory-not-gate, optionalDependencies, audit schema, scope fence) must be locked before any model code exists — Pitfalls 1, 2, 4, 6, 8, 11 all anchor here. Schema additions unblock everything downstream and touch Plan-02-00-owned files (`findings.ts`, `type-map.ts`) that carry "revise plan first" warnings.
+**Delivers:** `'pii-regex'`/`'pii-ner'` added to `Finding.source` + `SOURCE_PRECEDENCE`; PII TYPEs + rule-id mappings in `type-map.ts`; `MrcleanPiiConfig` in `shared/types.ts` + `defaults.ts` (off); audit schema fields (`engine`, `model_rev`, `quant`, `backend`, hash-only, extend no-raw rule to PII); ML deps declared as `optionalDependencies`; documented scope fence + advisory-gate semantics in acceptance criteria.
+**Addresses:** opt-in/perf-exempt guardrail, finding-shape integration contract.
+**Avoids:** Pitfall 1 (architecture placement), 2 (optionalDeps), 4 (advisory gate), 6 (audit schema/pin), 8 (hash-only schema), 11 (scope fence).
 
-### Phase 3: Hook Integration (One-Way Mode)
-**Rationale:** Connects the engine to Claude Code. Ships v0.1: catches secrets in prompts (block-with-reason, since `replaceUserMessage` doesn't exist) and tool calls (`updatedInput` for PreToolUse). PostToolUse observational only at this stage.
-**Delivers:** All four event handlers; audit log with hash-only entries; sliding-window buffer for chunk seams; spill-file scanning; PreToolUse argument scanning; fail-closed exit semantics; structured reason payload to agent.
-**Avoids:** Pitfalls #2, #6, #7, #11.
+### Phase 2: Regex Structured-PII Lane (L6a) + Model Acquisition Infra
+**Rationale:** Regex PII is high-value, low-cost, hot-path-safe with zero model dependency — ship it first as a standalone PII story. In parallel, build the model-acquisition/caching/integrity infra (pure infra, testable without inference) and warm-process memory management, since these gate the NER lane.
+**Delivers:** `layer6-pii/regex.ts` + `luhn.ts` wired into `runDetection` after L4 (gated by `pii.regex.enabled`), validated within < 100/200 ms via `doctor/bench.ts`; `model-cache.ts` + `pipeline-singleton.ts` with lazy `import()`, `env.cacheDir = ~/.mrclean/models`, consented SHA-256-verified first-run download, fail-closed-for-NER, single-reused-session + tensor disposal + RSS watchdog/worker recycling; CI install matrix incl. musl/Alpine.
+**Uses:** `validator`, hand-rolled regex pack, `@huggingface/transformers` cache/env API.
+**Implements:** L6a hot-path lane; model cache + singleton plumbing components.
+**Avoids:** Pitfall 2 (matrix CI + graceful degrade), 3 (cache-dir pinning, offline side-load, consented fetch), 7 (SHA manifest), 9 (memory management).
 
-### Phase 4: MCP Tool Surface
-**Rationale:** Independent surface; can ship in parallel after Phase 3. Reuses Core entirely. Tool surface deliberately minimal — invariant that **no model-facing tool returns map values**.
-**Delivers:** `src/mcp/` with `mrclean_check`, `mrclean_redact`, `mrclean_status`; stdio (default) + Streamable HTTP (opt-in); session-bridge to share state with hook; supervisor + worker-process isolation.
-**Avoids:** Pitfalls #10, #8.
+### Phase 3: NER Inference (L6b) + MCP Wiring + Detection Integration
+**Rationale:** Depends on Phase 1 schema + Phase 2 infra. This is where the probabilistic detector meets the deterministic pipeline — the FP/overlap/reproducibility risks all land here.
+**Delivers:** `ner.ts` + `entities.ts` (subword aggregation, per-entity confidence filter, default action audit/warn, code-shaped-token stop-list, code-content skip); gated behind `opts.ner && pii.ner.enabled`; MCP `check.ts`/`redact.ts` pass `{ner:true}`, warm singleton at boot/first call, `nerStatus` output, cleared on `shutdownMcpSupervisor` (verify MCP-03 read/transform-only invariant holds); unified single-ordered substitution pass with one allocator, NER excluded from `<MRCLEAN:*>` ranges; cross-machine reproducibility + structured-payload + mixed secret+PII round-trip tests.
+**Addresses:** PERSON (+ ORG/LOC) NER, per-entity threshold/action.
+**Avoids:** Pitfall 5 (defaults/thresholds/code-skip/parseability), 6 (cross-machine reproducibility), 10 (unified pipeline/overlap/round-trip).
 
-### Phase 5: Reversible Mode + Session State
-**Rationale:** Highest-value differentiator but highest risk. Deferred until one-way is burned in. Requires Claude Code ≥ v2.1.121 for `hookSpecificOutput.updatedToolOutput` on non-MCP tools. Threat-model document is the milestone exit gate.
-**Delivers:** `src/state/` Session State Adapter (atomic write under `flock`); reversible-mode toggle; PostToolUse handler emits `updatedToolOutput`; `.mrclean/manifest.jsonl` shadow log; opt-in OS-keychain encryption (defer if v1 in-memory-only suffices); `mrclean show <session_id>`; published `THREAT_MODEL.md`.
-**Avoids:** Pitfalls #5, #10.
-
-### Phase 6: Hardening, CI, and Launch
-**Rationale:** Cross-cutting quality gates. Benchmark gate prevents silent latency bloat. Auto-sync workflow institutionalizes Pitfall #9 prevention. Red-team / fuzz tests catch the long tail. Docs codify scope honesty.
-**Delivers:** CI benchmark gate (vitest perf suite); canary-leak test in CI; weekly GitHub Action pulling latest gitleaks rule pack; fault-injection tests; red-team fixture suite; `THREAT_MODEL.md`, README with layering FAQ ("gitleaks for what reaches your repo, mrclean for what reaches the model"); CHANGELOG via changesets; npm publish.
-**Avoids:** Pitfalls #1, #3, #6, #8, #9, #10, #12.
-
-### Phase 7 (deferred — v1.x or v2): Layer 5 LLM Classifier + Polish
-**Rationale:** Highest cost, lowest urgency, opt-in. Don't let it block earlier phases.
-**Delivers:** Layer 5 with lazy-imported `@anthropic-ai/sdk` (`claude-haiku-4-5`); `mrclean report`; `mrclean ignore <fingerprint>`; per-machine + per-project config cascade; cross-session deterministic placeholder naming.
+### Phase 4: Security Hardening, Zero-Config UX & Honest Copy
+**Rationale:** Final gate — close the security and trust surface a security tool is held to.
+**Delivers:** leak-grep regression test (test PII absent from `audit.jsonl` + stderr incl. exception paths); reversible-mode PII map inherits secret-map rules (in-memory default, encrypted-at-rest + session-exit wipe if persisted); first-run progress UX + `mrclean pii fetch-model --from <path>` offline side-load + `allowRemoteModels=false`; `doctor/checks.ts` model-presence/cache check; README/copy ruthlessly framed "best-effort ML PII hint, not a guarantee."
+**Avoids:** Pitfall 8 (leak-grep, error-path scrubbing), 4 (honest copy), 3 (offline/consent UX).
 
 ### Phase Ordering Rationale
 
-- **Installer-first** (Phase 1 not Phase 2) is non-negotiable: a no-op echo hook validates wiring before any detection logic exists.
-- **Detection before integration** (Phase 2 before Phase 3) lets the riskiest, most testable code live in pure-function isolation.
-- **One-way before reversible** (Phase 3 before Phase 5) ships value early without paying map-leak risk; reversible requires CC ≥ v2.1.121 anyway.
-- **MCP can ship in parallel** (Phase 4 alongside or after Phase 3) — independent surface.
-- **Hardening last** (Phase 6) — CI benchmark gates most valuable once there's surface area to regress.
-- **Layer 5 deferred** because Layers 1-4 cover ~95% of leak surface and cost/latency story is fundamentally different.
+- **Schema + decisions first** because `findings.ts`/`type-map.ts`/audit-schema/optionalDeps choices propagate everywhere and several are irreversible-cheaply (the cardinal NER-placement and advisory-gate calls).
+- **Regex lane before NER lane** because the two are genuinely separable clusters: regex has zero model dependency, is hot-path-safe, and is independently shippable PII value — de-risking the milestone if NER slips.
+- **Model infra (Phase 2) before inference (Phase 3)** because cache/integrity/memory plumbing is testable without the model and gates the NER lane.
+- **Security hardening last** because it audits the fully-integrated surface (audit privacy, reversible map, offline) end-to-end.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 2 (Detection):** `re2` Node bindings story; decode-then-scan recursion strategy; gitleaks-TOML→internal-format conversion; canonical 2026 shape-allowlist coverage.
-- **Phase 5 (Reversible Mode):** confirm `updatedToolOutput` behavior on every Claude Code surface; OS-keychain integration story (macOS/Linux/Windows); explicit threat-model boundary under prompt injection.
-- **Phase 7 (LLM Classifier):** Research at point of building, not now — model lineup will have shifted.
+Phases likely needing deeper research / a spike during planning:
+- **Phase 2 & 3 (NER model + inference):** `--research-phase` recommended. Open questions to resolve with a benchmark on target hardware: exact `onnxruntime-node` cold-load + warm-infer latency for `Xenova/bert-base-NER` int8 (macOS arm64 + Linux glibc); WASM-backend latency (decides whether musl gets NER or regex-only); whether int8 vs fp32 meaningfully degrades PER/ORG recall on code-style content. Architecture explicitly proposes folding this into Spike 002 (already queued from spike 001). Also confirm the `@huggingface/transformers` v4 `exports`/import paths against the live package.
+- **Phase 3 (substitution integration):** overlap/precedence + reversible round-trip with mixed secret+PII content is novel territory for the v1 non-overlapping pipeline — warrants careful test design.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 1 (Installer + MCP scaffold):** Well-documented patterns; `disler/claude-code-hooks-mastery` is a working reference.
-- **Phase 3 (Hook integration, one-way):** Pure composition of Phase 1 + Phase 2.
-- **Phase 4 (MCP tools):** Three small read/transform tools.
-- **Phase 6 (CI/hardening):** Standard tooling.
+- **Phase 1:** schema/config additions follow established v1 patterns (`mergeConfigs`, `Finding` union, `TYPE_VOCABULARY`).
+- **Phase 2 regex lane:** deterministic regex + `validator` + Luhn, DRY with the existing gitleaks engine — well-trodden.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Verified against official docs (Anthropic MCP SDK, Vitest 4, Anthropic SDK npm); MEDIUM only on the gitleaks-rule-reuse path (no first-class JS port — we vendor TOML and parse ourselves, ~150 LOC, well-scoped). |
-| Features | MEDIUM-HIGH | HIGH on detection-engine prior art (gitleaks/Presidio/secretlint converge); MEDIUM on Claude-Code-specific hook UX because integration surface < 12 months old (open issues #34390, #46761, #53330). LOW only on closed-source competitors (Lakera, Nightfall). |
-| Architecture | HIGH | Hook contract verified against Anthropic CHANGELOG (v2.1.121 for `updatedToolOutput`); MCP transports verified against current spec; file-backed state pattern validated against `disler/claude-code-hooks-mastery`. |
-| Pitfalls | HIGH | Cross-verified against Claude Code hook reference, MCP debugging docs, gitleaks issue tracker (#1830, #575, #97), OWASP LLM Prompt Injection cheat sheet, multiple DLP-for-LLM analyses. |
+| Stack | HIGH | Versions/sizes verified live against npm + Hugging Face blob API on 2026-06-01; transformers.js API confirmed via Context7. |
+| Features | HIGH | Presidio entity split + detection-method split verified via official docs; transformers.js NER path verified via HF model card; integration constraints from mrclean's own PROJECT/REQUIREMENTS/spike 001. |
+| Architecture | HIGH | Existing architecture read directly from source; transformers.js lifecycle/caching verified via Context7; the NER-off-the-hook decision is grounded in the Claude Code per-event-process contract. |
+| Pitfalls | HIGH | Architectural/latency/supply-chain pitfalls confirmed against onnxruntime/transformers.js/claude-code issue trackers + the dslim/bert-base-NER model card. |
 
-**Overall confidence:** HIGH for v1 scope.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **MCP SDK package surface naming** (LOW): Confirm `@modelcontextprotocol/sdk` exports during Phase 1 install.
-- **Claude Code prompt-rewrite contract** (MEDIUM): UserPromptSubmit cannot rewrite prompts as of v2.1.123. Action: Phase 3 ships block-with-reason; subscribe to feature requests; switch to silent rewrite if `replaceUserMessage` lands.
-- **Reversible-mode encryption-at-rest cost** (MEDIUM): OS-keychain access varies across platforms. Action: Phase 5 ships in-memory-only; defer encrypted persistence to v1.x.
-- **No first-class JS/Wasm port of gitleaks engine** (LOW): Monitor; if `gitleaks-wasm` appears, revisit.
-- **Performance budget on slow disks** (LOW): Phase 6 benchmark gate measures real wall-clock; if a real user hits this, trigger to revisit sidecar daemon.
-- **Subagent / multi-agent hook coverage** (MEDIUM): Phase 1 doctor enumerates configured events; Phase 6 adds subagent canary test.
+- **Exact cold-load + warm-infer latency (and WASM-backend latency)** for `Xenova/bert-base-NER` int8 on target hardware — public ms figures are hardware-specific. Handle: benchmark in a Phase 2/3 spike to size the MCP warm-process budget and decide musl/exotic-platform NER posture.
+- **int8 vs fp32 recall delta on mrclean-style content (code/logs/non-Western names)** — affects false-negative posture and the reproducibility variant choice. Handle: measure on a non-CoNLL corpus during Phase 3 eval; keep the quant variant recorded in the audit schema.
+- **`@huggingface/transformers` v4 import-path / `exports` surface** — confirm during Phase 2 against the live package (does not change the recommendation, only import paths).
+- **Entity-array config merge semantics** (`pii.*.entities`) — pin allowlist-concat vs scalar-last-wins; architecture recommends last-wins to allow project-level narrowing. Handle: decide in the Phase 1 config plan.
+
+## Sources
+
+### Primary (HIGH confidence)
+- Context7 `/huggingface/transformers.js` — `token-classification` pipeline API, `env.cacheDir`/`allowRemoteModels`, `dtype: 'int8'` quantization, `progress_callback`, singleton ESM pattern, default cwd-relative cache footgun.
+- `npm view @huggingface/transformers` / `@xenova/transformers` / `validator` / `redact-pii` (live, 2026-06-01) — versions, transitive pins (`onnxruntime-node@1.24.3`, `sharp@^0.34.5`), `@google-cloud/dlp` dep confirmation, Xenova frozen-since-2024.
+- Hugging Face blob API (`?blobs=true`, live) — verified ONNX int8 sizes: `Xenova/bert-base-NER` 108.5 MB, `piiranha` 317.1 MB, `gliner_multi_pii` 349.1 MB.
+- [dslim/bert-base-NER model card](https://huggingface.co/dslim/bert-base-NER) — CoNLL-2003 recall (PER ~0.98, ORG ~0.94, LOC ~0.97) + explicit domain-drift warning.
+- [Microsoft Presidio — Supported PII Entities](https://microsoft.github.io/presidio/supported_entities/) — regex+context vs NER detection-method split, anonymize operators.
+- [anthropics/claude-code#39391](https://github.com/anthropics/claude-code/issues/39391) (fresh process per hook event) + [#50270](https://github.com/anthropics/claude-code/issues/50270) (glibc-only native binary, no JS fallback).
+- [microsoft/onnxruntime#26831/#25325/#22271](https://github.com/microsoft/onnxruntime/issues/26831) — Node binding memory leaks (Pitfall 9).
+- [huggingface/huggingface_hub#2364](https://github.com/huggingface/huggingface_hub/issues/2364) — no default download integrity check (Pitfall 7).
+- [huggingface/transformers.js#997](https://github.com/huggingface/transformers.js/issues/997) — cwd-relative cache path footgun (Pitfall 3).
+- mrclean source (read directly): `src/detect/index.ts`, `findings.ts`, `type-map.ts`, `session-state.ts`, `config/defaults.ts`, `shared/types.ts`, `hook/handlers/user-prompt-submit.ts`, `hook/failclosed.ts`, `mcp/server.ts`.
+- mrclean `PROJECT.md` / `REQUIREMENTS.md` / spike 001 (`vs-presidio`) — milestone guardrails, finding-shape contract (DET1-03), 5-axis allowlist (CFG-02), MCP read/transform-only (MCP-03), Presidio-deferred framing, structured-payload corruption lesson.
+
+### Secondary (MEDIUM confidence)
+- SitePoint "Optimizing Transformers.js for Production" + PkgPulse "Transformers.js vs ONNX Runtime Web 2026" — cold-load/inference latency ranges (hundreds of ms–seconds cold; ~110–220 ms warm).
+- [arxiv 2505.01067](https://arxiv.org/pdf/2505.01067) (malicious model-repo configs) + [CVE-2026-1839](https://www.sentinelone.com/vulnerability-database/cve-2026-1839/) (HF Transformers RCE class) — supply-chain argument for ONNX-not-pickle + SHA verification.
+- [redact-pii on npm](https://www.npmjs.com/package/redact-pii) — corroborates `@google-cloud/dlp` dependency.
+
+### Tertiary (LOW confidence — measure in spike)
+- Exact `onnxruntime-node` cold-load/warm-infer ms for the chosen model on target hardware; WASM-backend latency; int8-vs-fp32 recall delta — all hardware/corpus-specific, flagged for a Phase 2/3 benchmark spike.
+
+---
+*Research completed: 2026-06-01*
+*Ready for roadmap: yes*

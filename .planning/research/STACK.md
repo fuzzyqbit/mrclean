@@ -1,10 +1,13 @@
 # Stack Research
 
-**Domain:** In-session sanitizer for Claude Code (hook + MCP server) — Node/TypeScript CLI distributed via npm
-**Researched:** 2026-05-13
-**Confidence:** HIGH for runtime/SDK/test choices, MEDIUM for the gitleaks-rule-reuse path (no first-class JS port; we adopt the TOML rule pack and parse it ourselves), HIGH for everything else.
+**Domain:** In-process, native-Node PII/NER detection layer (opt-in tier) for mrclean v2.0 — no Python, no data egress
+**Researched:** 2026-06-01
+**Confidence:** HIGH (versions/sizes verified live against npm + Hugging Face API; transformers.js docs via Context7)
 
----
+> Scope note: This file covers ONLY the **new** PII/NER capability for milestone v2.0. The existing
+> Node 20+/TS stack, hooks, MCP stdio server, secretlint+gitleaks+entropy+.env+words.txt layers,
+> placeholder manager, audit log, allowlist, tsup, and Vitest are already validated — see CLAUDE.md.
+> Nothing here changes those picks; it adds an opt-in lane on top of them.
 
 ## Recommended Stack
 
@@ -12,174 +15,112 @@
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| **Node.js** | `>=20.18.0` (LTS) | Runtime | Required floor for the official MCP TypeScript SDK and Vitest 4.x (`^20 || ^22 || >=24`). Claude Code itself ships on Node 20+, so users already have it. Node 18 is EOL'd as of April 2025; 20 is the conservative minimum. |
-| **TypeScript** | `^5.6.0` | Language | Hard requirement from the constraints doc. 5.6 lines up cleanly with Zod v4 type instantiations and the MCP SDK's typed tool registration. Avoid 5.0–5.3: known issues with deep generic inference that hurt SDK ergonomics. |
-| **`@modelcontextprotocol/sdk`** | `^1.x` (currently `1.29.x`, March 2026) | MCP server + client | Official Anthropic-maintained SDK. Exposes `McpServer`, `StdioServerTransport`, and Streamable HTTP transport — the two transports the constraints doc explicitly requires. v2 is pre-alpha — pin to `^1` for production. |
-| **`@anthropic-ai/sdk`** | `^0.95.x` (Layer 5 only, opt-in) | Optional LLM classifier (`--deep`) | Official Anthropic TS SDK. Use the **Messages API** with `model: "claude-haiku-4-5"` (current alias) or `"claude-haiku-4-5-20251001"` (pinned) for cheap semantic PII classification at $1/$5 per 1M tokens. Don't pull in `ai` (Vercel AI SDK) for this — you don't need streaming UI primitives, and shipping the Vercel SDK as a dep balloons install size for a feature that's off by default. |
-| **Zod** | `^4.4.x` (import via `zod/v4`) | Tool schema validation, hook payload validation | The MCP TypeScript SDK uses Zod schemas for `inputSchema` / `outputSchema` on tool registration (Standard Schema compatible). v4 is stable, ~14× faster string parsing than v3, and the SDK examples target `zod/v4`. Import explicitly from `zod/v4` to opt into the new core during the transitional period. |
-| **`commander`** | `^13.x` | CLI argument parsing for the `mrclean` bin | ~35M weekly downloads, the de-facto Node CLI parser. v13 added first-class TypeScript inference. Subcommand model fits `mrclean install`, `mrclean check`, `mrclean serve`, `mrclean audit` cleanly. Lighter than yargs, more mature than citty. |
+| **`@huggingface/transformers`** | `^4.2.0` (current latest; `next` = `4.0.0-next.11`) | In-process ONNX inference engine for the NER pass — `pipeline('token-classification', …)` | The **maintained** successor to `@xenova/transformers`, which is frozen at `2.17.2` (last published 2024-05-29, no releases since). The Xenova package is a dead end; `@huggingface/transformers` is the org-owned continuation, actively shipping. On Node it runs models **CPU-only via native `onnxruntime-node`** (no GPU, no Python, no network at inference time). Exposes `env.cacheDir`, `dtype`-based quantization selection, and `progress_callback` for lazy-download UX — exactly the controls the zero-config model strategy needs. |
+| **`onnxruntime-node`** | `1.24.3` (pinned transitively by `@huggingface/transformers@4.2.0`) | Native CPU inference backend | **Do not install directly** — it arrives as a dependency of `@huggingface/transformers` and is version-locked there (transformers 4.2.0 pins `onnxruntime-node@1.24.3`, `sharp@^0.34.5`, `onnxruntime-web@1.26.0-dev`). It ships **prebuilt native binaries** per platform (darwin-arm64/x64, linux, win32) via npm optional deps — no compiler needed on install, but it IS a native module: it inflates `node_modules`, can fail on musl/Alpine without the right prebuild, and is the reason the whole NER engine must live behind the opt-in lane, never in the default `npx` cold path. |
 
-### Supporting Libraries
+### NER Models (lazy-downloaded ONNX, not bundled)
+
+All sizes are **verified live** against the Hugging Face blob API on 2026-06-01. Pick the `int8`/`quantized`/`uint8` variant (they are byte-identical in size and are what transformers.js fetches when `dtype: 'int8'` or the legacy `quantized: true` is set).
+
+| Model | int8 / quantized size | Entities | Recommendation |
+|-------|----------------------|----------|----------------|
+| **`Xenova/bert-base-NER`** | **108.5 MB** (int8/uint8); `q4f16` 93.7 MB; fp32 431 MB | PER, ORG, LOC, MISC (4 classes, CoNLL-2003) | **DEFAULT.** Smallest credible NER model, matches PROJECT.md's ~108 MB target. Covers the "names / orgs / locations" goal directly. Already published in transformers.js ONNX layout. Fast enough for the perf-exempt lane. |
+| **`onnx-community/piiranha-v1-detect-personal-information-ONNX`** | **317.1 MB** (int8/quantized/uint8); fp16 575 MB; fp32 1150 MB | Purpose-built PII token classifier (names, emails, phone, SSN-like, account #s, etc.) | **OPTIONAL upgrade tier.** ~3× the download of bert-base-NER and a DeBERTa-v3 backbone (heavier per-token). Offer as an opt-in `--pii-model piiranha` for users who want structured-PII coverage from the model itself rather than from regex. Low community traction (515 downloads, 1 like) — treat as MEDIUM-maturity. |
+| **`onnx-community/gliner_multi_pii-v1`** | **349.1 MB** (int8/quantized) | Zero-shot GLiNER — arbitrary entity labels at inference time (you pass the label set) | **DEFER.** GLiNER's zero-shot labeling is powerful but the transformers.js `token-classification` pipeline does **not** natively drive GLiNER's prompt-based head; it needs custom pre/post-processing (the `gliner` npm wrapper, v0.0.19, last touched 2025-03, is `0.0.x` and immature). Not worth the integration risk for v2.0. Revisit if users need custom entity types. |
+
+**Model UX strategy (verified against transformers.js Node docs):**
+- Default cache is `./node_modules/@huggingface/transformers/.cache/`. **Override** with `env.cacheDir` to a stable user-level path (e.g. `~/.mrclean/models/`) so the model survives `npm` reinstalls and is shared across projects.
+- Set `env.allowRemoteModels = true` on first opt-in (to fetch), then the cached copy is used offline. Optionally set `env.allowLocalModels`/`env.localModelPath` to force offline-only after first fetch.
+- Use the **singleton pipeline pattern** (lazy `getInstance()`) — load the model once per process, never at module top-level, so a session that never opts in pays zero cost.
+- Wire `progress_callback` into the CLI to show a one-time download progress bar (`mrclean enable-pii` style), satisfying "zero-config but no multi-hundred-MB bundle."
+- Quantization: pass `dtype: 'int8'` (modern API) — the legacy `quantized: true` boolean is deprecated in favor of `dtype` in transformers.js v3+.
+
+### Structured-PII detection (regex + validators, zero model)
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| **`@secretlint/core`** + **`@secretlint/node`** + **`@secretlint/secretlint-rule-preset-recommend`** | `^13.x` (May 2026) | Layer-1 secret detection (programmatic) | Pure-JS, programmatic API, MIT-licensed. Preset-recommend covers AWS, GCP, GitHub, GitLab, npm, private keys, Slack, Stripe, OpenAI, Anthropic, Databricks, Azure, Cloudflare. Use as the first detection layer instead of hand-rolling the regex pack. Programmatic invocation via `@secretlint/node` accepts in-memory text + a filename hint, which is exactly the shape we have at the hook. |
-| **gitleaks `gitleaks.toml`** rule pack | track upstream `master` (regenerate from latest) | Layer-1 supplemental rules | The `Key Decisions` row in PROJECT.md commits to gitleaks rules. There is **no maintained JS port** of the gitleaks engine; the `betterleaks` and `gitleaks-rs` projects are not Node packages. Strategy: vendor the upstream `config/gitleaks.toml` (~200 rules, auto-generated, MIT) and run the regexes ourselves with a small TS engine. This is ~150 LOC and avoids a Go shell-out. |
-| **`smol-toml`** | `^1.4.x` | Parse the vendored gitleaks TOML at startup | 2× faster than `@iarna/toml`, 4× faster than `@ltd/j-toml`, full TOML 1.1 spec compliance, actively maintained (`@iarna/toml`'s last release was 2019). |
-| **`shannon-entropy`** | inline ~10-line implementation | Layer-2 entropy heuristic | The npm packages `shannon-entropy` (v0.0.3, abandoned) and `binary-shannon-entropy` are too thin to take a dep on. Inline a ~10-line bits-per-char Shannon function (matches the formula gitleaks itself uses). Constraint: < 100 ms hook latency means we cannot afford a hot-path require chain. |
-| **`dotenv`** | `^16.x` | Layer-3 `.env*` value extraction | We are **not loading** env vars into the running process — we are reading the *values* and adding them to the in-memory blocklist. `dotenv.parse()` returns `{ key: value }` from a Buffer/string without side effects, which is exactly what we need. We do **not** need `@dotenvx/dotenvx` here — that adds AES-256 encryption + key management for *storing* secrets in-repo, which is orthogonal to mrclean's job and a 10× heavier dep. |
-| **`fast-glob`** | `^3.3.x` | Discover `.env*` and `.mrclean/*` files at session start | Standard pick for fast cross-platform globbing in Node. Used by Vite, Vitest, ESLint. |
-| **`picocolors`** | `^1.1.x` | Terminal coloring for CLI output and audit log review | 14× smaller than `chalk`, no deps, supports same API surface we need. |
-| **`@anthropic-ai/sdk`** (already listed in core) | `^0.95.x` | Layer 5 only | Lazy-import inside the `--deep` code path so users not opted in never pay the install/startup cost. |
+| **`validator`** | `^13.15.35` | Battle-tested validators behind hand-rolled regex matches: `isEmail`, `isCreditCard` (Luhn), `isIP` (v4/v6), `isMobilePhone` | Use as the **confirmation step** after a cheap regex pre-filter. mrclean already vendors+runs gitleaks regexes itself; the structured-PII rules (email/SSN/CC/phone/IP) follow the same pattern — small TS rule pack, then `validator` to kill false positives (e.g. Luhn-check a 16-digit run before redacting). ~7M weekly downloads, zero runtime deps, MIT. |
+| **Hand-rolled regex rule pack** | inline (~80–120 LOC) | The 5 structured-PII patterns, expressed in the existing rule-engine shape | DRY with the existing gitleaks-TOML engine: define `email`, `us_ssn`, `credit_card`, `phone`, `ipv4/ipv6` as rules that feed the **same** placeholder manager (`<MRCLEAN:PII:NNN>`), audit log, and 5-axis allowlist. Luhn + `validator.isCreditCard` gates the CC rule; a context check (digit grouping `xxx-xx-xxxx`) gates SSN to cut false positives. This is the KISS choice over a third-party PII redactor. |
 
 ### Development Tools
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| **`tsup`** | Bundler for the published npm package | esbuild under the hood, zero-config dual ESM+CJS+`.d.ts` output, ~6M weekly downloads, the standard for TS library publishing in 2026. Configure `bin: 'src/cli.ts'`, `format: ['esm']` (we can ship pure ESM since Node 20 mandate is set), `dts: true`, `clean: true`, `target: 'node20'`. Avoid `unbuild` (UnJS-coupled, mainly useful inside Nuxt) and avoid raw `esbuild` (no `.d.ts` generation). |
-| **Vitest** | `^4.1.x` | Test runner (unit + integration). Native TS, ESM-first, 40% faster than v1.x in the 2026 release. Use `vitest --coverage` for the 80% gate. Avoid Jest: ESM story still painful, slower, and the TS toolchain is more involved. |
-| **`@vitest/coverage-v8`** | `^4.1.x` | V8 coverage reporter | Fastest coverage backend, no Babel involvement. |
-| **`tsx`** | `^4.x` | Direct `.ts` execution during dev (`tsx src/cli.ts install`) | Replaces `ts-node` for the dev loop. No transpile step needed. |
-| **`@types/node`** | `^20.x` | Node typings | Pin to the Node version floor (20), not "latest" — avoids accidentally using APIs not present at the target. |
-| **`prettier`** | `^3.x` | Formatter | Standard. Use `--single-quote --no-semi` or whatever the user prefers; not load-bearing. |
-| **`eslint`** + **`@typescript-eslint`** | `^9.x` / `^8.x` | Linter | ESLint 9 flat config. Keep ruleset minimal: no-unused, no-shadow, prefer-const, the immutability lint set from the user's coding-style rules. |
-| **`changesets`** | `^2.x` | Version + changelog management for npm publish | Simpler than `semantic-release` for a single-package repo. |
-| **`tsx --watch`** for the MCP server | dev only | Hot-reload while iterating on the MCP server | |
-
----
+| **`@types/validator`** | TS types for `validator` | Dev dep; `validator` ships no bundled types. Pin `^13.x`. |
+| existing `tsup` / `Vitest` | Build + test the new layer | No change. **Caveat:** `@huggingface/transformers` + `onnxruntime-node` must be marked **external** in the tsup config (they are native/large and already-resolved at the consumer) — never bundle them. Lazy `import()` keeps them out of the default entry graph. |
 
 ## Installation
 
 ```bash
-# Runtime / core
-npm install @modelcontextprotocol/sdk zod commander smol-toml fast-glob dotenv picocolors
+# New runtime deps for the PII/NER layer (regular deps, but LAZY-imported behind the opt-in tier)
+npm install @huggingface/transformers@^4.2.0 validator@^13.15.35
 
-# Optional Layer 5 (lazy-imported in --deep code path; still declared as a regular dep)
-npm install @anthropic-ai/sdk
-
-# Layer 1 (Secretlint engine + recommended preset)
-npm install @secretlint/core @secretlint/node @secretlint/secretlint-rule-preset-recommend
+# (onnxruntime-node + sharp arrive transitively, version-pinned by @huggingface/transformers — do NOT add directly)
 
 # Dev
-npm install -D typescript@^5.6 tsup tsx vitest @vitest/coverage-v8 \
-              @types/node@^20 prettier eslint @typescript-eslint/parser \
-              @typescript-eslint/eslint-plugin @changesets/cli
+npm install -D @types/validator@^13
 ```
 
-`package.json` essentials:
-
-```jsonc
-{
-  "name": "mrclean",
-  "type": "module",
-  "engines": { "node": ">=20.18.0" },
-  "bin": { "mrclean": "./dist/cli.js" },
-  "exports": {
-    ".": "./dist/index.js",
-    "./mcp-server": "./dist/mcp-server.js"
-  },
-  "files": ["dist", "rules/gitleaks.toml", "README.md", "LICENSE"]
-}
-```
-
-The `bin` field + `type: "module"` + Node 20 floor means `npx mrclean install` works on a fresh machine without a build step on the user side.
-
----
+Models are **not** an npm dependency — they are fetched at runtime on first opt-in into `env.cacheDir`.
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| `@modelcontextprotocol/sdk` v1 | MCP SDK v2 (pre-alpha) | Only after v2 hits stable in Q1–Q2 2026. v1 is the only safe choice today. |
-| `tsup` | `tsdown` (Rolldown-based, 3–5× faster) | Once Rolldown stabilizes and the migration path matures. tsdown's API is tsup-compatible, so future migration is cheap. Don't adopt now — too young for a security tool's supply chain. |
-| `commander` | `citty` (UnJS, modern API) | If we ever absorb a UnJS dep tree for other reasons. Today commander wins on stability + community. |
-| `dotenv` | `@dotenvx/dotenvx` | If we ever add a feature that needs to *read encrypted* .env files in user projects. Today's job is just `parse()`, which dotenv does in 50 LOC. |
-| Inline Shannon entropy | `shannon-entropy` npm pkg | Never — abandoned, 0.0.3, no maintenance signal. Inline. |
-| `smol-toml` | `@iarna/toml` | If we hit a TOML 1.1 incompatibility (extremely unlikely with gitleaks' generated config). |
-| Vitest | `node --test` (built-in) | If we want to drop *all* dev deps. The built-in runner has no watch UI, weak coverage story, and no snapshot testing — not worth it for a security tool we want to iterate on quickly. |
-| `@anthropic-ai/sdk` direct | Vercel `ai` SDK + `@ai-sdk/anthropic` | If mrclean ever grows multi-provider classification. For Layer 5 (single-shot Haiku call), the official SDK is one fewer abstraction layer and one fewer transitive dep. |
-
----
+| `@huggingface/transformers@^4.2.0` | `@xenova/transformers@2.17.2` | **Never.** Frozen since 2024-05-29; superseded by the HF-org package. Only relevant if pinning to a years-old model loader for reproducibility, which we don't want. |
+| `Xenova/bert-base-NER` (108 MB) | `piiranha-...-ONNX` (317 MB) | When the user explicitly opts into heavier, PII-specialized model coverage and accepts the 3× download + slower per-token inference. Offer as a flag, not the default. |
+| Hand-rolled regex + `validator` | `gliner_multi_pii-v1` (349 MB, zero-shot) | When users need **custom/arbitrary** entity types (e.g. "internal project codename" as an NER label) that fixed regex + bert-base-NER can't express. Defer until demand is real; integration is non-trivial. |
+| Hand-rolled regex + `validator` | `redact-pii@3.4.0` | **Never (see What NOT to Use).** Its built-in patterns are fine but the package drags in `@google-cloud/dlp`. |
+| `validator` | `card-validator@10.0.4` | If you need card-brand detection (Visa/Amex/…) beyond Luhn validity. Not needed — mrclean only needs "is this a real card number" to decide whether to redact. |
+| Native `onnxruntime-node` (via transformers) | `onnxruntime-web` (WASM) on Node | Only if a target platform has no `onnxruntime-node` prebuild (e.g. exotic arch). WASM is slower; acceptable fallback for the perf-exempt lane but adds complexity. Detect-and-fallback, don't default to it. |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| **gitleaks via Go binary shell-out** | Adds a Go binary install requirement, breaks the "single `npx` command" UX, and the binary scans files on disk — not in-memory text. | Vendor the gitleaks `config/gitleaks.toml` rule pack and run regexes in TS. |
-| **trufflehog / detect-secrets shell-out** | Same problem: external binary install. trufflehog is Go, detect-secrets is Python (an `npm install -g detect-secrets` exists but it's a wrapper around `pip install`, which is a runtime dep landmine). | Secretlint preset-recommend covers the high-value patterns; gitleaks TOML covers the long tail. |
-| **Jest** | Slow, Babel/CJS by default, painful ESM story, slower test runs hurt the TDD loop. | Vitest 4. |
-| **`ts-node`** | Replaced by `tsx` for direct `.ts` execution — `tsx` is faster and ESM-correct out of the box. | `tsx`. |
-| **`@iarna/toml`** | Last release 2019, 4× slower than `smol-toml`. | `smol-toml`. |
-| **`shannon-entropy` npm pkg** | Abandoned at v0.0.3, no test coverage signal, would add a transitive dep for a 10-line function. | Inline Shannon function. |
-| **`chalk`** | Heavier than needed; for a security tool we want minimal supply-chain surface. | `picocolors` (14× smaller, no deps). |
-| **`@dotenvx/dotenvx` for value extraction** | Brings AES-256/Secp256k1 + key-management code we never use. Adds attack surface. | `dotenv.parse()` (5 KB). |
-| **Vercel `ai` / `@ai-sdk/anthropic`** for Layer 5 | Designed for streaming UI; brings React-flavored types and a plugin ecosystem we don't need. | `@anthropic-ai/sdk` direct, lazy-imported. |
-| **`zx` / `execa`** for hook installation | The `mrclean install` command edits a JSON file (`~/.claude/settings.json`) and writes a binary path. No subprocess orchestration needed. | Native `node:fs/promises` + `JSON.parse`/`stringify`. |
-| **`yaml` / YAML config** | The Claude Code hook contract is JSON. Mixing config formats hurts UX. | JSON for `~/.claude/settings.json`, TOML only because gitleaks ships TOML. |
-| **MCP SDK SSE-only transport** | SSE is being deprecated in the November 2025 MCP spec in favor of Streamable HTTP. | `StreamableHTTPServerTransport` from the SDK; keep stdio for the local hook case. |
-| **Hand-rolling the regex pack from scratch** | PROJECT.md "Key Decisions" explicitly says don't. The gitleaks/secretlint communities maintain this surface; we add value at the hook integration layer, not the regex layer. | Adopt secretlint preset + gitleaks TOML. |
-
----
+| **`redact-pii` (solvvy)** | Depends on **`@google-cloud/dlp`** (+ `lodash`). DLP is a *cloud* redaction backend — pulling it in bloats install with a Google Cloud client and adds a data-egress-capable code path into a tool whose entire premise is "no text leaves the box." Supply-chain + threat-model mismatch even if you only call the sync regex path. | Hand-rolled regex pack + `validator`; or `@redactpii/node` (zero-dep, regex-only) if a turnkey lib is wanted. |
+| **Microsoft Presidio (Python sidecar)** | Requires Python runtime + spaCy/transformers model (hundreds of MB) + an out-of-process call. Breaks the zero-config `npx`, no-Python, in-process constraints. Spike 001 already framed it as **complementary, deferred** — a compliance-tier alternative, not the default. | In-process `@huggingface/transformers` NER. Keep Presidio as a documented "compliance tier" pointer only. |
+| **Any cloud PII API** (AWS Comprehend, GCP DLP, Azure PII) | Sending text off-box to detect leakage **defeats mrclean's purpose** and is explicitly ruled out in PROJECT.md. | Local ONNX inference only. |
+| **`@xenova/transformers`** | Frozen 2024; superseded. | `@huggingface/transformers`. |
+| **Installing `onnxruntime-node` directly** | Version drift against the one `@huggingface/transformers` pins (`1.24.3`); mismatched native ABI → load failures. | Let it come transitively; keep it external in tsup. |
+| **Bundling the model into the npm tarball** | Multi-hundred-MB package install for an off-by-default feature; kills the zero-config first-run promise. | Lazy runtime download into `env.cacheDir` with `progress_callback`. |
+| **Loading the NER pipeline at module top-level** | `onnxruntime-node` native load + model deserialize would blow the <100 ms UserPromptSubmit budget for *every* user, opted-in or not. | Lazy `import()` + singleton, only inside the opt-in PII code path. |
 
 ## Stack Patterns by Variant
 
-**If running as a Claude Code hook (the default surface):**
-- Bin entrypoint reads JSON from stdin (the hook payload), runs detection in-process, writes JSON to stdout.
-- No transport — just `process.stdin` / `process.stdout`.
-- Exit code `0` for normal pass-through (with `permissionDecision: "allow"` and possibly a rewritten `updatedInput`), exit code `2` for hard block, anything else for non-blocking warning.
-- Cold-start matters: keep top-level imports thin, lazy-load `@anthropic-ai/sdk` and `@secretlint/*` only inside the `runDetection` path. Aim for < 100 ms cold start to meet the perf constraint.
+**If user has NOT opted into PII (default):**
+- Zero new cost. `@huggingface/transformers` is never imported; no model on disk. The existing secretlint+gitleaks+entropy+.env+words.txt pipeline is unchanged and remains the **hard deterministic gate** for secrets.
 
-**If running as a standalone MCP server (the explicit `mrclean` MCP tool surface):**
-- Use `McpServer` from `@modelcontextprotocol/sdk` with `StdioServerTransport` for the local case (Claude Code spawns it).
-- Use `NodeStreamableHTTPServerTransport` from `@modelcontextprotocol/node` (sub-export under the same package family) for remote / cloud Claude Code surfaces.
-- Register tools `sanitize`, `restore` (reversible mode only), `audit_query`, all with Zod `inputSchema`/`outputSchema` and `structuredContent` returns.
-- Session ID generator should be `() => randomUUID()` (stateful) by default to support reversible-mode placeholder maps; expose a `--stateless` flag that sets `sessionIdGenerator: undefined` for ephemeral CI usage.
+**If user opts into structured-PII only (regex tier):**
+- Load the hand-rolled regex pack + `validator`. No model download. Runs in the **same single Node process**; cheap enough it *could* run in the hot path, but route it through the opt-in lane for consistency. Findings → `<MRCLEAN:PII:NNN>` via the existing placeholder manager.
 
-**If running Layer 5 (`--deep` opt-in):**
-- Lazy-import `@anthropic-ai/sdk` inside the deep classifier module. Never at top level.
-- Default model: `claude-haiku-4-5` (alias). For reproducibility in audit logs, log the resolved snapshot ID (`claude-haiku-4-5-20251001`).
-- Input cap: < 4K tokens of suspect spans — never send the whole prompt. Cost stays around fractions of a cent per call at $1/$5 per 1M.
-- Always set `max_tokens: 256` and a strict JSON-schema-shaped system prompt; we want a classification verdict, not prose.
+**If user opts into NER (model tier, `--deep`-style):**
+- Lazy-load `@huggingface/transformers`, fetch `Xenova/bert-base-NER` int8 (~108 MB) once into `~/.mrclean/models/`, build the singleton pipeline. **Perf-exempt** like the existing Layer 5 LLM pass — runs out of the <100 ms / <200 ms budget by design. Cap/chunk input length to bound latency. NER + regex tiers compose: regex for structured IDs, NER for free-text names/orgs/locations.
 
----
+**If user needs heavier PII coverage:**
+- Swap model to `piiranha-...-ONNX` int8 (~317 MB) via config — same pipeline code, different `model` id.
 
 ## Version Compatibility
 
 | Package A | Compatible With | Notes |
 |-----------|-----------------|-------|
-| `@modelcontextprotocol/sdk@^1.29` | `zod@^4` (via `zod/v4` import) | The SDK's tool-registration schemas now expect Standard-Schema-compatible validators; `zod/v4` is the canonical example in the docs. `zod@^3` still works but you lose the perf/type-instantiation wins. |
-| `vitest@^4.1` | `vite@^8` (peer) | Vitest 4.1 reuses the host project's installed Vite instead of bundling its own. If we never install Vite directly, vitest will install one transitively — fine. |
-| `tsup@^8` | `typescript@^5.0` | tsup uses esbuild for transpile and `tsc` (when present) for `.d.ts`. Pin `typescript` so the consumer's TS version doesn't leak into our `.d.ts`. |
-| `@anthropic-ai/sdk@^0.95` | Node `>=20` | Uses `fetch`, `AbortSignal.timeout`, and other Node 18+ APIs. Stay on the Node 20 floor. |
-| `@secretlint/*@^13` | Node `>=20` | v13 raised the Node floor and now respects `.gitignore` by default. |
-| Node `20.x` | All above | Single floor across runtime + dev. Don't matrix-test against 18 (EOL) or 22+ (works, but spending CI minutes here is low-value until users complain). |
-
----
+| `@huggingface/transformers@^4.2.0` | Node `>=20` | Aligns with mrclean's existing Node 20 floor. Uses native `fetch`/ESM. |
+| `@huggingface/transformers@4.2.0` | `onnxruntime-node@1.24.3` (pinned), `sharp@^0.34.5`, `onnxruntime-web@1.26.0-dev` | These are exact/transitive pins inside transformers; treat them as opaque and external. `sharp` is only used for image models (irrelevant to NER) but still installs — another reason to keep this whole subtree behind opt-in. |
+| `@huggingface/transformers` | tsup (ESM, `target: node20`) | Mark `@huggingface/transformers` and `onnxruntime-node` as `external` in tsup; rely on lazy `import()` so they stay out of the default bundle graph. |
+| `validator@^13.15.35` | Node `>=20`, zero runtime deps | Pairs with `@types/validator@^13` (dev). |
+| ONNX model variant | `dtype: 'int8'` (modern) / `quantized: true` (legacy) | Prefer `dtype`. int8 == quantized == uint8 in file size for both candidate models (verified). |
 
 ## Sources
 
-### Primary / Official (HIGH confidence)
-- [Claude Code Hooks Reference](https://code.claude.com/docs/en/hooks) — verified hook event names, JSON in/out shapes, exit code semantics, settings.json registration locations, matcher syntax, `${CLAUDE_PROJECT_DIR}` placeholders.
-- [`@modelcontextprotocol/sdk` repo (typescript-sdk)](https://github.com/modelcontextprotocol/typescript-sdk) — package name, `McpServer` class, transport classes, `registerTool()` API.
-- [MCP SDK server.md docs](https://github.com/modelcontextprotocol/typescript-sdk/blob/main/docs/server.md) — verified Streamable HTTP transport setup, Zod v4 import path (`zod/v4`), `structuredContent` return shape.
-- [`@anthropic-ai/sdk` on npm](https://www.npmjs.com/package/@anthropic-ai/sdk) — version 0.95.2 (current).
-- [Anthropic Claude Haiku 4.5 announcement](https://www.anthropic.com/news/claude-haiku-4-5) — model name `claude-haiku-4-5`, snapshot `claude-haiku-4-5-20251001`, pricing $1/$5 per 1M.
-- [Secretlint repo](https://github.com/secretlint/secretlint) and [`@secretlint/secretlint-rule-preset-recommend` on npm](https://www.npmjs.com/package/@secretlint/secretlint-rule-preset-recommend) — v13.0.0 (May 2026), preset rule list, programmatic API via `@secretlint/node`.
-- [gitleaks `config/gitleaks.toml`](https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml) — rule format (`id`, `regex`, `keywords`, `entropy`, `allowlists`), ~200+ rules, MIT-licensed via the parent repo.
-- [Vitest releases](https://github.com/vitest-dev/vitest/releases) — v4.1.6 current, Node `^20 || ^22 || >=24` floor.
-- [Zod v4 release notes](https://zod.dev/v4) — stable, exported under `zod/v4` subpath, 14× faster string parsing.
-- [`smol-toml` on npm](https://www.npmjs.com/package/smol-toml) — current performance benchmark vs `@iarna/toml` and `@ltd/j-toml`.
-- [`@dotenvx/dotenvx` docs](https://dotenvx.com/) — confirmed scope (encryption + key management) is orthogonal to value-only parsing.
-
-### Secondary / Comparative (MEDIUM confidence)
-- [PkgPulse: tsup vs esbuild vs unbuild 2026](https://www.pkgpulse.com/guides/tsup-vs-tsdown-vs-unbuild-typescript-library-bundling-2026) — tsup as the 2026 default for TS libraries; tsdown noted as future migration target.
-- [Commander vs yargs vs citty 2026 comparison](https://www.pkgpulse.com/blog/how-to-build-cli-nodejs-commander-yargs-oclif) — commander as the production-stable choice.
-- [DEV Community: MCP in 2026](https://dev.to/x4nent/complete-guide-to-mcp-model-context-protocol-in-2026-architecture-implementation-and-4a11) — Streamable HTTP replacing SSE in the November 2025 spec.
-
-### Open Questions / LOW confidence
-- **`@modelcontextprotocol/server` vs `@modelcontextprotocol/sdk` package naming.** The SDK repo doc page mentioned `@modelcontextprotocol/server` and `@modelcontextprotocol/client` as imports; the npm package most projects depend on is published as `@modelcontextprotocol/sdk` and re-exports server/client. **Action:** during Phase 1, install both and confirm against the actual package's `exports` field — the surface may have shifted in v1.29. This does not change the recommendation, only the import paths.
-- **No first-class JS/Wasm port of the gitleaks engine** as of May 2026. We adopt the rules (TOML), not the engine. If a maintained Wasm build appears later (`gitleaks-wasm` or similar), revisit.
+- Context7 `/huggingface/transformers.js` — `token-classification` / pipeline API, `env.cacheDir`, `dtype` quantization, `progress_callback`, singleton ESM pattern, default cache path. HIGH.
+- `npm view @huggingface/transformers` (live, 2026-06-01) — version `4.2.0`, `next 4.0.0-next.11`; deps pin `onnxruntime-node@1.24.3`, `sharp@^0.34.5`, `onnxruntime-web@1.26.0-dev`. HIGH.
+- `npm view @xenova/transformers` — `2.17.2`, last modified 2024-05-29 (frozen). HIGH.
+- Hugging Face blob API (`?blobs=true`, live) — verified ONNX file sizes: `Xenova/bert-base-NER` int8 108.5 MB; `onnx-community/piiranha-...-ONNX` int8 317.1 MB; `onnx-community/gliner_multi_pii-v1` int8 349.1 MB. HIGH.
+- `npm view redact-pii dependencies` — confirms `@google-cloud/dlp` + `lodash` deps. HIGH.
+- `npm view validator` (`13.15.35`), `card-validator` (`10.0.4`), `gliner` (`0.0.19`, 2025-03) — version/maturity signals. HIGH.
+- [redact-pii / basic-redact-pii / @redactpii/node on npm](https://www.npmjs.com/package/redact-pii) — corroborates DLP dependency and the zero-dep offline forks. MEDIUM.
+- `.planning/spikes/001-vs-presidio/README.md` — Presidio deferred-as-complementary framing; entity-coverage gap mrclean must close. HIGH (internal).
 
 ---
-*Stack research for: in-session Claude Code sanitizer*
-*Researched: 2026-05-13*
+*Stack research for: native-Node PII/NER detection layer (mrclean v2.0)*
+*Researched: 2026-06-01*
