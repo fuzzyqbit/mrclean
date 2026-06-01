@@ -17,6 +17,19 @@ export default defineConfig({
   clean: true,
   splitting: false,
   sourcemap: true,
+  // Bundle ALL npm dependencies into the output (node builtins stay external
+  // automatically). Required for Claude Code plugin distribution: plugins are
+  // git-cloned/fetched with NO `npm install`, so dist/cli.js and dist/mcp.js
+  // must be fully self-contained. secretlint's preset rules are pulled in via
+  // statically-analyzable dynamic import() and bundle cleanly.
+  noExternal: [/.*/],
+  // Bundled CJS deps (commander, @secretlint/*) call require('events') etc. at
+  // runtime. In an ESM bundle there is no `require`, so esbuild's interop stub
+  // throws "Dynamic require of X is not supported". Inject a real require built
+  // from createRequire — esbuild's shim then delegates to it for node builtins.
+  banner: {
+    js: "import { createRequire as __mrcleanCreateRequire } from 'module'; const require = __mrcleanCreateRequire(import.meta.url);",
+  },
   // tsup auto-detects #!/usr/bin/env node shebang and makes output executable
   onSuccess: async () => {
     // Copy vendor/ directory into dist/ so the bundled detect-layer1.js can find gitleaks-rules.toml

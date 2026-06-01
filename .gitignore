@@ -1,9 +1,20 @@
 node_modules/
-dist/
 coverage/
+
+# Build output: the shipped plugin artifacts (dist/cli.js, dist/mcp.js, dist/vendor/)
+# ARE committed so the repo is installable as a Claude Code plugin via git clone
+# (plugins get no `npm install`). Exclude sourcemaps and the test-only entry to
+# keep the tree lean.
+dist/*.map
+dist/detect-layer1.*
 *.log
+*.swp
 .DS_Store
 .env*
 *.tsbuildinfo
 # mrclean project-local config (user-specific, not committed)
 .mrclean/
+
+# >>> mrclean managed entries — do not edit manually >>>
+.mrclean/
+# <<< mrclean managed entries <<<

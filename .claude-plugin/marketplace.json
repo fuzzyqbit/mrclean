@@ -1,0 +1,13 @@
+{
+  "name": "fuzzyqbit",
+  "owner": { "name": "fuzzyqbit", "url": "https://github.com/fuzzyqbit" },
+  "plugins": [
+    {
+      "name": "mrclean",
+      "source": "./",
+      "description": "In-session secret sanitizer for Claude Code — redacts secrets before they leave your machine.",
+      "license": "MIT",
+      "keywords": ["security", "secrets", "redaction", "hook", "mcp"]
+    }
+  ]
+}
