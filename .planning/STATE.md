@@ -106,6 +106,12 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 4/6 plans
 
 - Task 3 (checkpoint:human-action): Maintainer must run first-publish manually (npm login + npm publish --access public). See docs/RELEASE.md. After publish, tag v1.0.0-rc.1 and push. Next Release workflow run will open 1.0.0 version-PR.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260601-0e1 | Fix misleading install stub (dead [words]/[detection] keys) | 2026-06-01 | 1afefec | [260601-0e1-fix-install-stub-dead-keys](./quick/260601-0e1-fix-install-stub-dead-keys/) |
+
 ### Cross-Phase Notes
 
 - Phase 1's MCP scaffold + supervisor model is reused identically by Phase 3's tool surface — no rework expected.
@@ -201,4 +207,4 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 4/6 plans
 **Next action:** Execute Plan 03-05 (npm publish + release smoke + repo URL finalization).
 
 ---
-*Last updated: 2026-05-14 after plan 03-04 execution*
+*Last updated: 2026-06-01 - Completed quick task 260601-0e1: fix misleading install stub*
