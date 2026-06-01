@@ -3548,24 +3548,6 @@ async function backupJson(target) {
   await copyFile(target, backupPath);
   return backupPath;
 }
-async function listMrcleanBackups(target) {
-  const dir = dirname(target);
-  const base = basename(target);
-  const prefix = `${base}.mrclean-backup-`;
-  const entries = await readdir(dir);
-  const backups = entries.filter(
-    (name) => name.startsWith(prefix) && name.endsWith(".json")
-  );
-  backups.sort((a, b) => {
-    const tsA = a.slice(prefix.length, -".json".length);
-    const tsB = b.slice(prefix.length, -".json".length);
-    return tsB.localeCompare(tsA);
-  });
-  return backups.map((name) => join(dir, name));
-}
-async function restoreFromBackup(target, backup) {
-  await copyFile(backup, target);
-}
 var init_atomic_json = __esm({
   "src/install/atomic-json.ts"() {
     "use strict";
@@ -3946,30 +3928,12 @@ async function runUninstall(opts) {
   const cwd = opts?.cwd ?? process.cwd();
   const settingsPath = join5(home, ".claude", "settings.json");
   const claudeJsonPath = join5(home, ".claude.json");
-  await restoreOrRemoveHooks(settingsPath);
-  await restoreOrRemoveMcp(claudeJsonPath, cwd);
+  await removeHookEntries(settingsPath);
+  await removeMcpServerEntry(claudeJsonPath, cwd);
   await removeGitignoreEntries(cwd);
   process.stdout.write(
-    import_picocolors.default.yellow("mrclean uninstalled") + import_picocolors.default.dim(" (config files restored; .mrclean/ retained \u2014 delete manually if desired)") + "\n"
+    import_picocolors.default.yellow("mrclean uninstalled") + import_picocolors.default.dim(" (mrclean entries removed; your other settings and .mrclean/ left intact)") + "\n"
   );
-}
-async function restoreOrRemoveHooks(settingsPath) {
-  const backups = await listMrcleanBackups(settingsPath);
-  if (backups.length > 0) {
-    const oldest = backups[backups.length - 1];
-    await restoreFromBackup(settingsPath, oldest);
-  } else {
-    await removeHookEntries(settingsPath);
-  }
-}
-async function restoreOrRemoveMcp(claudeJsonPath, projectCwd) {
-  const backups = await listMrcleanBackups(claudeJsonPath);
-  if (backups.length > 0) {
-    const oldest = backups[backups.length - 1];
-    await restoreFromBackup(claudeJsonPath, oldest);
-  } else {
-    await removeMcpServerEntry(claudeJsonPath, projectCwd);
-  }
 }
 var import_picocolors;
 var init_install = __esm({
@@ -3981,7 +3945,6 @@ var init_install = __esm({
     init_project_dir();
     init_gitignore();
     init_path_resolver();
-    init_atomic_json();
     init_version();
   }
 });

@@ -32,33 +32,46 @@ afterEach(async () => {
 
 // Test 10: install then uninstall = byte-identical to pre-install snapshot
 describe('runInstall → runInstall → runUninstall round-trip', () => {
-  it('restores settings.json to byte-identical pre-install content', async () => {
+  it('surgically removes mrclean hook entries and preserves unrelated settings, including post-install changes', async () => {
     const settingsPath = join(tempHome, '.claude', 'settings.json')
     const gitignorePath = join(tempCwd, '.gitignore')
 
-    // Write pre-install content
-    const preSettings = JSON.stringify({ preExisting: true }, null, 2)
-    await writeFile(settingsPath, preSettings, 'utf8')
-    const preGitignore = 'node_modules/\n'
-    await writeFile(gitignorePath, preGitignore, 'utf8')
+    // Pre-install content with unrelated keys.
+    await writeFile(
+      settingsPath,
+      JSON.stringify({ preExisting: true, enabledPlugins: { 'foo@bar': true } }, null, 2),
+      'utf8',
+    )
+    await writeFile(gitignorePath, 'node_modules/\n', 'utf8')
 
     const nodePath = process.execPath
     const mrcleanBin = await resolveMrcleanBinPath()
     const mcpBin = await resolveMrcleanMcpPath()
-
     const opts = { homeDir: tempHome, cwd: tempCwd, nodePath, mrcleanBinPath: mrcleanBin, mcpBinPath: mcpBin }
 
-    // Run install twice
-    await runInstall(opts)
     await runInstall(opts)
 
-    // Run uninstall
+    // Simulate a user change made AFTER install — the exact scenario the old
+    // wholesale backup-restore clobbered (it reverted to the pre-install snapshot).
+    const mid = JSON.parse(await readFile(settingsPath, 'utf8'))
+    mid.enabledPlugins['baz@qux'] = true
+    await writeFile(settingsPath, JSON.stringify(mid, null, 2), 'utf8')
+
     await runUninstall({ homeDir: tempHome, cwd: tempCwd })
 
-    // settings.json should be byte-identical to pre-install
-    const afterSettings = await readFile(settingsPath)
-    const beforeSettings = Buffer.from(preSettings, 'utf8')
-    expect(Buffer.compare(afterSettings, beforeSettings)).toBe(0)
+    const after = JSON.parse(await readFile(settingsPath, 'utf8'))
+
+    // Unrelated settings survive — including the post-install addition.
+    expect(after.preExisting).toBe(true)
+    expect(after.enabledPlugins).toEqual({ 'foo@bar': true, 'baz@qux': true })
+
+    // All mrclean hook entries are gone.
+    for (const event of Object.keys(after.hooks ?? {})) {
+      const mrcleanEntries = (after.hooks[event] as Array<Record<string, unknown>>).filter(
+        (e) => e._mrclean,
+      )
+      expect(mrcleanEntries).toHaveLength(0)
+    }
   })
 
   it('restores .gitignore to byte-identical pre-install content', async () => {

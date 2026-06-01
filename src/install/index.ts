@@ -19,7 +19,6 @@ import { writeMcpServerEntry, removeMcpServerEntry } from './mcp-config.js'
 import { createProjectDir } from './project-dir.js'
 import { addGitignoreEntries, removeGitignoreEntries } from './gitignore.js'
 import { resolveNodePath, resolveMrcleanBinPath, resolveMrcleanMcpPath } from './path-resolver.js'
-import { listMrcleanBackups, restoreFromBackup } from './atomic-json.js'
 import { VERSION } from '../shared/version.js'
 
 export interface InstallOpts {
@@ -86,14 +85,18 @@ export async function runInstall(opts?: InstallOpts): Promise<void> {
 
 /**
  * Run the full uninstall flow:
- * 1. Restore ~/.claude/settings.json from its oldest mrclean backup (pre-install state).
- * 2. Restore ~/.claude.json from its oldest mrclean backup (pre-install state).
- * 3. Remove managed block from project-root .gitignore.
+ * 1. Surgically remove mrclean hook entries from ~/.claude/settings.json.
+ * 2. Surgically remove the mrclean MCP server entry from ~/.claude.json.
+ * 3. Remove the managed block from the project-root .gitignore.
  * 4. Print completion message.
  *
- * Restoration strategy: use the oldest available backup (the one created before the
- * first install). This gives byte-identical restoration to the pre-install state.
- * Falls back to entry-removal if no backups exist (graceful degradation).
+ * Removal strategy: SURGICAL, never wholesale-restore. settings.json and ~/.claude.json
+ * are shared global files the user edits independently (enabling plugins, tweaking
+ * permissions, etc.). Restoring a pre-install backup snapshot would silently clobber every
+ * unrelated change made after install. Instead we remove only mrclean's own entries:
+ * removeHookEntries filters by the `_mrclean` marker; removeMcpServerEntry deletes the
+ * `mrclean` key. Install still writes timestamped backups as a manual safety net — we just
+ * never auto-restore them.
  *
  * NOTE: .mrclean/ directory is intentionally NOT deleted.
  * The operator's config.toml, words.txt, and audit log are preserved.
@@ -105,51 +108,14 @@ export async function runUninstall(opts?: UninstallOpts): Promise<void> {
   const settingsPath = join(home, '.claude', 'settings.json')
   const claudeJsonPath = join(home, '.claude.json')
 
-  // Restore settings.json to oldest backup (pre-install state)
-  await restoreOrRemoveHooks(settingsPath)
-
-  // Restore claude.json to oldest backup (pre-install state)
-  await restoreOrRemoveMcp(claudeJsonPath, cwd)
-
+  await removeHookEntries(settingsPath)
+  await removeMcpServerEntry(claudeJsonPath, cwd)
   await removeGitignoreEntries(cwd)
 
   process.stdout.write(
     pc.yellow('mrclean uninstalled') +
-    pc.dim(' (config files restored; .mrclean/ retained — delete manually if desired)') +
+    pc.dim(' (mrclean entries removed; your other settings and .mrclean/ left intact)') +
     '\n'
   )
-}
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Restore settings.json from its oldest backup (pre-install state).
- * Falls back to entry-removal if no backups exist.
- */
-async function restoreOrRemoveHooks(settingsPath: string): Promise<void> {
-  const backups = await listMrcleanBackups(settingsPath)
-  if (backups.length > 0) {
-    // The oldest backup is the last element (sorted newest-first)
-    const oldest = backups[backups.length - 1]
-    await restoreFromBackup(settingsPath, oldest)
-  } else {
-    await removeHookEntries(settingsPath)
-  }
-}
-
-/**
- * Restore claude.json from its oldest backup (pre-install state).
- * Falls back to entry-removal if no backups exist.
- */
-async function restoreOrRemoveMcp(claudeJsonPath: string, projectCwd: string): Promise<void> {
-  const backups = await listMrcleanBackups(claudeJsonPath)
-  if (backups.length > 0) {
-    const oldest = backups[backups.length - 1]
-    await restoreFromBackup(claudeJsonPath, oldest)
-  } else {
-    await removeMcpServerEntry(claudeJsonPath, projectCwd)
-  }
 }
 
