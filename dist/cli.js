@@ -3345,7 +3345,7 @@ var init_package = __esm({
   "package.json"() {
     package_default = {
       name: "mrclean-claude",
-      version: "1.0.0-rc.2",
+      version: "1.0.0-rc.3",
       description: "In-session sanitizer for Claude Code that prevents secrets and proprietary terms from reaching Anthropic, MCP servers, or cloud agents. Local, deterministic, no telemetry.",
       license: "MIT",
       author: "",
@@ -18322,6 +18322,14 @@ async function substituteToolInputDeep(obj, config2, state, ctx, depth, allFindi
   return obj;
 }
 async function handlePreToolUse(input) {
+  if (MRCLEAN_TOOL_RE.test(input.tool_name)) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "allow"
+      }
+    };
+  }
   const config2 = await loadEffectiveConfig({ homeDir: homedir5(), cwd: input.cwd });
   let state = getCachedSessionState(input.session_id);
   if (!state) {
@@ -18385,7 +18393,7 @@ async function handlePreToolUse(input) {
     }
   };
 }
-var MAX_DEPTH;
+var MAX_DEPTH, MRCLEAN_TOOL_RE;
 var init_pre_tool_use = __esm({
   "src/hook/handlers/pre-tool-use.ts"() {
     "use strict";
@@ -18393,12 +18401,16 @@ var init_pre_tool_use = __esm({
     init_session_state();
     init_detect();
     MAX_DEPTH = 32;
+    MRCLEAN_TOOL_RE = /^mcp__(plugin_mrclean_mrclean|mrclean)__mrclean_(check|redact|status)$/;
   }
 });
 
 // src/hook/handlers/post-tool-use.ts
 import { homedir as homedir6 } from "os";
 async function handlePostToolUse(input) {
+  if (MRCLEAN_TOOL_RE2.test(input.tool_name)) {
+    return null;
+  }
   const config2 = await loadEffectiveConfig({ homeDir: homedir6(), cwd: input.cwd });
   let state = getCachedSessionState(input.session_id);
   if (!state) {
@@ -18439,12 +18451,14 @@ async function handlePostToolUse(input) {
   }
   return null;
 }
+var MRCLEAN_TOOL_RE2;
 var init_post_tool_use = __esm({
   "src/hook/handlers/post-tool-use.ts"() {
     "use strict";
     init_config();
     init_session_state();
     init_detect();
+    MRCLEAN_TOOL_RE2 = /^mcp__(plugin_mrclean_mrclean|mrclean)__mrclean_(check|redact|status)$/;
   }
 });
 

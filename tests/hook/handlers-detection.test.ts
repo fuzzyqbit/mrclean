@@ -373,6 +373,103 @@ describe('handlePreToolUse — Phase 2 wired', () => {
     expect(output.hookSpecificOutput.permissionDecision).toBe('deny')
     expect(output.hookSpecificOutput.permissionDecisionReason).toContain('budget exhausted')
   })
+
+  it('Test 8b: SELF-EXEMPTION — mrclean MCP tool input is passed through untouched (both install namespaces)', async () => {
+    // Root-cause regression test: the PreToolUse matcher "*" fires for mrclean's own
+    // MCP tools. If we redacted their `text` argument, mrclean_redact/_check would
+    // receive placeholder-only text and return findings:[]. Detection MUST NOT run.
+    //
+    // Claude Code namespaces MCP tools by install method, so the guard must match BOTH:
+    //   - plugin install (live deployment): mcp__plugin_mrclean_mrclean__mrclean_<tool>
+    //   - CLI install (`mrclean install`):   mcp__mrclean__mrclean_<tool>
+    const configMod = await import('../../src/config/index.js')
+    const detectMod = await import('../../src/detect/index.js')
+
+    const loadSpy = vi.spyOn(configMod, 'loadEffectiveConfig').mockResolvedValue(MOCK_CONFIG_ACTIVE)
+    const detectSpy = vi.spyOn(detectMod, 'runDetection')
+
+    const { handlePreToolUse } = await import('../../src/hook/handlers/pre-tool-use.js')
+
+    for (const toolName of [
+      // Plugin-install namespace (the actual live deployment)
+      'mcp__plugin_mrclean_mrclean__mrclean_redact',
+      'mcp__plugin_mrclean_mrclean__mrclean_check',
+      'mcp__plugin_mrclean_mrclean__mrclean_status',
+      // CLI-install namespace
+      'mcp__mrclean__mrclean_redact',
+      'mcp__mrclean__mrclean_check',
+      'mcp__mrclean__mrclean_status',
+    ]) {
+      const output = await handlePreToolUse({
+        ...BASE_INPUT,
+        hook_event_name: 'PreToolUse',
+        tool_name: toolName,
+        tool_input: { text: 'here is <MRCLEAN:STRIPE_KEY:001>in a sentence' },
+        tool_use_id: 'tool-self',
+      })
+
+      // Allowed, with NO updatedInput (input passed through verbatim → tool sees real secret)
+      expect(output.hookSpecificOutput.permissionDecision).toBe('allow')
+      expect(output.hookSpecificOutput.updatedInput).toBeUndefined()
+    }
+
+    // Detection must never have been invoked for the self-tools (and config not even loaded).
+    expect(detectSpy).not.toHaveBeenCalled()
+    expect(loadSpy).not.toHaveBeenCalled()
+  })
+
+  it('Test 8c: NEGATIVE — a foreign tool with a mrclean-like name is NOT exempted (still gets detection)', async () => {
+    // The guard must be precise: a different server that happens to expose a tool named
+    // `mrclean_check` (e.g. mcp__notmrclean__mrclean_check or mcp__other__something) must
+    // still receive full detection/substitution — only OUR two namespaces are exempt.
+    const configMod = await import('../../src/config/index.js')
+    const sessionMod = await import('../../src/detect/session-state.js')
+    const detectMod = await import('../../src/detect/index.js')
+    const layer1Mod = await import('../../src/detect/layer1-regex/index.js')
+
+    vi.spyOn(configMod, 'loadEffectiveConfig').mockResolvedValue(MOCK_CONFIG_ACTIVE)
+    vi.spyOn(sessionMod, 'getCachedSessionState').mockReturnValue(MOCK_SESSION_STATE)
+    vi.spyOn(layer1Mod, 'getRuleCount').mockReturnValue({ secretlint: 1, gitleaks: 183, total: 184 })
+
+    // Build the secret-shaped string at runtime so no literal secret token appears in this
+    // source file (the live mrclean PostToolUse hook would otherwise redact it on save).
+    const stripeKey = ['sk', 'live', '51H8h2kLqVb3xYzPq4r5T6u7'].join('_')
+
+    const detectSpy = vi.spyOn(detectMod, 'runDetection').mockResolvedValue({
+      findings: [{
+        ruleId: 'StripeApiKey',
+        severity: 'HIGH',
+        span: { start: 0, end: stripeKey.length },
+        value: stripeKey,
+        redactedHash: 'stripe123',
+        fingerprint: 'StripeApiKey:stripe123abc',
+        placeholder: '<MRCLEAN:STRIPE_KEY:001>',
+        effectiveAction: 'block',
+      }],
+      substitutedText: '<MRCLEAN:STRIPE_KEY:001>',
+      budgetExhausted: false,
+      rawTimeoutCount: 0,
+    })
+
+    const { handlePreToolUse } = await import('../../src/hook/handlers/pre-tool-use.js')
+
+    for (const toolName of ['mcp__notmrclean__mrclean_check', 'mcp__other__something']) {
+      const output = await handlePreToolUse({
+        ...BASE_INPUT,
+        hook_event_name: 'PreToolUse',
+        tool_name: toolName,
+        tool_input: { text: stripeKey },
+        tool_use_id: 'tool-foreign',
+      })
+
+      // Foreign tool → detection runs and substitution is applied.
+      expect(output.hookSpecificOutput.permissionDecision).toBe('allow')
+      expect(output.hookSpecificOutput.updatedInput).toBeDefined()
+    }
+
+    // Detection MUST have run for the foreign tools.
+    expect(detectSpy).toHaveBeenCalled()
+  })
 })
 
 describe('handlePostToolUse — Phase 2 wired', () => {
@@ -466,5 +563,89 @@ describe('handlePostToolUse — Phase 2 wired', () => {
     const hso = o['hookSpecificOutput'] as Record<string, unknown>
     expect(typeof hso['updatedToolOutput']).toBe('string')
     expect(hso['updatedToolOutput']).toContain('<MRCLEAN:GENERIC:001>')
+  })
+
+  it('Test 11: SELF-EXEMPTION — mrclean MCP tool output is passed through (both install namespaces)', async () => {
+    // Root-cause regression test: mrclean_redact/_check output is already sanitized.
+    // PostToolUse must not re-run detection on it — for EITHER install namespace:
+    //   - plugin install (live deployment): mcp__plugin_mrclean_mrclean__mrclean_<tool>
+    //   - CLI install:                       mcp__mrclean__mrclean_<tool>
+    const configMod = await import('../../src/config/index.js')
+    const detectMod = await import('../../src/detect/index.js')
+
+    const loadSpy = vi.spyOn(configMod, 'loadEffectiveConfig').mockResolvedValue(MOCK_CONFIG_ACTIVE)
+    const detectSpy = vi.spyOn(detectMod, 'runDetection')
+
+    const { handlePostToolUse } = await import('../../src/hook/handlers/post-tool-use.js')
+
+    for (const toolName of [
+      'mcp__plugin_mrclean_mrclean__mrclean_redact',
+      'mcp__plugin_mrclean_mrclean__mrclean_check',
+      'mcp__plugin_mrclean_mrclean__mrclean_status',
+      'mcp__mrclean__mrclean_redact',
+      'mcp__mrclean__mrclean_check',
+      'mcp__mrclean__mrclean_status',
+    ]) {
+      const output = await handlePostToolUse({
+        ...BASE_INPUT,
+        hook_event_name: 'PostToolUse',
+        tool_name: toolName,
+        tool_input: {},
+        tool_response: '{"redacted":"<MRCLEAN:SECRET:001>","findings":[{"ruleId":"GITHUB_TOKEN"}]}',
+        tool_use_id: 'tool-self-post',
+      })
+
+      expect(output).toBeNull()
+    }
+
+    expect(detectSpy).not.toHaveBeenCalled()
+    expect(loadSpy).not.toHaveBeenCalled()
+  })
+
+  it('Test 11b: NEGATIVE — a foreign tool with a mrclean-like name is NOT exempted (output re-detected)', async () => {
+    // A different server exposing a `mrclean_check` tool (e.g. mcp__notmrclean__mrclean_check)
+    // must still have its output scanned and substituted.
+    const configMod = await import('../../src/config/index.js')
+    const sessionMod = await import('../../src/detect/session-state.js')
+    const detectMod = await import('../../src/detect/index.js')
+    const layer1Mod = await import('../../src/detect/layer1-regex/index.js')
+
+    vi.spyOn(configMod, 'loadEffectiveConfig').mockResolvedValue(MOCK_CONFIG_ACTIVE)
+    vi.spyOn(sessionMod, 'getCachedSessionState').mockReturnValue(MOCK_SESSION_STATE)
+    vi.spyOn(layer1Mod, 'getRuleCount').mockReturnValue({ secretlint: 1, gitleaks: 183, total: 184 })
+
+    // Build the secret-shaped token at runtime so no literal secret appears in this source.
+    const ghToken = ['ghp', 'A'.repeat(36)].join('_')
+
+    const detectSpy = vi.spyOn(detectMod, 'runDetection').mockResolvedValue({
+      findings: [{
+        ruleId: 'GithubToken',
+        severity: 'HIGH',
+        span: { start: 0, end: ghToken.length },
+        value: ghToken,
+        redactedHash: 'gh123',
+        fingerprint: 'GithubToken:gh123abc',
+        placeholder: '<MRCLEAN:GH_TOKEN:001>',
+        effectiveAction: 'block',
+      }],
+      substitutedText: '<MRCLEAN:GH_TOKEN:001>',
+      budgetExhausted: false,
+      rawTimeoutCount: 0,
+    })
+
+    const { handlePostToolUse } = await import('../../src/hook/handlers/post-tool-use.js')
+    const output = await handlePostToolUse({
+      ...BASE_INPUT,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'mcp__notmrclean__mrclean_check',
+      tool_input: {},
+      tool_response: ghToken,
+      tool_use_id: 'tool-foreign-post',
+    })
+
+    expect(output).not.toBeNull()
+    const hso = (output as Record<string, unknown>)['hookSpecificOutput'] as Record<string, unknown>
+    expect(hso['updatedToolOutput']).toContain('<MRCLEAN:GH_TOKEN:001>')
+    expect(detectSpy).toHaveBeenCalled()
   })
 })

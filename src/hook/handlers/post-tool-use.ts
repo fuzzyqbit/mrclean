@@ -27,9 +27,30 @@ import {
 import { runDetection } from '../../detect/index.js'
 import type { PostToolUseInput, PostToolUseOutput } from '../../shared/types.js'
 
+/**
+ * Matches mrclean's OWN MCP tools regardless of install method.
+ *
+ * Claude Code namespaces MCP tools by install method:
+ *   - Plugin install (live deployment): `mcp__plugin_mrclean_mrclean__mrclean_<tool>`
+ *   - CLI install (`mrclean install`):   `mcp__mrclean__mrclean_<tool>`
+ *
+ * SELF-EXEMPTION: mrclean_redact / mrclean_check already return sanitized output
+ * (placeholders, never raw secrets). Re-running detection on their output is wasteful
+ * and would re-process the placeholder strings they intentionally emit. Pass through.
+ *
+ * Anchored + enumerated so a foreign server (e.g. `mcp__notmrclean__mrclean_check`) is
+ * NOT exempted and still gets detection.
+ */
+const MRCLEAN_TOOL_RE = /^mcp__(plugin_mrclean_mrclean|mrclean)__mrclean_(check|redact|status)$/
+
 export async function handlePostToolUse(
   input: PostToolUseInput,
 ): Promise<PostToolUseOutput | null> {
+  // Step 0: Self-exemption — never re-process the output of mrclean's own MCP tools.
+  if (MRCLEAN_TOOL_RE.test(input.tool_name)) {
+    return null
+  }
+
   // Step 1: Load config
   const config = await loadEffectiveConfig({ homeDir: homedir(), cwd: input.cwd })
 

@@ -38,6 +38,29 @@ import type { DetectionContext, ResolvedFinding } from '../../detect/index.js'
 const MAX_DEPTH = 32
 
 /**
+ * Matches mrclean's OWN MCP tools regardless of install method.
+ *
+ * Claude Code namespaces MCP tools by how the server was installed:
+ *   - Plugin install (the live deployment): server namespace = `plugin_mrclean_mrclean`
+ *     → tool names are `mcp__plugin_mrclean_mrclean__mrclean_check` / `_redact` / `_status`
+ *   - CLI install (`mrclean install`):       server namespace = `mrclean`
+ *     → tool names are `mcp__mrclean__mrclean_check` / `_redact` / `_status`
+ *
+ * SELF-EXEMPTION (root-cause fix for the "empty findings" defect):
+ *   The PreToolUse hook matcher is "*" — it fires for EVERY tool, including mrclean's own
+ *   MCP tools. Without this guard, substituteToolInputDeep would rewrite the `text` argument
+ *   of a mrclean_redact / mrclean_check call into placeholders BEFORE the tool runs. The tool
+ *   would then scan placeholder-only text, find nothing, and return findings:[]. mrclean's own
+ *   redaction tools MUST receive real secrets to do their job — so we pass their input through
+ *   untouched.
+ *
+ * The pattern is anchored and enumerates exactly the three tool names, so a similarly-named
+ * FOREIGN server (e.g. `mcp__notmrclean__mrclean_check` or `mcp__other__something`) is NOT
+ * exempted and still receives full detection.
+ */
+const MRCLEAN_TOOL_RE = /^mcp__(plugin_mrclean_mrclean|mrclean)__mrclean_(check|redact|status)$/
+
+/**
  * Recursively walk a tool_input object, running detection on each string-typed leaf.
  *
  * Returns a new object (immutable) with substitutions applied to string fields that
@@ -104,6 +127,17 @@ async function substituteToolInputDeep(
 }
 
 export async function handlePreToolUse(input: PreToolUseInput): Promise<PreToolUseOutput> {
+  // Step 0: Self-exemption — never redact the arguments of mrclean's own MCP tools.
+  // (Doing so would blind mrclean_redact / mrclean_check, which must see real secrets.)
+  if (MRCLEAN_TOOL_RE.test(input.tool_name)) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'allow',
+      },
+    }
+  }
+
   // Step 1: Load config
   const config = await loadEffectiveConfig({ homeDir: homedir(), cwd: input.cwd })
 
