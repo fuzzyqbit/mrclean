@@ -3345,7 +3345,7 @@ var init_package = __esm({
   "package.json"() {
     package_default = {
       name: "mrclean-claude",
-      version: "1.0.0-rc.5",
+      version: "1.0.0-rc.6",
       description: "In-session sanitizer for Claude Code that prevents secrets and proprietary terms from reaching Anthropic, MCP servers, or cloud agents. Local, deterministic, no telemetry.",
       license: "MIT",
       author: "",
