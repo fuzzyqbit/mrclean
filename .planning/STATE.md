@@ -112,6 +112,7 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 4/6 plans
 |---|-------------|------|--------|-----------|
 | 260601-0e1 | Fix misleading install stub (dead [words]/[detection] keys) | 2026-06-01 | 1afefec | [260601-0e1-fix-install-stub-dead-keys](./quick/260601-0e1-fix-install-stub-dead-keys/) |
 | 260601-1sw | `mrclean init` CLI subcommand + /mrclean:mrclean-init slash command | 2026-06-01 | 0d12c88 | [260601-1sw-mrclean-init-command](./quick/260601-1sw-mrclean-init-command/) |
+| 260601-2fj | uninstall surgically removes only mrclean entries (no wholesale restore) | 2026-06-01 | ca2891a | [260601-2fj-uninstall-surgical](./quick/260601-2fj-uninstall-surgical/) |
 
 ### Cross-Phase Notes
 
@@ -208,4 +209,4 @@ Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 4/6 plans
 **Next action:** Execute Plan 03-05 (npm publish + release smoke + repo URL finalization).
 
 ---
-*Last updated: 2026-06-01 - Completed quick task 260601-1sw: mrclean init command + slash command*
+*Last updated: 2026-06-01 - Completed quick task 260601-2fj: surgical uninstall (no wholesale restore)*
