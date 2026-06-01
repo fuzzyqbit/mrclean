@@ -32,6 +32,26 @@ perfectly — do not try to replace one with the other.
 
 ## 2. Install
 
+Two ways to install. **Pick one — do not run both.** The plugin and the CLI installer
+each wire their own hook set; running both makes every hook fire twice, producing
+nested placeholders and double audit-log entries.
+
+### Option A — Claude Code plugin (recommended)
+
+Run inside a Claude Code session:
+
+```
+/plugin marketplace add fuzzyqbit/mrclean
+/plugin install mrclean@fuzzyqbit
+```
+
+The plugin declares its hooks (`SessionStart`, `UserPromptSubmit`, `PreToolUse`,
+`PostToolUse`) and the `mrclean` MCP server through its manifest — it does **not** edit
+`~/.claude/settings.json` or `~/.claude.json`. The shipped `dist/` is fully bundled, so
+there is no `npm install` step. Remove with `/plugin uninstall mrclean@fuzzyqbit`.
+
+### Option B — npm package + CLI installer
+
 ```bash
 npm install -g mrclean-claude
 npx mrclean install
@@ -40,9 +60,12 @@ npx mrclean install
 The npm package name is `mrclean-claude` (the short name `mrclean` was registered in
 2012 and is no longer maintained; npm's dispute policy does not transfer names for
 abandonment). The in-session binaries installed by the package are `mrclean` (CLI +
-hook handler) and `mrclean-mcp` (long-lived MCP server).
+hook handler) and `mrclean-mcp` (long-lived MCP server). `mrclean install` edits
+`~/.claude/settings.json` (hook entries) and `~/.claude.json` (MCP server) directly;
+`mrclean uninstall` restores the pre-install backup.
 
-After install, start a new Claude Code session. You should see a banner on stderr:
+After install (either option), start a new Claude Code session. You should see a banner
+on stderr:
 
 ```
 mrclean active v1.0.0-rc.1 (rules: 183, allowlist: 0, mode: active)
@@ -72,6 +95,11 @@ Doctor performs four checks:
 
 Exit code 0 means all checks passed. Non-zero means at least one check failed; the
 output explains which one and how to fix it.
+
+> **Plugin installs:** `doctor` check 1 (installer wiring) inspects
+> `~/.claude/settings.json`, which the plugin path does not touch — so that check will
+> report "not wired" even when the plugin is active. Confirm a plugin install with
+> `/plugin list` and the startup banner instead; checks 2–4 still apply.
 
 ---
 
