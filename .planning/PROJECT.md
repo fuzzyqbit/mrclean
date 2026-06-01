@@ -8,6 +8,22 @@ mrclean is an in-session sanitizer that prevents sensitive data from leaking out
 
 Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
 
+## Current Milestone: v2.0 Native-Node PII/NER Layer
+
+**Goal:** Add an opt-in, native-Node PII/NER detection layer — no Python, no data egress, no break to the < 100 ms hot path or zero-config `npx`.
+
+**Target features:**
+- In-process NER (names / orgs / locations) via transformers.js ONNX (`Xenova/bert-base-NER` int8, ~108 MB)
+- Regex structured-PII: email, US SSN, credit card, phone, IP address
+- Opt-in + perf-exempt integration (Layer-5 style); existing secretlint/gitleaks + entropy layers remain the **hard deterministic gate** for secrets
+- PII findings flow through the existing pipeline → `<MRCLEAN:PII:NNN>` placeholders, audit log, 5-axis allowlist, per-rule action + config toggle
+- Zero-config model UX: lazy-fetch + cache the ONNX model on first opt-in (no multi-hundred-MB bundle)
+
+**Key context / guardrails:**
+- No Python runtime; cloud PII APIs ruled out (sending text off-box to detect leakage defeats the purpose).
+- Microsoft Presidio (Python sidecar) is **deferred** as a compliance-tier alternative — not the default (footprint breaks zero-config `npx`).
+- PII layer **off by default**; secrets remain mrclean's core. Grounded in spike 001 (`vs-presidio`) + exploration research.
+
 ## Requirements
 
 ### Validated
@@ -84,4 +100,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-13 after initialization*
+*Last updated: 2026-06-01 — milestone v2.0 (Native-Node PII/NER Layer) started*

@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: Phase 3 COMPLETE — all 6 plans done. Awaiting Task 3 manual first-publish (checkpoint:human-action).
-stopped_at: Plan 03-05 Task 2 complete. Task 3 = checkpoint:human-action (manual npm publish by maintainer).
-last_updated: "2026-05-14T20:30:00.000Z"
+milestone: v2.0
+milestone_name: Native-Node PII/NER Layer
+status: planning
+last_updated: "2026-06-01T21:31:38.295Z"
+last_activity: 2026-06-01
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 19
-  completed_plans: 19
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # State: mrclean
@@ -27,18 +27,10 @@ progress:
 
 ## Current Position
 
-Phase: 3 (mcp-tools-performance-gate-public-release) — IN PROGRESS
-Plan: 4 of 6
-**Phase:** Phase 3 IN PROGRESS (03-03 fully complete — Task 4 checkpoint resolved)
-**Plan:** 03-03-PLAN.md COMPLETE (docs: README, THREAT_MODEL, LICENSE, CHANGELOG + changesets bootstrap; Task 4 approved)
-**Status:** Advancing to 03-04 (quality gates + canary-leak CI)
-**Progress:** [██████████] 100%
-
-```
-Phase 1: Wired Skeleton                              [ COMPLETE — 6/6 plans done ]
-Phase 2: Live Redaction (Layers 1-4 + One-Way)       [ COMPLETE — 7/7 plans done ]
-Phase 3: MCP Tools, Performance Gate, Public Release [ in progress — 4/6 plans done ]
-```
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-01 — Milestone v2.0 started
 
 ## Performance Metrics
 
