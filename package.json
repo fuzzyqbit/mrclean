@@ -6,11 +6,11 @@
   "author": "",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fuzzyqbit/mrclean-claude.git"
+    "url": "git+https://github.com/fuzzyqbit/mrclean.git"
   },
-  "homepage": "https://github.com/fuzzyqbit/mrclean-claude#readme",
+  "homepage": "https://github.com/fuzzyqbit/mrclean#readme",
   "bugs": {
-    "url": "https://github.com/fuzzyqbit/mrclean-claude/issues"
+    "url": "https://github.com/fuzzyqbit/mrclean/issues"
   },
   "keywords": [
     "claude-code",
