@@ -3986,6 +3986,76 @@ var init_install = __esm({
   }
 });
 
+// src/install/init-project.ts
+var init_project_exports = {};
+__export(init_project_exports, {
+  WORDS_TXT_STUB: () => WORDS_TXT_STUB,
+  runInit: () => runInit
+});
+import { writeFile as writeFile4, access as access5, constants as constants5 } from "fs/promises";
+import { join as join6 } from "path";
+async function exists(path2) {
+  try {
+    await access5(path2, constants5.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function runInit(opts = {}) {
+  const cwd = opts.cwd ?? process.cwd();
+  const dirPath = join6(cwd, ".mrclean");
+  const configPath = join6(dirPath, "config.toml");
+  const wordsPath = join6(dirPath, "words.txt");
+  const configExisted = await exists(configPath);
+  await createProjectDir(cwd);
+  const configCreated = !configExisted;
+  const wordsExisted = await exists(wordsPath);
+  if (!wordsExisted) {
+    await writeFile4(wordsPath, WORDS_TXT_STUB, { encoding: "utf8", mode: 420 });
+  }
+  const wordsCreated = !wordsExisted;
+  await addGitignoreEntries(cwd);
+  const result = { dir: dirPath, configCreated, wordsCreated };
+  printSummary(result);
+  return result;
+}
+function printSummary(result) {
+  const tag = (created) => created ? import_picocolors2.default.green("created") : import_picocolors2.default.dim("already present");
+  process.stdout.write(
+    import_picocolors2.default.green("mrclean init") + import_picocolors2.default.dim(` \u2014 ${result.dir} ready`) + `
+  config.toml  ${tag(result.configCreated)}
+  words.txt    ${tag(result.wordsCreated)}
+  .gitignore   ${import_picocolors2.default.dim(".mrclean/ ignored")}
+` + import_picocolors2.default.dim("  Add proprietary terms to words.txt (one per line). Hot-reloads next session.") + "\n"
+  );
+}
+var import_picocolors2, WORDS_TXT_STUB;
+var init_init_project = __esm({
+  "src/install/init-project.ts"() {
+    "use strict";
+    import_picocolors2 = __toESM(require_picocolors(), 1);
+    init_project_dir();
+    init_gitignore();
+    WORDS_TXT_STUB = `# .mrclean/words.txt \u2014 project-specific terms to redact.
+#
+# One term per line. Optional per-term action via \`term|action\`:
+#   block (default) \u2014 redact and block the prompt
+#   warn            \u2014 redact, log to audit, do NOT block
+#   audit           \u2014 log to audit only, no block, no banner
+#
+# Lines starting with # are comments; blank lines are ignored.
+# Matching is case-insensitive and whole-word. Hot-reloaded every SessionStart.
+#
+# Examples \u2014 delete these and add your own:
+# project-bluebird
+# internal-api.acme.com
+# customer-acme|warn
+# old-codename|audit
+`;
+  }
+});
+
 // src/hook/failclosed.ts
 function writeFailClosedError(err, context) {
   const message = err instanceof Error ? err.message : String(err);
@@ -4990,7 +5060,7 @@ var init_defaults = __esm({
 
 // src/config/index.ts
 import { readFile as readFile3 } from "fs/promises";
-import { join as join6 } from "path";
+import { join as join7 } from "path";
 import { homedir as homedir2 } from "os";
 function isRecord(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -5146,8 +5216,8 @@ function mergeConfigs(...layers) {
 async function loadEffectiveConfig(opts) {
   const resolvedHome = opts?.homeDir ?? homedir2();
   const resolvedCwd = opts?.cwd ?? process.cwd();
-  const userPath = join6(resolvedHome, ".mrclean", "config.toml");
-  const projectPath = join6(resolvedCwd, ".mrclean", "config.toml");
+  const userPath = join7(resolvedHome, ".mrclean", "config.toml");
+  const projectPath = join7(resolvedCwd, ".mrclean", "config.toml");
   const userLayer = await readConfigLayer(userPath);
   const projectLayer = await readConfigLayer(projectPath);
   return mergeConfigs(DEFAULT_CONFIG, userLayer, projectLayer);
@@ -7235,7 +7305,7 @@ var require_scan = __commonJS({
 var require_parse2 = __commonJS({
   "node_modules/micromatch/node_modules/picomatch/lib/parse.js"(exports, module) {
     "use strict";
-    var constants6 = require_constants2();
+    var constants7 = require_constants2();
     var utils = require_utils2();
     var {
       MAX_LENGTH,
@@ -7243,7 +7313,7 @@ var require_parse2 = __commonJS({
       REGEX_NON_SPECIAL_CHARS,
       REGEX_SPECIAL_CHARS_BACKREF,
       REPLACEMENTS
-    } = constants6;
+    } = constants7;
     var expandRange = (args, options) => {
       if (typeof options.expandRange === "function") {
         return options.expandRange(...args, options);
@@ -7449,7 +7519,7 @@ var require_parse2 = __commonJS({
       if (options.maxExtglobRecursion === false) {
         return { risky: false };
       }
-      const max = typeof options.maxExtglobRecursion === "number" ? options.maxExtglobRecursion : constants6.DEFAULT_MAX_EXTGLOB_RECURSION;
+      const max = typeof options.maxExtglobRecursion === "number" ? options.maxExtglobRecursion : constants7.DEFAULT_MAX_EXTGLOB_RECURSION;
       const branches = splitTopLevel(body).map((branch) => branch.trim());
       if (branches.length > 1) {
         if (branches.some((branch) => branch === "") || branches.some((branch) => /^[*?]+$/.test(branch)) || hasRepeatedCharPrefixOverlap(branches)) {
@@ -7482,8 +7552,8 @@ var require_parse2 = __commonJS({
       const tokens = [bos];
       const capture = opts.capture ? "" : "?:";
       const win32 = utils.isWindows(options);
-      const PLATFORM_CHARS = constants6.globChars(win32);
-      const EXTGLOB_CHARS = constants6.extglobChars(PLATFORM_CHARS);
+      const PLATFORM_CHARS = constants7.globChars(win32);
+      const EXTGLOB_CHARS = constants7.extglobChars(PLATFORM_CHARS);
       const {
         DOT_LITERAL,
         PLUS_LITERAL,
@@ -8182,7 +8252,7 @@ var require_parse2 = __commonJS({
         NO_DOTS_SLASH,
         STAR,
         START_ANCHOR
-      } = constants6.globChars(win32);
+      } = constants7.globChars(win32);
       const nodot = opts.dot ? NO_DOTS : NO_DOT;
       const slashDot = opts.dot ? NO_DOTS_SLASH : NO_DOT;
       const capture = opts.capture ? "" : "?:";
@@ -8241,7 +8311,7 @@ var require_picomatch = __commonJS({
     var scan = require_scan();
     var parse4 = require_parse2();
     var utils = require_utils2();
-    var constants6 = require_constants2();
+    var constants7 = require_constants2();
     var isObject2 = (val) => val && typeof val === "object" && !Array.isArray(val);
     var picomatch = (glob, options, returnState = false) => {
       if (Array.isArray(glob)) {
@@ -8369,7 +8439,7 @@ var require_picomatch = __commonJS({
         return /$^/;
       }
     };
-    picomatch.constants = constants6;
+    picomatch.constants = constants7;
     module.exports = picomatch;
   }
 });
@@ -11428,7 +11498,7 @@ var init_layer3_env = __esm({
 
 // src/detect/layer4-words.ts
 import { readFile as readFile5 } from "fs/promises";
-import { join as join7 } from "path";
+import { join as join8 } from "path";
 function parseWordsFile(content) {
   const entries = [];
   const validActions = /* @__PURE__ */ new Set(["block", "warn", "audit"]);
@@ -11450,8 +11520,8 @@ async function loadWordsList({
   homeDir,
   cwd
 }) {
-  const globalPath = join7(homeDir, ".mrclean", "words.txt");
-  const projectPath = join7(cwd, ".mrclean", "words.txt");
+  const globalPath = join8(homeDir, ".mrclean", "words.txt");
+  const projectPath = join8(cwd, ".mrclean", "words.txt");
   async function readWords(filePath) {
     try {
       const content = await readFile5(filePath, "utf8");
@@ -17436,7 +17506,7 @@ var init_secretlint_engine = __esm({
 
 // src/detect/layer1-regex/gitleaks-adapter.ts
 import { readFileSync } from "fs";
-import { join as join8, dirname as dirname4 } from "path";
+import { join as join9, dirname as dirname4 } from "path";
 import { fileURLToPath as fileURLToPath2 } from "url";
 import { existsSync as _existsSync } from "fs";
 function adaptGitleaksPattern(rawRegex) {
@@ -17450,11 +17520,11 @@ function resolveVendorPathSync() {
   const thisFile = fileURLToPath2(import.meta.url);
   const thisDir = dirname4(thisFile);
   const candidates = [
-    join8(thisDir, "..", "..", "..", "vendor", "gitleaks-rules.toml"),
+    join9(thisDir, "..", "..", "..", "vendor", "gitleaks-rules.toml"),
     // tsx: src/detect/layer1-regex/
-    join8(thisDir, "..", "vendor", "gitleaks-rules.toml"),
+    join9(thisDir, "..", "vendor", "gitleaks-rules.toml"),
     // bundle: dist/
-    join8(thisDir, "vendor", "gitleaks-rules.toml")
+    join9(thisDir, "vendor", "gitleaks-rules.toml")
     // bundle: if dist/ is at root
   ];
   for (const candidate of candidates) {
@@ -18062,9 +18132,9 @@ var init_substitute = __esm({
 
 // src/audit/log.ts
 import { appendFile } from "fs/promises";
-import { join as join9 } from "path";
+import { join as join10 } from "path";
 async function writeAuditRecord(cwd, record2) {
-  const logPath = join9(cwd, ".mrclean", "audit.jsonl");
+  const logPath = join10(cwd, ".mrclean", "audit.jsonl");
   const line = JSON.stringify(record2) + "\n";
   try {
     await appendFile(logPath, line, { flag: "a", encoding: "utf8" });
@@ -18555,13 +18625,13 @@ __export(ignore_exports, {
   appendFingerprintToConfig: () => appendFingerprintToConfig,
   runIgnore: () => runIgnore
 });
-import { mkdir as mkdir2, readFile as readFile6, writeFile as writeFile4 } from "fs/promises";
-import { dirname as dirname5, join as join10 } from "path";
+import { mkdir as mkdir2, readFile as readFile6, writeFile as writeFile5 } from "fs/promises";
+import { dirname as dirname5, join as join11 } from "path";
 function isValidFingerprint(fingerprint2) {
   return FINGERPRINT_REGEX.test(fingerprint2);
 }
 async function appendFingerprintToConfig(cwd, fingerprint2) {
-  const configPath = join10(cwd, ".mrclean", "config.toml");
+  const configPath = join11(cwd, ".mrclean", "config.toml");
   let rawContent;
   try {
     rawContent = await readFile6(configPath, "utf8");
@@ -18589,7 +18659,7 @@ async function appendFingerprintToConfig(cwd, fingerprint2) {
   const newParsed = { ...parsed, allowlist: newAllowlist };
   const newContent = stringify(newParsed);
   await mkdir2(dirname5(configPath), { recursive: true });
-  await writeFile4(configPath, newContent, "utf8");
+  await writeFile5(configPath, newContent, "utf8");
   return { added: true, path: configPath };
 }
 async function runIgnore(opts) {
@@ -27478,11 +27548,11 @@ var require_codegen = __commonJS({
         const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
         return `${varKind} ${this.name}${rhs};` + _n;
       }
-      optimizeNames(names, constants6) {
+      optimizeNames(names, constants7) {
         if (!names[this.name.str])
           return;
         if (this.rhs)
-          this.rhs = optimizeExpr(this.rhs, names, constants6);
+          this.rhs = optimizeExpr(this.rhs, names, constants7);
         return this;
       }
       get names() {
@@ -27499,10 +27569,10 @@ var require_codegen = __commonJS({
       render({ _n }) {
         return `${this.lhs} = ${this.rhs};` + _n;
       }
-      optimizeNames(names, constants6) {
+      optimizeNames(names, constants7) {
         if (this.lhs instanceof code_1.Name && !names[this.lhs.str] && !this.sideEffects)
           return;
-        this.rhs = optimizeExpr(this.rhs, names, constants6);
+        this.rhs = optimizeExpr(this.rhs, names, constants7);
         return this;
       }
       get names() {
@@ -27563,8 +27633,8 @@ var require_codegen = __commonJS({
       optimizeNodes() {
         return `${this.code}` ? this : void 0;
       }
-      optimizeNames(names, constants6) {
-        this.code = optimizeExpr(this.code, names, constants6);
+      optimizeNames(names, constants7) {
+        this.code = optimizeExpr(this.code, names, constants7);
         return this;
       }
       get names() {
@@ -27593,12 +27663,12 @@ var require_codegen = __commonJS({
         }
         return nodes.length > 0 ? this : void 0;
       }
-      optimizeNames(names, constants6) {
+      optimizeNames(names, constants7) {
         const { nodes } = this;
         let i = nodes.length;
         while (i--) {
           const n = nodes[i];
-          if (n.optimizeNames(names, constants6))
+          if (n.optimizeNames(names, constants7))
             continue;
           subtractNames(names, n.names);
           nodes.splice(i, 1);
@@ -27651,12 +27721,12 @@ var require_codegen = __commonJS({
           return void 0;
         return this;
       }
-      optimizeNames(names, constants6) {
+      optimizeNames(names, constants7) {
         var _a3;
-        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants6);
-        if (!(super.optimizeNames(names, constants6) || this.else))
+        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants7);
+        if (!(super.optimizeNames(names, constants7) || this.else))
           return;
-        this.condition = optimizeExpr(this.condition, names, constants6);
+        this.condition = optimizeExpr(this.condition, names, constants7);
         return this;
       }
       get names() {
@@ -27679,10 +27749,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.iteration})` + super.render(opts);
       }
-      optimizeNames(names, constants6) {
-        if (!super.optimizeNames(names, constants6))
+      optimizeNames(names, constants7) {
+        if (!super.optimizeNames(names, constants7))
           return;
-        this.iteration = optimizeExpr(this.iteration, names, constants6);
+        this.iteration = optimizeExpr(this.iteration, names, constants7);
         return this;
       }
       get names() {
@@ -27718,10 +27788,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
       }
-      optimizeNames(names, constants6) {
-        if (!super.optimizeNames(names, constants6))
+      optimizeNames(names, constants7) {
+        if (!super.optimizeNames(names, constants7))
           return;
-        this.iterable = optimizeExpr(this.iterable, names, constants6);
+        this.iterable = optimizeExpr(this.iterable, names, constants7);
         return this;
       }
       get names() {
@@ -27763,11 +27833,11 @@ var require_codegen = __commonJS({
         (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
         return this;
       }
-      optimizeNames(names, constants6) {
+      optimizeNames(names, constants7) {
         var _a3, _b;
-        super.optimizeNames(names, constants6);
-        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants6);
-        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants6);
+        super.optimizeNames(names, constants7);
+        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants7);
+        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants7);
         return this;
       }
       get names() {
@@ -28068,7 +28138,7 @@ var require_codegen = __commonJS({
     function addExprNames(names, from) {
       return from instanceof code_1._CodeOrName ? addNames(names, from.names) : names;
     }
-    function optimizeExpr(expr, names, constants6) {
+    function optimizeExpr(expr, names, constants7) {
       if (expr instanceof code_1.Name)
         return replaceName(expr);
       if (!canOptimize(expr))
@@ -28083,14 +28153,14 @@ var require_codegen = __commonJS({
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants6[n.str];
+        const c = constants7[n.str];
         if (c === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
         return c;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants6[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants7[c.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -35581,7 +35651,7 @@ var init_canary = __esm({
 });
 
 // src/doctor/checks.ts
-import { access as access5, constants as constants5 } from "fs/promises";
+import { access as access6, constants as constants6 } from "fs/promises";
 async function checkHooksRegistered(settingsPath) {
   const data = await readJsonOrEmpty(settingsPath);
   const hooks = data.hooks;
@@ -35720,7 +35790,7 @@ async function checkBinsExecutable(settingsPath, claudeJsonPath, projectCwd) {
   }
   for (const binPath of binPaths) {
     try {
-      await access5(binPath, constants5.X_OK);
+      await access6(binPath, constants6.X_OK);
     } catch {
       return {
         name: "bins",
@@ -35756,10 +35826,10 @@ async function checkMcpCanary(nodePath, mcpBin) {
   };
 }
 async function checkConfigLoad(homeDir, cwd) {
-  const { join: join12 } = await import("path");
+  const { join: join13 } = await import("path");
   const { access: fsAccess, constants: fsConstants } = await import("fs/promises");
-  const userConfigPath = join12(homeDir, ".mrclean", "config.toml");
-  const projectConfigPath = join12(cwd, ".mrclean", "config.toml");
+  const userConfigPath = join13(homeDir, ".mrclean", "config.toml");
+  const projectConfigPath = join13(cwd, ".mrclean", "config.toml");
   let userExists = false;
   let projectExists = false;
   try {
@@ -35900,14 +35970,14 @@ function renderReport(results, versionResult) {
     const label = `[${r.status}]`;
     const line = `${label} ${r.name} \u2014 ${r.detail}`;
     if (r.status === "PASS") {
-      process.stdout.write(import_picocolors2.default.green(line) + "\n");
+      process.stdout.write(import_picocolors3.default.green(line) + "\n");
     } else if (r.status === "FAIL") {
-      process.stdout.write(import_picocolors2.default.red(line) + "\n");
+      process.stdout.write(import_picocolors3.default.red(line) + "\n");
     } else {
-      process.stdout.write(import_picocolors2.default.dim(line) + "\n");
+      process.stdout.write(import_picocolors3.default.dim(line) + "\n");
     }
   }
-  const vLabel = versionResult.status === "green" ? import_picocolors2.default.green(`[green]`) : versionResult.status === "yellow" ? import_picocolors2.default.yellow(`[yellow]`) : versionResult.status === "not-found" ? import_picocolors2.default.dim(`[not-found]`) : import_picocolors2.default.red(`[red]`);
+  const vLabel = versionResult.status === "green" ? import_picocolors3.default.green(`[green]`) : versionResult.status === "yellow" ? import_picocolors3.default.yellow(`[yellow]`) : versionResult.status === "not-found" ? import_picocolors3.default.dim(`[not-found]`) : import_picocolors3.default.red(`[red]`);
   process.stdout.write(
     `${vLabel} claude --version: ${versionResult.version} \u2014 ${versionResult.detail}
 `
@@ -35921,11 +35991,11 @@ function computeExitCode(results) {
   }
   return 0;
 }
-var import_picocolors2;
+var import_picocolors3;
 var init_report = __esm({
   "src/doctor/report.ts"() {
     "use strict";
-    import_picocolors2 = __toESM(require_picocolors(), 1);
+    import_picocolors3 = __toESM(require_picocolors(), 1);
   }
 });
 
@@ -35983,11 +36053,11 @@ __export(doctor_exports, {
   runDoctor: () => runDoctor
 });
 import { homedir as homedir7 } from "os";
-import { join as join11 } from "path";
+import { join as join12 } from "path";
 async function computeDoctorReport(opts) {
   const { homeDir, cwd } = opts;
-  const settingsPath = join11(homeDir, ".claude", "settings.json");
-  const claudeJsonPath = join11(homeDir, ".claude.json");
+  const settingsPath = join12(homeDir, ".claude", "settings.json");
+  const claudeJsonPath = join12(homeDir, ".claude.json");
   const results = [];
   results.push(await checkHooksRegistered(settingsPath));
   results.push(await checkMcpRegistered(claudeJsonPath, cwd));
@@ -36078,6 +36148,10 @@ program2.command("install").description("Wire mrclean hook + MCP server into ~/.
   const { runInstall: runInstall2 } = await Promise.resolve().then(() => (init_install(), install_exports));
   const scope = opts.scope === "project" ? "project" : "user";
   await runInstall2({ scope });
+});
+program2.command("init").description("Scaffold project .mrclean/ with a config.toml stub and a words.txt seed").action(async () => {
+  const { runInit: runInit2 } = await Promise.resolve().then(() => (init_init_project(), init_project_exports));
+  await runInit2({});
 });
 program2.command("uninstall").description("Remove mrclean hook + MCP entries and restore the pre-install backup").action(async () => {
   const { runUninstall: runUninstall2 } = await Promise.resolve().then(() => (init_install(), install_exports));

@@ -107,6 +107,11 @@ output explains which one and how to fix it.
 
 Configuration is optional. mrclean runs with sensible defaults out of the box.
 
+Run `npx mrclean init` (or the `/mrclean:mrclean-init` slash command) to scaffold the
+project-local files — it creates `.mrclean/config.toml` and a seeded `.mrclean/words.txt`,
+and adds `.mrclean/` to your `.gitignore`. It never clobbers existing files and, unlike
+`mrclean install`, touches nothing global.
+
 To override defaults, create `.mrclean/config.toml` in your project root:
 
 ```toml
@@ -136,7 +141,8 @@ fingerprints = [] # per-finding SHA-256 fingerprints; use `mrclean ignore <fp>` 
 
 Project-specific terms — internal codenames, customer names, hostnames, product names
 you never want leaving the machine — go in `.mrclean/words.txt`. One entry per line.
-Lines starting with `#` are comments; blank lines are ignored.
+Lines starting with `#` are comments; blank lines are ignored. (`npx mrclean init` drops
+a commented seed of this file for you.)
 
 Per-entry action override via `word|action` syntax:
 

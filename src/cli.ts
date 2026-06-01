@@ -36,6 +36,15 @@ program
     await runInstall({ scope })
   })
 
+// init subcommand — project-local scaffolding only (no global wiring)
+program
+  .command('init')
+  .description('Scaffold project .mrclean/ with a config.toml stub and a words.txt seed')
+  .action(async () => {
+    const { runInit } = await import('./install/init-project.js')
+    await runInit({})
+  })
+
 // uninstall subcommand
 program
   .command('uninstall')
