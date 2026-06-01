@@ -1,8 +1,10 @@
 ---
-status: awaiting_human_verify
+status: resolved
 trigger: "mrclean_check/runDetectionReadOnly returns 0 findings where runDetection finds them; mrclean_redact substitutes placeholders but returns findings:[]"
 created: 2026-06-01T03:12:38Z
 updated: 2026-06-01T03:40:00Z
+resolved: 2026-05-31
+resolution: "Root cause confirmed and fixed. PreToolUse/PostToolUse hooks (matcher '*') re-processed mrclean's own MCP tool I/O, redacting the tool's `text` argument before it ran. Fix: self-exemption matcher /^mcp__(plugin_mrclean_mrclean|mrclean)__mrclean_(check|redact|status)$/ in both handlers, covering plugin + CLI install namespaces. Shipped in v1.0.0-rc.3 (commit f8786c7). VERIFIED LIVE: after reinstalling rc.3, mrclean_check on a github token returned 2 populated findings (was findings:[]); foreign lookalike mcp__notmrclean__ still redacted. 377 tests pass; 12/12 end-to-end cases pass (docs/VERIFICATION.md)."
 ---
 
 ## Current Focus
