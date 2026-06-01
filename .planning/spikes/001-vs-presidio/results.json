@@ -1,0 +1,145 @@
+[
+  {
+    "id": "aws-access-key",
+    "category": "secret",
+    "mrclean": {
+      "detected": true,
+      "action": "BLOCK",
+      "rule": "AWSAccessKeyID",
+      "severity": "HIGH"
+    },
+    "presidio_expected": "none — no built-in recognizer"
+  },
+  {
+    "id": "github-pat",
+    "category": "secret",
+    "mrclean": {
+      "detected": false,
+      "action": "allow",
+      "rule": "-",
+      "severity": "-"
+    },
+    "presidio_expected": "none — no built-in recognizer"
+  },
+  {
+    "id": "private-key",
+    "category": "secret",
+    "mrclean": {
+      "detected": true,
+      "action": "BLOCK",
+      "rule": "gitleaks:private-key",
+      "severity": "HIGH"
+    },
+    "presidio_expected": "none — no built-in recognizer"
+  },
+  {
+    "id": "jwt",
+    "category": "secret",
+    "mrclean": {
+      "detected": false,
+      "action": "allow",
+      "rule": "-",
+      "severity": "-"
+    },
+    "presidio_expected": "none — no built-in recognizer"
+  },
+  {
+    "id": "high-entropy",
+    "category": "secret",
+    "mrclean": {
+      "detected": false,
+      "action": "allow",
+      "rule": "-",
+      "severity": "-"
+    },
+    "presidio_expected": "none — no entropy heuristic"
+  },
+  {
+    "id": "db-url",
+    "category": "secret",
+    "mrclean": {
+      "detected": true,
+      "action": "BLOCK",
+      "rule": "PostgreSQLConnection",
+      "severity": "HIGH"
+    },
+    "presidio_expected": "URL only — would not isolate the credential"
+  },
+  {
+    "id": "proprietary",
+    "category": "proprietary",
+    "mrclean": {
+      "detected": true,
+      "action": "BLOCK",
+      "rule": "word:project-bluebird",
+      "severity": "HIGH"
+    },
+    "presidio_expected": "none — no project-term concept"
+  },
+  {
+    "id": "person-name",
+    "category": "pii",
+    "mrclean": {
+      "detected": false,
+      "action": "allow",
+      "rule": "-",
+      "severity": "-"
+    },
+    "presidio_expected": "PERSON (NER)"
+  },
+  {
+    "id": "email",
+    "category": "pii",
+    "mrclean": {
+      "detected": false,
+      "action": "allow",
+      "rule": "-",
+      "severity": "-"
+    },
+    "presidio_expected": "EMAIL_ADDRESS (regex)"
+  },
+  {
+    "id": "us-phone",
+    "category": "pii",
+    "mrclean": {
+      "detected": false,
+      "action": "allow",
+      "rule": "-",
+      "severity": "-"
+    },
+    "presidio_expected": "PHONE_NUMBER (regex+context)"
+  },
+  {
+    "id": "us-ssn",
+    "category": "pii",
+    "mrclean": {
+      "detected": false,
+      "action": "allow",
+      "rule": "-",
+      "severity": "-"
+    },
+    "presidio_expected": "US_SSN (regex+context)"
+  },
+  {
+    "id": "credit-card",
+    "category": "pii",
+    "mrclean": {
+      "detected": false,
+      "action": "allow",
+      "rule": "-",
+      "severity": "-"
+    },
+    "presidio_expected": "CREDIT_CARD (regex+Luhn)"
+  },
+  {
+    "id": "ip-address",
+    "category": "pii",
+    "mrclean": {
+      "detected": false,
+      "action": "allow",
+      "rule": "-",
+      "severity": "-"
+    },
+    "presidio_expected": "IP_ADDRESS (regex)"
+  }
+]
