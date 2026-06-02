@@ -1,15 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { shannonEntropy, runLayer2Entropy } from '../../src/detect/layer2-entropy.js'
 import type { MrcleanConfig } from '../../src/shared/types.js'
+import { DEFAULT_CONFIG } from '../../src/config/defaults.js'
 
-// Default config for tests
-const defaultConfig: MrcleanConfig = {
-  dry_run: false,
-  allowlist: { rules: [], paths: [], stopwords: [], regexes: [], fingerprints: [] },
-  entropy: { threshold: 4.5, min_length: 20 },
-  secrets_files: [],
-  rules: [],
-}
+// Use canonical DEFAULT_CONFIG (includes pii field added in Phase 4-02)
+const defaultConfig: MrcleanConfig = DEFAULT_CONFIG
 
 describe('shannonEntropy', () => {
   it('returns 0 for a string of all identical chars', () => {
