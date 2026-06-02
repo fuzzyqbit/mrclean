@@ -97,7 +97,10 @@
   2. Operator runs `npm install` on a platform with no `onnxruntime-node` prebuild and the core secret tool still installs and runs cleanly — the ML subtree is declared `optionalDependencies` and its absence never fails the install or the hook
   3. Operator inspects an emitted audit record schema and confirms the new PII-capable fields (`engine`, `model_rev`, `quant`, `backend`) exist and that the no-raw-value guarantee is documented as extended to PII (hash/fingerprint only)
   4. Operator reads the milestone scope fence in the repo (acceptance criteria / docs) and finds it explicitly bans cloud PII APIs, any model-facing unredact tool, and a Presidio Python sidecar in the default distribution — and a transition checklist enforces it
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 04-01-PLAN.md — Finding-shape + audit-schema additions (pii-regex/pii-ner source + precedence, PII_* TYPEs, audit engine/model_rev/quant/backend, no-raw rule extended to PII)
+  - [ ] 04-02-PLAN.md — `[pii]` config sub-table (MrcleanPiiConfig, off-by-default, per-entity action policy, last-wins entity merge; absent==v1) [PII-03]
+  - [ ] 04-03-PLAN.md — ML deps as optionalDependencies [MODEL-01] + documented+enforced scope fence with MCP-03 PII-write tool ban [PIISEC-03]
 
 ### Phase 5: Regex PII Hot-Path Lane (L6a) + Model Acquisition
 **Goal**: Ship a standalone, model-free PII story and build the model-acquisition plumbing the NER lane depends on. The regex lane (email, US SSN, Luhn-validated credit card, phone, IPv4/IPv6) joins the existing hot-path detection chain after Layer 4, stays inside the < 100 / < 200 ms budget, and reuses the existing placeholder manager, audit log, and 5-axis allowlist with zero new sink code. In parallel, the model cache/download/integrity/side-load infra is built and testable without any inference.
@@ -141,7 +144,7 @@
 | 1. Wired Skeleton | 0/5 | Planned, not started | - |
 | 2. Live Redaction (Layers 1-4 + One-Way) | 2/7 | In Progress|  |
 | 3. MCP Tools, Performance Gate, Public Release | 6/6 | Complete   | 2026-05-14 |
-| 4. PII Contracts & Architecture Foundations | 0/? | Not started | - |
+| 4. PII Contracts & Architecture Foundations | 0/3 | Planned, not started | - |
 | 5. Regex PII Hot-Path Lane (L6a) + Model Acquisition | 0/? | Not started | - |
 | 6. NER Inference (L6b) + MCP Wiring | 0/? | Not started | - |
 | 7. PII Security Hardening & Honest Framing | 0/? | Not started | - |
