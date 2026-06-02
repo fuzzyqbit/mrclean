@@ -114,24 +114,80 @@ describe('getTypeForRuleId', () => {
 })
 
 describe('TYPE_VOCABULARY', () => {
-  // Test 8: length === 17 and contains all expected entries
-  it('has exactly 17 entries', () => {
-    expect(TYPE_VOCABULARY.length).toBe(17)
+  // Test 8: length === 25 (17 original + 8 PII)
+  it('has exactly 25 entries', () => {
+    expect(TYPE_VOCABULARY.length).toBe(25)
   })
 
-  it('contains all expected TYPE strings', () => {
-    const expected = [
+  it('contains all original 17 secret/layer TYPE strings (no removals)', () => {
+    const originalEntries = [
       'AWS_KEY', 'AWS_SECRET', 'GH_TOKEN', 'JWT', 'STRIPE_KEY',
       'OPENAI_KEY', 'ANTHROPIC_KEY', 'PRIVATE_KEY', 'SLACK_TOKEN',
       'GCP_KEY', 'DATABRICKS_KEY', 'AZURE_KEY', 'CF_KEY',
       'ENV', 'WORD', 'ENTROPY', 'SECRET',
     ]
-    for (const type of expected) {
+    for (const type of originalEntries) {
+      expect(TYPE_VOCABULARY).toContain(type)
+    }
+  })
+
+  it('contains all 8 PII TYPE strings', () => {
+    const piiEntries = [
+      'PII_EMAIL', 'PII_SSN', 'PII_CREDIT_CARD', 'PII_PHONE',
+      'PII_IP', 'PII_PERSON', 'PII_ORG', 'PII_LOC',
+    ]
+    for (const type of piiEntries) {
       expect(TYPE_VOCABULARY).toContain(type)
     }
   })
 
   it('is frozen (immutable)', () => {
     expect(Object.isFrozen(TYPE_VOCABULARY)).toBe(true)
+  })
+})
+
+describe('getTypeForRuleId - PII rule-ids', () => {
+  // Test 9: regex-lane rule-ids map to PII_* TYPEs
+  it('maps pii:email to PII_EMAIL', () => {
+    expect(getTypeForRuleId('pii:email')).toBe('PII_EMAIL')
+  })
+
+  it('maps pii:ssn to PII_SSN', () => {
+    expect(getTypeForRuleId('pii:ssn')).toBe('PII_SSN')
+  })
+
+  it('maps pii:credit_card to PII_CREDIT_CARD', () => {
+    expect(getTypeForRuleId('pii:credit_card')).toBe('PII_CREDIT_CARD')
+  })
+
+  it('maps pii:phone to PII_PHONE', () => {
+    expect(getTypeForRuleId('pii:phone')).toBe('PII_PHONE')
+  })
+
+  it('maps pii:ip to PII_IP', () => {
+    expect(getTypeForRuleId('pii:ip')).toBe('PII_IP')
+  })
+
+  // Test 10: NER-lane rule-ids map to PII_* TYPEs
+  it('maps pii:PERSON to PII_PERSON', () => {
+    expect(getTypeForRuleId('pii:PERSON')).toBe('PII_PERSON')
+  })
+
+  it('maps pii:ORG to PII_ORG', () => {
+    expect(getTypeForRuleId('pii:ORG')).toBe('PII_ORG')
+  })
+
+  it('maps pii:LOC to PII_LOC', () => {
+    expect(getTypeForRuleId('pii:LOC')).toBe('PII_LOC')
+  })
+
+  // Test 11: existing secret mapping still works (AWSAccessKeyID → AWS_KEY)
+  it('maps AWSAccessKeyID to AWS_KEY (existing mapping untouched)', () => {
+    expect(getTypeForRuleId('AWSAccessKeyID')).toBe('AWS_KEY')
+  })
+
+  // Test 12: unknown pii: rule-id falls back to SECRET (catch-all unchanged)
+  it('falls back to SECRET for unknown pii:* rule-id', () => {
+    expect(getTypeForRuleId('pii:unknown-entity')).toBe('SECRET')
   })
 })
