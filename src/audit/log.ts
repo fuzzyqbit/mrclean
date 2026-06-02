@@ -65,7 +65,6 @@ export interface AuditRecord {
    *
    * NEVER use these fields to carry matched text, entity value, or any free-form input.
    */
-
   /** Detection engine identifier, e.g. 'pii-regex' or 'pii-ner@<sha>' (no raw text). */
   engine?: string
   /** Model revision SHA — pins the NER model for reproducibility (Pitfall 6). */
@@ -180,8 +179,18 @@ export function findingToAuditRecord(
       offset: finding.span.start,
       length: finding.span.end - finding.span.start,
     },
-    // Spread provenance fields only when provided; absent = undefined (omitted in JSON.stringify)
-    ...(provenance !== undefined ? provenance : {}),
+    // LOCKED no-raw defense: destructure-pick ONLY the four model-identity keys.
+    // Never blind-spread `provenance` — TS structural typing lets an over-shaped
+    // object (e.g. a Finding carrying `value`) pass the param type, and a blind
+    // spread would serialize that raw text into audit.jsonl (CR-01).
+    ...(provenance !== undefined
+      ? {
+          engine: provenance.engine,
+          model_rev: provenance.model_rev,
+          quant: provenance.quant,
+          backend: provenance.backend,
+        }
+      : {}),
   }
 }
 

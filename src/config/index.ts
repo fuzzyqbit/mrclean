@@ -182,7 +182,7 @@ function validatePiiActionsMap(
     if (typeof value !== 'string' || !VALID_PII_ACTIONS.has(value as PiiAction)) {
       throw new ConfigReadError(
         filePath,
-        `${context}.${key} must be one of: block, warn, audit (got ${JSON.stringify(value)})`,
+        `${context}.${key} must be one of: block, warn, audit`,
       )
     }
     result[key] = value as PiiAction

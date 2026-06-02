@@ -33496,7 +33496,7 @@ function validatePiiActionsMap(raw, filePath, context) {
     if (typeof value !== "string" || !VALID_PII_ACTIONS.has(value)) {
       throw new ConfigReadError(
         filePath,
-        `${context}.${key} must be one of: block, warn, audit (got ${JSON.stringify(value)})`
+        `${context}.${key} must be one of: block, warn, audit`
       );
     }
     result[key] = value;
@@ -46643,8 +46643,16 @@ function findingToAuditRecord(finding, sessionId, hookEvent, action, provenance)
       offset: finding.span.start,
       length: finding.span.end - finding.span.start
     },
-    // Spread provenance fields only when provided; absent = undefined (omitted in JSON.stringify)
-    ...provenance !== void 0 ? provenance : {}
+    // LOCKED no-raw defense: destructure-pick ONLY the four model-identity keys.
+    // Never blind-spread `provenance` — TS structural typing lets an over-shaped
+    // object (e.g. a Finding carrying `value`) pass the param type, and a blind
+    // spread would serialize that raw text into audit.jsonl (CR-01).
+    ...provenance !== void 0 ? {
+      engine: provenance.engine,
+      model_rev: provenance.model_rev,
+      quant: provenance.quant,
+      backend: provenance.backend
+    } : {}
   };
 }
 function isEnoent(err) {
