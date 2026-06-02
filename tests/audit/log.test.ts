@@ -184,6 +184,28 @@ describe('writeAuditRecord', () => {
     expect(serialised).not.toContain('super-secret')
   })
 
+  // Regression (CR-01): an over-shaped provenance object must NOT leak extra keys.
+  // TS structural typing lets a caller pass an object carrying `value` (raw PII)
+  // through the FindingProvenance param. findingToAuditRecord destructure-picks the
+  // four model-identity keys, so a blind spread can never serialise the extra field.
+  it('findingToAuditRecord does not serialise extra keys from an over-shaped provenance object (CR-01)', () => {
+    const finding = makeFinding('unused', { ruleId: 'pii:PERSON', source: 'pii-ner' })
+    const overShaped = {
+      engine: 'pii-ner@sha1234',
+      model_rev: 'sha1234',
+      quant: 'int8',
+      backend: 'onnxruntime-node',
+      value: 'LEAKED_PII_VALUE',
+    } as unknown as Parameters<typeof findingToAuditRecord>[4]
+    const record = findingToAuditRecord(finding, 'sess-cr01', 'UserPromptSubmit', 'audit', overShaped)
+
+    expect((record as Record<string, unknown>).value).toBeUndefined()
+    expect(JSON.stringify(record)).not.toContain('LEAKED_PII_VALUE')
+    // Allowed provenance keys still pass through
+    expect(record.engine).toBe('pii-ner@sha1234')
+    expect(record.backend).toBe('onnxruntime-node')
+  })
+
   // Test: no-raw rule holds for PII — a finding with SSN/email value produces no raw text in record
   it('findingToAuditRecord never serialises raw PII value (SSN test)', () => {
     const ssnValue = '123-45-6789'
