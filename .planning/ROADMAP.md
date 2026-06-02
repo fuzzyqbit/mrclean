@@ -112,7 +112,9 @@
   2. Operator runs the perf gate with regex-PII enabled and `UserPromptSubmit` (4 KB) stays < 100 ms p95 and `PostToolUse` (50 KB) stays < 200 ms p95 — the regex lane is genuinely hot-path-safe and adds no model dependency
   3. On first opt-in, the model is lazy-downloaded to a stable `~/.mrclean/models/` cache (never cwd-relative) with a one-time progress indicator, and the default (PII-off) `npx` cold path never loads ML deps or touches the network
   4. The downloaded model is verified against a pinned SHA-256 and refused on mismatch; an offline side-load path (`mrclean pii fetch-model --from <path>`) works air-gapped, and `mrclean doctor` reports model presence/integrity
-**Plans**: TBD
+**Plans**: 2 plans
+  - [ ] 05-01-PLAN.md — L6a regex-PII lane (email/SSN/Luhn-CC/phone/IPv4) + shared isAllowlisted extraction + orchestrator wiring behind pii.enabled [PII-01, PII-02]
+  - [ ] 05-02-PLAN.md — Model cache/download/SHA-256-integrity/side-load infra + `mrclean doctor` model check + `mrclean pii fetch-model` (blocking Wave-0 SHA-256 pin) [MODEL-02, MODEL-03]
 
 ### Phase 6: NER Inference (L6b) + MCP Wiring
 **Goal**: This is where the probabilistic detector meets the deterministic pipeline. Opt-in open-class NER (PERSON, ORG, LOCATION) via `@huggingface/transformers` ONNX runs as a lazy warm singleton inside the long-lived MCP server ONLY — structurally unreachable from the per-event hook hot path. NER is advisory (warn/audit) by default, fails closed for NER only (secret gate never crashes), records model provenance in every PII audit entry, and supports a higher-recall model tier swap. The FP/overlap/reproducibility risks all land and are tested here.
@@ -145,7 +147,7 @@
 | 2. Live Redaction (Layers 1-4 + One-Way) | 2/7 | In Progress|  |
 | 3. MCP Tools, Performance Gate, Public Release | 6/6 | Complete   | 2026-05-14 |
 | 4. PII Contracts & Architecture Foundations | 0/3 | Planned, not started | - |
-| 5. Regex PII Hot-Path Lane (L6a) + Model Acquisition | 0/? | Not started | - |
+| 5. Regex PII Hot-Path Lane (L6a) + Model Acquisition | 0/2 | Planned, not started | - |
 | 6. NER Inference (L6b) + MCP Wiring | 0/? | Not started | - |
 | 7. PII Security Hardening & Honest Framing | 0/? | Not started | - |
 
