@@ -164,4 +164,94 @@ describe('dedupBySpan', () => {
     expect(result).toHaveLength(1)
     expect(result[0]!.action).toBe('warn')
   })
+
+  // Test 9: pii-regex source type-checks and is accepted by dedupBySpan
+  it('accepts a Finding with source pii-regex and returns it from dedupBySpan', () => {
+    const f = makeFinding({
+      ruleId: 'pii:email',
+      span: { start: 0, end: 20 },
+      source: 'pii-regex',
+      value: 'test@example.com',
+    })
+
+    const result = dedupBySpan([f])
+    expect(result).toHaveLength(1)
+    expect(result[0]!.source).toBe('pii-regex')
+  })
+
+  // Test 10: pii-ner source type-checks and is accepted by dedupBySpan
+  it('accepts a Finding with source pii-ner and returns it from dedupBySpan', () => {
+    const f = makeFinding({
+      ruleId: 'pii:PERSON',
+      span: { start: 5, end: 15 },
+      source: 'pii-ner',
+      value: 'John Smith',
+    })
+
+    const result = dedupBySpan([f])
+    expect(result).toHaveLength(1)
+    expect(result[0]!.source).toBe('pii-ner')
+  })
+
+  // Test 11: words outranks pii-regex for equal-length overlapping spans
+  it('keeps words finding over pii-regex for equal-length overlapping span', () => {
+    const wordsFind = makeFinding({
+      ruleId: 'word:acme',
+      span: { start: 0, end: 10 },
+      source: 'words',
+      value: 'acme-corp',
+    })
+    const piiRegexFind = makeFinding({
+      ruleId: 'pii:email',
+      span: { start: 0, end: 10 },
+      source: 'pii-regex',
+      value: 'acme-corp@',
+    })
+
+    const result = dedupBySpan([wordsFind, piiRegexFind])
+    expect(result).toHaveLength(1)
+    expect(result[0]!.source).toBe('words')
+  })
+
+  // Test 12: pii-regex outranks pii-ner for equal-length overlapping spans
+  it('keeps pii-regex finding over pii-ner for equal-length overlapping span', () => {
+    const piiRegexFind = makeFinding({
+      ruleId: 'pii:email',
+      span: { start: 0, end: 10 },
+      source: 'pii-regex',
+      value: 'test@test.',
+    })
+    const piiNerFind = makeFinding({
+      ruleId: 'pii:PERSON',
+      span: { start: 0, end: 10 },
+      source: 'pii-ner',
+      value: 'John Smith',
+    })
+
+    const result = dedupBySpan([piiRegexFind, piiNerFind])
+    expect(result).toHaveLength(1)
+    expect(result[0]!.source).toBe('pii-regex')
+  })
+
+  // Test 13: existing secret-layer precedence secretlint > gitleaks > entropy > env > words still passes
+  it('maintains secret-layer precedence: secretlint > gitleaks > entropy > env > words', () => {
+    const secretlintFind = makeFinding({ ruleId: 'AWSAccessKeyID', span: { start: 0, end: 20 }, source: 'secretlint', value: 'AWS_KEY' })
+    const gitleaksFind = makeFinding({ ruleId: 'gitleaks:aws', span: { start: 0, end: 20 }, source: 'gitleaks', value: 'AWS_KEY' })
+    const entropyFind = makeFinding({ ruleId: 'entropy:high', span: { start: 0, end: 20 }, source: 'entropy', value: 'AWS_KEY' })
+    const envFind = makeFinding({ ruleId: 'env:literal', span: { start: 0, end: 20 }, source: 'env', value: 'AWS_KEY' })
+    const wordsFind = makeFinding({ ruleId: 'word:key', span: { start: 0, end: 20 }, source: 'words', value: 'AWS_KEY' })
+
+    // secretlint wins over all
+    expect(dedupBySpan([gitleaksFind, secretlintFind])[0]!.source).toBe('secretlint')
+    expect(dedupBySpan([entropyFind, secretlintFind])[0]!.source).toBe('secretlint')
+
+    // gitleaks wins over entropy, env, words
+    expect(dedupBySpan([entropyFind, gitleaksFind])[0]!.source).toBe('gitleaks')
+
+    // entropy wins over env, words
+    expect(dedupBySpan([envFind, entropyFind])[0]!.source).toBe('entropy')
+
+    // env wins over words
+    expect(dedupBySpan([wordsFind, envFind])[0]!.source).toBe('env')
+  })
 })

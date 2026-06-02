@@ -55,6 +55,25 @@ export interface AuditRecord {
     offset: number
     length: number
   }
+  /**
+   * Optional PII-NER provenance fields — populated only for Layer 6b NER findings
+   * (Phase 6). Left undefined for all secret findings to preserve backward compatibility.
+   *
+   * Required for reproducibility: NER is non-deterministic across model rev/quant/backend
+   * (PITFALLS.md Pitfall 6). These fields pin exactly which model produced the finding
+   * so audit entries can be audited and reproduced.
+   *
+   * NEVER use these fields to carry matched text, entity value, or any free-form input.
+   */
+
+  /** Detection engine identifier, e.g. 'pii-regex' or 'pii-ner@<sha>' (no raw text). */
+  engine?: string
+  /** Model revision SHA — pins the NER model for reproducibility (Pitfall 6). */
+  model_rev?: string
+  /** Quantization level, e.g. 'int8' or 'fp32' (Pitfall 6: affects recall). */
+  quant?: string
+  /** Inference backend, e.g. 'onnxruntime-node' or 'wasm' (Pitfall 6: affects latency). */
+  backend?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -108,15 +127,35 @@ export async function writeAuditRecord(cwd: string, record: AuditRecord): Promis
 // ---------------------------------------------------------------------------
 
 /**
+ * PII-NER provenance fields for `findingToAuditRecord`.
+ * Populated only for Layer 6b NER findings in Phase 6.
+ * Each field carries model-identity metadata only — NEVER matched text.
+ */
+export interface FindingProvenance {
+  /** Detection engine identifier, e.g. 'pii-ner@<sha>' (no raw matched text). */
+  engine?: string
+  /** Model revision SHA for reproducibility (PITFALLS.md Pitfall 6). */
+  model_rev?: string
+  /** Quantization level, e.g. 'int8' (Pitfall 6: affects recall). */
+  quant?: string
+  /** Inference backend, e.g. 'onnxruntime-node' or 'wasm' (Pitfall 6: affects latency). */
+  backend?: string
+}
+
+/**
  * Build an AuditRecord from a Finding — purely a builder, no I/O.
  *
- * LOCKED: NEVER add raw value, env-var name, or file path here.
+ * LOCKED: NEVER add raw value, env-var name, file path, or raw PII here.
  * CI canary test enforces this at runtime.
  *
  * @param finding    - The detection finding (raw value is intentionally excluded).
  * @param sessionId  - Session UUID from PlaceholderManager.
  * @param hookEvent  - The Claude Code hook event name.
  * @param action     - The effective action taken for this finding.
+ * @param provenance - Optional PII-NER provenance (engine/model_rev/quant/backend).
+ *                     When absent, the record is byte-identical to v1 (backward-compatible).
+ *                     When present, the four provenance fields are spread into the record.
+ *                     These fields carry only model-identity metadata, never matched text.
  * @returns          - An AuditRecord ready for `writeAuditRecord`.
  */
 export function findingToAuditRecord(
@@ -124,8 +163,9 @@ export function findingToAuditRecord(
   sessionId: string,
   hookEvent: string,
   action: 'block' | 'substitute' | 'audit',
+  provenance?: FindingProvenance,
 ): AuditRecord {
-  // LOCKED: NEVER add raw value, env-var name, or file path here. CI canary test enforces this.
+  // LOCKED: NEVER add raw value, env-var name, file path, or raw PII here. CI canary test enforces this.
   return {
     ts: new Date().toISOString(),
     sessionId,
@@ -140,6 +180,8 @@ export function findingToAuditRecord(
       offset: finding.span.start,
       length: finding.span.end - finding.span.start,
     },
+    // Spread provenance fields only when provided; absent = undefined (omitted in JSON.stringify)
+    ...(provenance !== undefined ? provenance : {}),
   }
 }
 

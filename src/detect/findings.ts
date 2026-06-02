@@ -44,7 +44,7 @@ export interface Finding {
   /** `${ruleId}:${redactedHash}` — stable composite for per-finding suppression (CFG-04). */
   fingerprint: string
   /** Which detection layer produced this finding. */
-  source: 'secretlint' | 'gitleaks' | 'entropy' | 'env' | 'words'
+  source: 'secretlint' | 'gitleaks' | 'entropy' | 'env' | 'words' | 'pii-regex' | 'pii-ner'
   /**
    * Optional effective action. Set when a config.rules override or Layer 4 directive applies.
    * `'warn'` is a Layer 4 alias that the orchestrator normalises to `'audit'` before output.
@@ -92,11 +92,15 @@ export function fingerprint(ruleId: string, value: string): string {
  * When two findings cover the same span, the one with a lower SOURCE_PRECEDENCE
  * index survives. This matches the detection-layer ordering decision in CONTEXT.md
  * §Detection-Layer Ordering: Layer 1 (secretlint, gitleaks) > Layer 2 (entropy) >
- * Layer 3 (env) > Layer 4 (words).
+ * Layer 3 (env) > Layer 4 (words) > Layer 6a (pii-regex) > Layer 6b (pii-ner).
+ *
+ * The two PII entries are appended at the tail so all secret layers retain higher
+ * priority. Order: secretlint, gitleaks, entropy, env, words, pii-regex, pii-ner.
+ * Source: ARCHITECTURE-v2-pii.md §Data Flow (locked precedence chain).
  *
  * Internal — not exported.
  */
-const SOURCE_PRECEDENCE = ['secretlint', 'gitleaks', 'entropy', 'env', 'words'] as const
+const SOURCE_PRECEDENCE = ['secretlint', 'gitleaks', 'entropy', 'env', 'words', 'pii-regex', 'pii-ner'] as const
 
 type Source = (typeof SOURCE_PRECEDENCE)[number]
 
