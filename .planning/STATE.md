@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Native-Node PII/NER Layer
-status: planning
+status: ready_to_plan
 last_updated: "2026-06-02T00:00:00.000Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 0
   completed_plans: 0
-  percent: 0
+  percent: 25
 ---
 
 # State: mrclean
@@ -27,10 +27,10 @@ progress:
 
 ## Current Position
 
-Phase: Phase 4 — PII Contracts & Architecture Foundations (executed, awaiting verification)
-Plan: 04-01, 04-02, 04-03 all complete (3/3)
-Status: Phase 4 executed — all 3 plans merged to main, build + 425 tests green. Next: phase verification, then `/gsd-plan-phase 5`
-Last activity: 2026-06-02 — Phase 4 executed (PII contracts: finding-shape + audit provenance, [pii] config sub-table, optionalDeps + scope fence)
+Phase: 5
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-06-02
 
 > v1 milestone (Phases 1-3) shipped 2026-05-14. v2.0 adds the opt-in Native-Node PII/NER layer
 > as Phases 4-7. Phase numbering CONTINUES from v1 — it does not reset to 1.
