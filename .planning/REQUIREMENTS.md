@@ -100,6 +100,38 @@
 - [x] **QA-02**: Integration tests simulate Claude Code hook invocation (stdin JSON in, stdout JSON out, expected exit code) for every hook event in HOOK-01
 - [x] **QA-03**: A "fixture corpus" — committed under `tests/fixtures/` — contains positive cases (real-shape AWS keys, GH tokens, JWTs, .env values, dirty words, base64-encoded variants) and negative cases (UUIDs, git SHAs, hashes, integrity hashes, Lorem ipsum) and the test suite enforces 100 % positive recall + 0 false positives on the negative corpus
 
+## Milestone v2.0 Requirements — Native-Node PII/NER Layer
+
+> Opt-in PII/NER detection added to the shipped secret sanitizer. No Python, no data egress,
+> no break to the < 100 ms hot path or zero-config `npx`. Secrets remain the deterministic
+> hard gate; PII is a best-effort recall aid. Grounded in spike 001 + v2.0 research/SUMMARY.md.
+
+### PII Detection — Structured (Regex Lane, L6a)
+
+- [ ] **PII-01**: Regex/checksum detection of structured PII — email, US SSN, credit card (Luhn-validated), phone, IPv4/IPv6 — pure-JS, in-process, hot-path-capable (no model)
+- [ ] **PII-02**: PII findings emit in the existing normalized finding shape with new `PII_*` TYPE values and a `pii-regex` source, flowing through the existing placeholder manager, audit log, and 5-axis allowlist with no new anonymizer/audit/allowlist code
+- [ ] **PII-03**: PII detection is OFF by default, enabled via a `[pii]` config sub-table; per-entity action policy lets checksum-validated entities (SSN, credit card) block while other PII defaults to warn/audit
+
+### PII Detection — Named Entities (NER Lane, L6b)
+
+- [ ] **NER-01**: Open-class NER (PERSON, ORG, LOCATION) via `@huggingface/transformers` ONNX (`Xenova/bert-base-NER` int8) running ONLY in the long-lived MCP server as a lazy warm singleton — opt-in, structurally unreachable from the per-event hook hot path
+- [ ] **NER-02**: Per-entity confidence threshold (`min_score`, tunable); NER entities are advisory (warn/audit) by default — the deterministic secret layers remain the only default hard gate
+- [ ] **NER-03**: NER failure (model load or inference error) fails closed for NER only — detection degrades to Layers 1–4 + regex PII and reports NER unavailable; the secret-detection gate never crashes
+- [ ] **NER-04**: Optional higher-recall PII model tier (piiranha ONNX, ~317 MB) selectable via config, swappable with the default ~108 MB model
+
+### PII Model Acquisition & Zero-Config UX
+
+- [ ] **MODEL-01**: ML dependencies (`@huggingface/transformers`, `onnxruntime-node`) declared as `optionalDependencies` — a failed native build never breaks the core secret tool
+- [ ] **MODEL-02**: Model lazy-downloaded on first opt-in to a stable cache (`~/.mrclean/models/`, never cwd-relative) with a one-time progress indicator; the default `npx` cold path never loads ML deps
+- [ ] **MODEL-03**: Downloaded model verified against a pinned SHA-256; an offline/air-gapped side-load path is supported; `mrclean doctor` reports model presence/integrity
+- [ ] **MODEL-04**: Audit entries for PII findings record model revision + quantization + backend for reproducibility and contain no raw PII value (hash/fingerprint only), extending the existing AUDIT no-raw-value guarantee
+
+### PII Safety & Honest Framing
+
+- [ ] **PIISEC-01**: A leak-grep test asserts no raw PII value appears in audit logs or error/diagnostic output paths
+- [ ] **PIISEC-02**: User-facing copy and docs frame the PII/NER layer as a best-effort recall aid (NER false negatives can leak), explicitly NOT a guarantee — secrets remain the deterministic guarantee
+- [ ] **PIISEC-03**: Scope fence documented and enforced — no cloud PII APIs, no model-facing unredact tool, no Presidio Python sidecar in the default distribution
+
 ## v2 Requirements (Deferred)
 
 > Validated through v1 use, then prioritized for v2 based on real friction.
@@ -126,6 +158,10 @@
 - **Multimodal / pasted-image OCR scanning** — explicit v1 limitation in `THREAT_MODEL.md`; OCR is its own product
 - **Other AI-tool integrations (Cursor, Copilot, ChatGPT desktop)** — validate Claude Code thesis first; integrations are 1-week each but split focus
 - **Team policy server with central rule distribution** — single-developer workflow first per PROJECT.md; team mode deferred until v1 demand is real
+- **Cloud PII APIs (AWS Comprehend, Google DLP, Azure AI Language)** — v2.0: sending text off-box to detect leakage defeats the no-egress premise (spike 001)
+- **Microsoft Presidio Python sidecar** — v2.0: compliance-tier alternative deferred; the ~750 MB model + Python runtime break zero-config `npx` (spike 001)
+- **GLiNER zero-shot PII** — v2.0: `gliner` wrapper is immature (0.0.x) and models are 350 MB+; revisit when a small quantized export + 1.0 release land
+- **PII placeholder reversibility / round-trip** — v2.0: deferred; ties to the REVMODE backlog. One-way PII redaction only for this milestone
 
 ## Traceability
 
