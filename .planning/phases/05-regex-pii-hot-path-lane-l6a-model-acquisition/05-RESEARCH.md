@@ -261,7 +261,7 @@ import { runLayer6aPii } from './layer6a-pii.js'  // NEW import
 
 // Inside runDetection and runDetectionReadOnly, after l4 push:
 if (config.pii.enabled && config.pii.regex.enabled) {
-  const l6a = runLayer6aPii(text, config.pii.regex, findings.map((f) => f.span))
+  const l6a = runLayer6aPii(text, config.pii.regex, config, findings.map((f) => f.span))
   findings.push(...l6a)
 }
 // then dedupBySpan as before
@@ -541,7 +541,7 @@ export async function isNerPipelineCached(): Promise<boolean> {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact SHA-256 of `Xenova/bert-base-NER onnx/model_int8.onnx`**
    - What we know: File is 108 MB, present at `Xenova/bert-base-NER/tree/main/onnx/model_int8.onnx` on HuggingFace Hub
