@@ -116,6 +116,10 @@ var init_package = __esm({
         "smol-toml": "^1.6.1",
         zod: "^4.4.3"
       },
+      optionalDependencies: {
+        "@huggingface/transformers": "^4.2.0",
+        "onnxruntime-node": "^1.24.3"
+      },
       devDependencies: {
         "@changesets/cli": "^2.31.0",
         "@types/node": "^20.18.0",
@@ -33362,7 +33366,41 @@ var init_defaults = __esm({
         min_length: 20
       }),
       secrets_files: Object.freeze([]),
-      rules: Object.freeze([])
+      rules: Object.freeze([]),
+      pii: Object.freeze({
+        enabled: false,
+        regex: Object.freeze({
+          enabled: true,
+          entities: Object.freeze([
+            "email",
+            "ssn",
+            "credit_card",
+            "phone",
+            "ip"
+          ]),
+          actions: Object.freeze({
+            ssn: "block",
+            credit_card: "block",
+            email: "warn",
+            phone: "warn",
+            ip: "audit"
+          })
+        }),
+        ner: Object.freeze({
+          enabled: false,
+          model: "Xenova/bert-base-NER",
+          dtype: "int8",
+          entities: Object.freeze(["PERSON", "ORG", "LOC"]),
+          confidence: 0.9,
+          allowDownload: true,
+          warmOnBoot: false,
+          actions: Object.freeze({
+            PERSON: "warn",
+            ORG: "warn",
+            LOC: "audit"
+          })
+        })
+      })
     });
   }
 });
@@ -33449,6 +33487,106 @@ function validateAllowlist(raw, filePath) {
     fingerprints: extractStringArray("fingerprints")
   };
 }
+function validatePiiActionsMap(raw, filePath, context) {
+  if (!isRecord(raw)) {
+    throw new ConfigReadError(filePath, `${context} must be a TOML table`);
+  }
+  const result = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value !== "string" || !VALID_PII_ACTIONS.has(value)) {
+      throw new ConfigReadError(
+        filePath,
+        `${context}.${key} must be one of: block, warn, audit (got ${JSON.stringify(value)})`
+      );
+    }
+    result[key] = value;
+  }
+  return result;
+}
+function validatePiiRegexConfig(raw, filePath) {
+  if (!isRecord(raw)) {
+    throw new ConfigReadError(filePath, "[pii.regex] must be a TOML sub-table");
+  }
+  const enabled = "enabled" in raw ? (() => {
+    if (typeof raw["enabled"] !== "boolean") {
+      throw new ConfigReadError(filePath, "[pii.regex].enabled must be a boolean");
+    }
+    return raw["enabled"];
+  })() : DEFAULT_CONFIG.pii.regex.enabled;
+  const entities = "entities" in raw ? (() => {
+    if (!isStringArray(raw["entities"])) {
+      throw new ConfigReadError(filePath, "[pii.regex].entities must be a string array");
+    }
+    return raw["entities"];
+  })() : [...DEFAULT_CONFIG.pii.regex.entities];
+  const actions = "actions" in raw ? validatePiiActionsMap(raw["actions"], filePath, "[pii.regex].actions") : { ...DEFAULT_CONFIG.pii.regex.actions };
+  return { enabled, entities, actions };
+}
+function validatePiiNerConfig(raw, filePath) {
+  if (!isRecord(raw)) {
+    throw new ConfigReadError(filePath, "[pii.ner] must be a TOML sub-table");
+  }
+  if ("enabled" in raw && typeof raw["enabled"] !== "boolean") {
+    throw new ConfigReadError(filePath, "[pii.ner].enabled must be a boolean");
+  }
+  if ("model" in raw && typeof raw["model"] !== "string") {
+    throw new ConfigReadError(filePath, "[pii.ner].model must be a string");
+  }
+  if ("dtype" in raw && typeof raw["dtype"] !== "string") {
+    throw new ConfigReadError(filePath, "[pii.ner].dtype must be a string");
+  }
+  if ("entities" in raw && !isStringArray(raw["entities"])) {
+    throw new ConfigReadError(filePath, "[pii.ner].entities must be a string array");
+  }
+  if ("confidence" in raw && typeof raw["confidence"] !== "number") {
+    throw new ConfigReadError(
+      filePath,
+      "[pii.ner].confidence must be a number (e.g. 0.9)"
+    );
+  }
+  if ("allowDownload" in raw && typeof raw["allowDownload"] !== "boolean") {
+    throw new ConfigReadError(filePath, "[pii.ner].allowDownload must be a boolean");
+  }
+  if ("warmOnBoot" in raw && typeof raw["warmOnBoot"] !== "boolean") {
+    throw new ConfigReadError(filePath, "[pii.ner].warmOnBoot must be a boolean");
+  }
+  const actions = "actions" in raw ? validatePiiActionsMap(raw["actions"], filePath, "[pii.ner].actions") : { ...DEFAULT_CONFIG.pii.ner.actions };
+  return {
+    enabled: "enabled" in raw ? raw["enabled"] : DEFAULT_CONFIG.pii.ner.enabled,
+    model: "model" in raw ? raw["model"] : DEFAULT_CONFIG.pii.ner.model,
+    dtype: "dtype" in raw ? raw["dtype"] : DEFAULT_CONFIG.pii.ner.dtype,
+    entities: "entities" in raw ? raw["entities"] : [...DEFAULT_CONFIG.pii.ner.entities],
+    confidence: "confidence" in raw ? raw["confidence"] : DEFAULT_CONFIG.pii.ner.confidence,
+    allowDownload: "allowDownload" in raw ? raw["allowDownload"] : DEFAULT_CONFIG.pii.ner.allowDownload,
+    warmOnBoot: "warmOnBoot" in raw ? raw["warmOnBoot"] : DEFAULT_CONFIG.pii.ner.warmOnBoot,
+    actions
+  };
+}
+function validatePiiConfig(raw, filePath) {
+  if (!isRecord(raw)) {
+    throw new ConfigReadError(filePath, "[pii] must be a TOML sub-table");
+  }
+  if ("enabled" in raw && typeof raw["enabled"] !== "boolean") {
+    throw new ConfigReadError(filePath, "[pii].enabled must be a boolean");
+  }
+  const enabled = "enabled" in raw ? raw["enabled"] : DEFAULT_CONFIG.pii.enabled;
+  const regex = "regex" in raw ? validatePiiRegexConfig(raw["regex"], filePath) : {
+    enabled: DEFAULT_CONFIG.pii.regex.enabled,
+    entities: [...DEFAULT_CONFIG.pii.regex.entities],
+    actions: { ...DEFAULT_CONFIG.pii.regex.actions }
+  };
+  const ner = "ner" in raw ? validatePiiNerConfig(raw["ner"], filePath) : {
+    enabled: DEFAULT_CONFIG.pii.ner.enabled,
+    model: DEFAULT_CONFIG.pii.ner.model,
+    dtype: DEFAULT_CONFIG.pii.ner.dtype,
+    entities: [...DEFAULT_CONFIG.pii.ner.entities],
+    confidence: DEFAULT_CONFIG.pii.ner.confidence,
+    allowDownload: DEFAULT_CONFIG.pii.ner.allowDownload,
+    warmOnBoot: DEFAULT_CONFIG.pii.ner.warmOnBoot,
+    actions: { ...DEFAULT_CONFIG.pii.ner.actions }
+  };
+  return { enabled, regex, ner };
+}
 function parseToml(content, filePath) {
   let parsed;
   try {
@@ -33489,6 +33627,9 @@ function parseToml(content, filePath) {
   if ("allowlist" in parsed) {
     result.allowlist = validateAllowlist(parsed["allowlist"], filePath);
   }
+  if ("pii" in parsed) {
+    result.pii = validatePiiConfig(parsed["pii"], filePath);
+  }
   return result;
 }
 function mergeAllowlists(base, override) {
@@ -33518,6 +33659,24 @@ function mergeConfigs(...layers) {
   let secretsFiles = Array.from(DEFAULT_CONFIG.secrets_files);
   let rules2 = Array.from(DEFAULT_CONFIG.rules);
   let allowlist = { ...DEFAULT_CONFIG.allowlist };
+  let pii = {
+    enabled: DEFAULT_CONFIG.pii.enabled,
+    regex: {
+      enabled: DEFAULT_CONFIG.pii.regex.enabled,
+      entities: Array.from(DEFAULT_CONFIG.pii.regex.entities),
+      actions: { ...DEFAULT_CONFIG.pii.regex.actions }
+    },
+    ner: {
+      enabled: DEFAULT_CONFIG.pii.ner.enabled,
+      model: DEFAULT_CONFIG.pii.ner.model,
+      dtype: DEFAULT_CONFIG.pii.ner.dtype,
+      entities: Array.from(DEFAULT_CONFIG.pii.ner.entities),
+      confidence: DEFAULT_CONFIG.pii.ner.confidence,
+      allowDownload: DEFAULT_CONFIG.pii.ner.allowDownload,
+      warmOnBoot: DEFAULT_CONFIG.pii.ner.warmOnBoot,
+      actions: { ...DEFAULT_CONFIG.pii.ner.actions }
+    }
+  };
   for (const layer of layers) {
     if (layer.dry_run !== void 0) dryRun = layer.dry_run;
     if (layer.entropy !== void 0) entropy = layer.entropy;
@@ -33526,8 +33685,29 @@ function mergeConfigs(...layers) {
     if (layer.allowlist !== void 0) {
       allowlist = mergeAllowlists(allowlist, layer.allowlist);
     }
+    if (layer.pii !== void 0) {
+      const layerPii = layer.pii;
+      pii = {
+        enabled: layerPii.enabled,
+        regex: layerPii.regex !== void 0 ? {
+          enabled: layerPii.regex.enabled,
+          entities: Array.from(layerPii.regex.entities),
+          actions: { ...layerPii.regex.actions }
+        } : pii.regex,
+        ner: layerPii.ner !== void 0 ? {
+          enabled: layerPii.ner.enabled,
+          model: layerPii.ner.model,
+          dtype: layerPii.ner.dtype,
+          entities: Array.from(layerPii.ner.entities),
+          confidence: layerPii.ner.confidence,
+          allowDownload: layerPii.ner.allowDownload,
+          warmOnBoot: layerPii.ner.warmOnBoot,
+          actions: { ...layerPii.ner.actions }
+        } : pii.ner
+      };
+    }
   }
-  return { dry_run: dryRun, allowlist, entropy, secrets_files: secretsFiles, rules: rules2 };
+  return { dry_run: dryRun, allowlist, entropy, secrets_files: secretsFiles, rules: rules2, pii };
 }
 async function loadEffectiveConfig(opts) {
   const resolvedHome = opts?.homeDir ?? homedir();
@@ -33538,7 +33718,7 @@ async function loadEffectiveConfig(opts) {
   const projectLayer = await readConfigLayer(projectPath);
   return mergeConfigs(DEFAULT_CONFIG, userLayer, projectLayer);
 }
-var ConfigReadError;
+var ConfigReadError, VALID_PII_ACTIONS;
 var init_config = __esm({
   "src/config/index.ts"() {
     "use strict";
@@ -33554,6 +33734,7 @@ var init_config = __esm({
       path;
       reason;
     };
+    VALID_PII_ACTIONS = /* @__PURE__ */ new Set(["block", "warn", "audit"]);
   }
 });
 
@@ -33612,7 +33793,7 @@ var SOURCE_PRECEDENCE;
 var init_findings = __esm({
   "src/detect/findings.ts"() {
     "use strict";
-    SOURCE_PRECEDENCE = ["secretlint", "gitleaks", "entropy", "env", "words"];
+    SOURCE_PRECEDENCE = ["secretlint", "gitleaks", "entropy", "env", "words", "pii-regex", "pii-ner"];
   }
 });
 
@@ -39970,7 +40151,18 @@ var init_type_map = __esm({
       "ENV",
       "WORD",
       "ENTROPY",
-      "SECRET"
+      "SECRET",
+      // PII TYPEs — appended at tail (v2.0 Phase 4 contract; no detectors emit these yet)
+      // Layer 6a regex-PII (ARCHITECTURE-v2-pii.md §Component Responsibilities)
+      "PII_EMAIL",
+      "PII_SSN",
+      "PII_CREDIT_CARD",
+      "PII_PHONE",
+      "PII_IP",
+      // Layer 6b NER-PII (ARCHITECTURE-v2-pii.md §Config Surface)
+      "PII_PERSON",
+      "PII_ORG",
+      "PII_LOC"
     ]);
     RULE_ID_TO_TYPE = Object.freeze({
       // -------------------------------------------------------------------------
@@ -40050,7 +40242,25 @@ var init_type_map = __esm({
       // Private key
       "gitleaks:private-key": "PRIVATE_KEY",
       // JWT
-      "gitleaks:jwt": "JWT"
+      "gitleaks:jwt": "JWT",
+      // -------------------------------------------------------------------------
+      // Layer 6a — PII regex rule-ids
+      // Lowercase snake tokens matching [pii.regex].entities config tokens
+      // (ARCHITECTURE-v2-pii.md §Config Surface; no detectors emit these until Phase 5)
+      // -------------------------------------------------------------------------
+      "pii:email": "PII_EMAIL",
+      "pii:ssn": "PII_SSN",
+      "pii:credit_card": "PII_CREDIT_CARD",
+      "pii:phone": "PII_PHONE",
+      "pii:ip": "PII_IP",
+      // -------------------------------------------------------------------------
+      // Layer 6b — PII NER rule-ids
+      // Upper-case model labels matching the bert-base-NER entity set
+      // (ARCHITECTURE-v2-pii.md §Config Surface; no detectors emit these until Phase 6)
+      // -------------------------------------------------------------------------
+      "pii:PERSON": "PII_PERSON",
+      "pii:ORG": "PII_ORG",
+      "pii:LOC": "PII_LOC"
     });
   }
 });
@@ -46418,7 +46628,7 @@ async function writeAuditRecord(cwd, record2) {
     throw new AuditWriteError(message, err);
   }
 }
-function findingToAuditRecord(finding, sessionId, hookEvent, action) {
+function findingToAuditRecord(finding, sessionId, hookEvent, action, provenance) {
   return {
     ts: (/* @__PURE__ */ new Date()).toISOString(),
     sessionId,
@@ -46432,7 +46642,9 @@ function findingToAuditRecord(finding, sessionId, hookEvent, action) {
       hookEvent,
       offset: finding.span.start,
       length: finding.span.end - finding.span.start
-    }
+    },
+    // Spread provenance fields only when provided; absent = undefined (omitted in JSON.stringify)
+    ...provenance !== void 0 ? provenance : {}
   };
 }
 function isEnoent(err) {

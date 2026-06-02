@@ -27,10 +27,10 @@ progress:
 
 ## Current Position
 
-Phase: Phase 4 — PII Contracts & Architecture Foundations (roadmapped, not yet planned)
-Plan: —
-Status: v2.0 roadmap created (4 phases: 4-7) — awaiting `/gsd-plan-phase 4`
-Last activity: 2026-06-02 — Milestone v2.0 roadmap created (Phases 4-7)
+Phase: Phase 4 — PII Contracts & Architecture Foundations (executed, awaiting verification)
+Plan: 04-01, 04-02, 04-03 all complete (3/3)
+Status: Phase 4 executed — all 3 plans merged to main, build + 425 tests green. Next: phase verification, then `/gsd-plan-phase 5`
+Last activity: 2026-06-02 — Phase 4 executed (PII contracts: finding-shape + audit provenance, [pii] config sub-table, optionalDeps + scope fence)
 
 > v1 milestone (Phases 1-3) shipped 2026-05-14. v2.0 adds the opt-in Native-Node PII/NER layer
 > as Phases 4-7. Phase numbering CONTINUES from v1 — it does not reset to 1.
