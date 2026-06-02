@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Native-Node PII/NER Layer
 status: planning
-last_updated: "2026-06-01T21:31:38.295Z"
-last_activity: 2026-06-01
+last_updated: "2026-06-02T00:00:00.000Z"
+last_activity: 2026-06-02
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,82 +21,74 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** Phase 3 — mcp-tools-performance-gate-public-release
+**Current Focus:** Phase 4 — PII Contracts & Architecture Foundations (milestone v2.0)
 **Project Mode:** mvp (vertical slices)
-**Granularity:** coarse (3 phases)
+**Granularity:** coarse (3-5 phases)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 4 — PII Contracts & Architecture Foundations (roadmapped, not yet planned)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-01 — Milestone v2.0 started
+Status: v2.0 roadmap created (4 phases: 4-7) — awaiting `/gsd-plan-phase 4`
+Last activity: 2026-06-02 — Milestone v2.0 roadmap created (Phases 4-7)
+
+> v1 milestone (Phases 1-3) shipped 2026-05-14. v2.0 adds the opt-in Native-Node PII/NER layer
+> as Phases 4-7. Phase numbering CONTINUES from v1 — it does not reset to 1.
 
 ## Performance Metrics
 
 | Metric | Target | Current |
 |--------|--------|---------|
-| UserPromptSubmit hook latency (p95, 4 KB prompt) | < 100 ms | 17.4 ms (bench run 2026-05-14) |
-| PostToolUse hook latency (p95, 50 KB tool result) | < 200 ms | 4.82 ms (perf gate 03-02, executor machine, 50 iterations) |
+| UserPromptSubmit hook latency (p95, 4 KB prompt) | < 100 ms | 17.4 ms (bench run 2026-05-14, pre-PII) |
+| PostToolUse hook latency (p95, 50 KB tool result) | < 200 ms | 4.82 ms (perf gate 03-02, executor machine, 50 iterations, pre-PII) |
 | Detection recall on positive fixture corpus | 100% | 100% (12/12 — 02-06 fixture corpus) |
 | False-positive rate on negative fixture corpus | 0% | 0% (0/10 — 02-06 fixture corpus) |
 | Line coverage on `src/` | ≥ 80% | 84.01% lines / 82.89% stmts / 82.12% funcs / 73.22% branches (03-00 baseline) |
+| Regex-PII hot-path latency (p95) | < 100 / < 200 ms | TBD (Phase 5 — must stay within v1 budget with L6a enabled) |
 
 ## Accumulated Context
 
 ### Decisions Made
 
-- **Vertical 3-phase MVP** chosen over the research SUMMARY's 6-phase horizontal-layer structure. Each phase delivers an operator-verifiable Claude Code behavior. Compressed per `coarse` granularity + `mvp` project mode.
-- **Phase 1 includes a no-op hook + live MCP scaffold** so installer wiring is proven before any detection logic exists (per Pitfall #7 mitigation).
-- **Phase 2 ships all four detection layers + one-way mode together** rather than splitting layers across phases — the value-delivery slice has to catch real secrets end-to-end to be operator-verifiable.
-- **Phase 3 bundles MCP tools + perf gate + docs + npm publish** because each is independently small but together they constitute the public-release slice.
-- **REVMODE / LLM5 / POLISH explicitly deferred** — listed as v2 in REQUIREMENTS.md, not present in any v1 phase.
-- **commander pinned to ^13.1.0** — RESEARCH.md §OQ-5 suggested ^14 was acceptable; CLAUDE.md LOCK supersedes; 13.1.0 confirmed at install time.
-- **Entrypoint guard via import.meta.url** — prevents Commander.parseAsync / runMcpServer from executing on test import; no separate loader module needed.
-- **Lazy subcommand imports in .action() callbacks** — MCP SDK never loads on CLI cold path; preserves sub-100ms hook cold-start budget.
-- **JSON import assertion `with { type: 'json' }`** — required for NodeNext ESM; `assert { type: 'json' }` is deprecated syntax.
-- **OQ-1 resolved: project-root .gitignore** — gitignore entry goes to project root `.gitignore`, NOT `.mrclean/.gitignore` (self-reference doesn't reliably work for parent directory). Phase 1 ignores all of `.mrclean/` by default.
-- **OQ-2 resolved: cwd = process.cwd()** — `.mrclean/` created in `process.cwd()` at install time; operator runs `mrclean install` from project root.
-- **OQ-3 resolved: user-scope default** — hooks → `~/.claude/settings.json`, MCP → `~/.claude.json`. `--scope project` errors "not implemented in Phase 1".
-- **Uninstall via oldest-backup restoration** — `runUninstall` restores the oldest mrclean backup (pre-install state) for byte-identical round-trip, rather than naive entry removal.
-- **Phase 1 minimal TOML parser** — hand-rolled ~50 LOC to avoid pulling `smol-toml` before Phase 2 forces it. Unknown sections ([words], [detection]) tolerated gracefully. Upgrade path documented in source.
-- **Allowlist wholesale replacement** — Phase 1 mergeConfigs replaces the entire allowlist sub-object (not field-by-field). Documented for Phase 2 to extend with `_merge` markers if needed.
-- **loadEffectiveConfig({ homeDir, cwd })** — single entry point for Plan 01-05 doctor config-load check; demonstrating CFG-01 + CFG-03.
-- **Phase 1 short-form HOOK-07 banner** — `mrclean active v{VERSION} (no-op mode — detection not yet enabled)` emitted via additionalContext; long-form with rule/allowlist counts deferred to Phase 2.
-- **Stdin timeout exits 0 silently** — 10s timeout guard for Windows/Git Bash pipe stalls (Pitfall #4); StdinTimeoutError triggers exit 0, not exit 2.
-- **tsx for failclosed child process tests** — bare `node --input-type=module -e` cannot import .ts files via .js extensions; tsx handles ESM+TS at dev time.
-- **SDK v1.29 export paths via ./* wildcard** — `/server/mcp.js` and `/server/stdio.js` resolve via the wildcard pattern, not named subpaths. RESEARCH A2 closed: both paths confirmed working at runtime. `LATEST_PROTOCOL_VERSION = '2025-11-25'` (not hardcoded anywhere in mrclean).
-- **InMemoryTransport for MCP unit tests** — `InMemoryTransport.createLinkedPair()` enables in-process tool invocation; integration tests use `StdioClientTransport` for full stdio round-trip.
-- **Single shutdown registration site** — `installShutdownHandlers()` in lifecycle.ts is the ONLY place SIGINT/SIGTERM are registered; server.ts adds zero signal listeners. Verified by grep gate and lifecycle tests.
-- **extractRegisteredPaths() for canary bin resolution** — `computeDoctorReport` reads installed bin paths from settings.json/claude.json rather than calling `resolveMrcleanBinPath()`. Under vitest, `process.argv[1]` is the vitest binary, which caused `resolveMrcleanBinPath()` to return the wrong path. Reading from the installed JSON is also architecturally correct — it verifies the INSTALLED configuration.
-- **MRCLEAN_TEST_FAKE_CLAUDE_VERSION env var** — TEST-ONLY escape hatch in `computeDoctorReport` allows hermetic CI tests to inject a synthetic Claude version without requiring a real `claude` binary.
-- **computeDoctorReport / runDoctor split** — `computeDoctorReport` is pure (testable, never exits); `runDoctor` is the ONLY function in the doctor subsystem that exits the process. Grep-verified: `grep -cE "process\.exit" src/doctor/index.ts` = 1, = 0 in all helper files.
+#### Milestone v2.0 (Native-Node PII/NER Layer)
+
+- **Phase numbering CONTINUES from v1 (Phases 4-7), not reset to 1** — v1 ended at Phase 3 (shipped 2026-05-14); v2.0 PII/NER is Phases 4-7 of the same roadmap.
+- **4-phase v2.0 structure** derived from research/SUMMARY.md + ARCHITECTURE-v2-pii.md build order, within `coarse` granularity (3-5): contracts → regex hot-path lane + model infra → NER + MCP wiring → security hardening. Each phase is operator-verifiable.
+- **THE cardinal decision (locked in Phase 4-6 design): NER NEVER runs in the per-event hook.** Claude Code spawns a fresh process per hook event; a 108 MB model would cold-load every prompt (10-100x over budget). NER runs ONLY in the long-lived MCP server as a warm singleton (perf-exempt, Layer-5 style). The hook gets the cheap regex-PII lane (L6a) only.
+- **Two-lane Layer 6**: L6a (regex PII — email/SSN/CC+Luhn/phone/IP) is pure-JS, hot-path-safe, joins the chain after L4 (Phase 5). L6b (NER — PERSON/ORG/LOC) is MCP-only, gated by `opts.ner` which only the MCP server passes (Phase 6).
+- **NER is advisory by default (warn/audit), NEVER a hard gate** — deterministic secret layers (+ checksum'd PII like SSN/CC) remain the only default block. NER false negatives can leak; copy must say "best-effort hint, not a guarantee" (Phase 7).
+- **ML deps (`@huggingface/transformers`, `onnxruntime-node`) as `optionalDependencies`** — a failed native build (musl/Alpine/exotic arch — onnxruntime-node is glibc-linked, no WASM auto-fallback in Node) NEVER breaks the core secret tool (Phase 4 decision).
+- **Model lazy-downloaded to stable `~/.mrclean/models/` (NEVER cwd-relative `./.cache`), SHA-256-pinned + verified on load, offline side-load path supported** — the default PII-off `npx` cold path never loads ML deps or touches the network (Phase 5).
+- **PII findings reuse existing PlaceholderManager + audit log + 5-axis allowlist with ZERO new sink code** — only schema additions are new `PII_*` TYPEs and `pii-regex`/`pii-ner` finding sources (Phase 4 contract).
+- **Audit schema extended with `engine`/`model_rev`/`quant`/`backend`; no-raw-value rule extended to PII** — pins reproducibility (NER is non-deterministic across model rev/quant/backend) and prevents `audit.jsonl` becoming a plaintext PII DB (Phase 4 schema + Phase 7 leak-grep).
+- **Hard scope fence (Phase 4, enforced every transition)**: one default model (`Xenova/bert-base-NER` int8) + optional piiranha tier; PER/ORG/LOC + listed regex-PII only. NO cloud PII APIs, NO model-facing unredact tool, NO Presidio Python sidecar in default distribution. Don't drift into "a worse Presidio in Node."
+- **PII placeholder reversibility deferred** — one-way PII redaction only this milestone; ties to the REVMODE backlog.
+
+### Phase → Requirement Mapping (v2.0)
+
+| Phase | Requirements | Count |
+|-------|--------------|-------|
+| Phase 4 — PII Contracts & Architecture Foundations | PII-03, MODEL-01, PIISEC-03 | 3 |
+| Phase 5 — Regex PII Hot-Path Lane (L6a) + Model Acquisition | PII-01, PII-02, MODEL-02, MODEL-03 | 4 |
+| Phase 6 — NER Inference (L6b) + MCP Wiring | NER-01, NER-02, NER-03, NER-04, MODEL-04 | 5 |
+| Phase 7 — PII Security Hardening & Honest Framing | PIISEC-01, PIISEC-02 | 2 |
+| **Total v2.0** | | **14** |
 
 ### Open Todos
 
-- [x] Run `/gsd-plan-phase 1` to break Phase 1 into executable plans (done — 5 plans created)
-- [x] Execute Plan 01-02 (install subcommand + MCP registration) — COMPLETE
-- [x] Execute Plan 01-02b (three-layer config reader) — COMPLETE
-- [x] Execute Plan 01-03 (hook stdin/stdout handler) — COMPLETE
-- [x] Execute Plan 01-04 (MCP server with tool stubs) — COMPLETE
-- [x] Execute Plan 01-05 (doctor canary round-trip) — COMPLETE
-- [x] Execute Plan 02-00 (deps + smol-toml + shared detection types) — COMPLETE
-- [x] Execute Plan 02-01 (Layer 1: secretlint + gitleaks adapter) — COMPLETE
-- [x] Execute Plan 02-02 (Layer 2: entropy + Layer 3: env + Layer 4: words) — COMPLETE
-- [x] Execute Plan 02-03 (placeholder manager)
-- [x] Execute Plan 02-04 (detection orchestrator + dry_run + warn→audit + budget bail-out) — COMPLETE
-- [x] Execute Plan 02-05 (hook handlers: hook-level routing + banner upgrade) — COMPLETE
-- [x] Execute Plan 02-06 (fixture corpus + bundle smoke + canary-leak guard + --bench stub) — COMPLETE
-- [x] Execute Plan 03-00 (package metadata + vitest projects split + coverage thresholds) — COMPLETE
-- [x] Execute Plan 03-01 (mrclean_check/redact/status + supervisor + delete Phase 1 stubs) — COMPLETE
-- [x] Execute Plan 03-02 (vitest perf gate + PERF-03 compile-once + CI workflow) — COMPLETE
-- [x] Execute Plan 03-03 (docs: README, THREAT_MODEL, LICENSE, CHANGELOG + changesets bootstrap) — COMPLETE (Task 4 checkpoint resolved: LICENSE='mrclean-claude contributors', repo URL placeholder for 03-05, package name approved)
-- [x] Execute Plan 03-04 (quality gates: >=80% coverage + @hook-integration tags + test.yml + canary-leak.yml) — COMPLETE (QA-01/02/03 satisfied; 2 tasks committed b92f4d3, 82a1dcd)
-- [x] Execute Plan 03-05 (changesets release pipeline + release-smoke + initial changeset + docs/RELEASE.md) — Tasks 1+2 COMPLETE (4f46507, e0d735b). Task 3 = checkpoint:human-action awaiting maintainer manual first publish.
+- [ ] Run `/gsd-plan-phase 4` to break Phase 4 (PII contracts) into executable plans
+- [ ] Phase 5/6 flagged for `--research-phase` / spike 002: benchmark `Xenova/bert-base-NER` int8 cold-load + warm-infer on macOS arm64 + Linux glibc; WASM-backend latency (decides musl NER posture); int8-vs-fp32 recall on code-style content; confirm `@huggingface/transformers` v4 import paths against live package
+- [ ] Phase 4 config plan: pin `pii.*.entities` array merge semantics (recommend last-wins for entity toggles per ARCHITECTURE-v2-pii.md)
+
+#### v1 milestone todos (Phases 1-3) — historical
+
+- [x] All Phase 1 plans (01-01..01-05) — COMPLETE
+- [x] All Phase 2 plans (02-00..02-06) — COMPLETE
+- [x] All Phase 3 plans (03-00..03-05) — Tasks complete; 03-05 Task 3 = checkpoint:human-action (first manual publish)
 
 ### Blockers
 
-- Task 3 (checkpoint:human-action): Maintainer must run first-publish manually (npm login + npm publish --access public). See docs/RELEASE.md. After publish, tag v1.0.0-rc.1 and push. Next Release workflow run will open 1.0.0 version-PR.
+- v1 carryover: Task 3 (checkpoint:human-action): Maintainer must run first-publish manually (npm login + npm publish --access public). See docs/RELEASE.md. After publish, tag v1.0.0-rc.1 and push. (Does not block v2.0 planning.)
 
 ### Quick Tasks Completed
 
@@ -106,7 +98,15 @@ Last activity: 2026-06-01 — Milestone v2.0 started
 | 260601-1sw | `mrclean init` CLI subcommand + /mrclean:mrclean-init slash command | 2026-06-01 | 0d12c88 | [260601-1sw-mrclean-init-command](./quick/260601-1sw-mrclean-init-command/) |
 | 260601-2fj | uninstall surgically removes only mrclean entries (no wholesale restore) | 2026-06-01 | ca2891a | [260601-2fj-uninstall-surgical](./quick/260601-2fj-uninstall-surgical/) |
 
-### Cross-Phase Notes
+### Cross-Phase Notes (v2.0)
+
+- Phase 4's finding-shape + audit-schema + config additions are the contract every later v2.0 phase imports — touches Plan-02-00-owned files (`findings.ts`, `type-map.ts`) which carry "revise plan first" warnings; sequence the schema work first.
+- Phase 5's `model-cache.ts` + `pipeline-singleton.ts` plumbing is pure infra (testable without inference) and is the dependency gate for Phase 6's NER inference.
+- Phase 6 must verify the MCP-03 read/transform-only invariant still holds — NER enriches existing read-only tools; no new write/unredact tool is added.
+- Phase 7's leak-grep test audits the fully-integrated surface from Phase 6; must cover exception paths, not just the happy path.
+- The existing v1 PlaceholderManager / audit log / 5-axis allowlist are reused unchanged — single ordered substitution pass with one allocator; NER excluded from `<MRCLEAN:*>` ranges (Phase 6 overlap handling).
+
+### Cross-Phase Notes (v1 — historical)
 
 - Phase 1's MCP scaffold + supervisor model is reused identically by Phase 3's tool surface — no rework expected.
 - Phase 2's placeholder manager (PH-01..04) is the contract that Phase 3's `mcp__mrclean__redact` tool returns; designed once in Phase 2.
@@ -132,7 +132,7 @@ Last activity: 2026-06-01 — Milestone v2.0 started
 - **Supervisor uses in-process Promise isolation (not per-call worker_threads)** — RESEARCH §Pattern 2 / §Pitfall 3: new Worker per call requires a pre-compiled worker entry + tsup entry. MCP-04 guarantee preserved via try/catch Promise isolation + Phase 2 WorkerPool for ReDoS safety.
 - **runDetectionReadOnly is additive to detect/index.ts** — mirrors runDetection Steps 1-11; Step 12 (audit writes) intentionally omitted. mrclean_check uses this; mrclean_redact uses full runDetection.
 - **findingDTO schema excludes `value` and `span`** — T-03-01-02 information leak guard; check.ts/redact.ts output schemas validated by SDK via Zod v4 outputSchema.
-- **AWS key test fixture: AKIAABCDE3FGHIJ2345K** — AKIAIOSFODNN7EXAMPLE (the AWS docs placeholder) is in gitleaks per-rule allowlist `.+EXAMPLE$`; non-EXAMPLE key required for test to produce findings.
+- **AWS key test fixture: <MRCLEAN:AWS_KEY:001>** — AKIAIOSFODNN7EXAMPLE (the AWS docs placeholder) is in gitleaks per-rule allowlist `.+EXAMPLE$`; non-EXAMPLE key required for test to produce findings.
 - **doctor/canary.ts: runMcpCanary updated from sanitize to mrclean_check** — Phase 1 `sanitize` tool deleted; canary now calls mrclean_check and asserts structuredContent.count is numeric (no echo-check).
 
 ### Additional Decisions (Phase 3 — Plan 00)
@@ -156,8 +156,8 @@ Last activity: 2026-06-01 — Milestone v2.0 started
 - **smol-toml ^1.6.1 replaces hand-rolled TOML parser** — Phase 2 requires [[rules]] array-of-tables and [entropy] sub-tables that the Phase 1 hand-rolled parser could not handle.
 - **secrets_files flattened from [secrets_files].paths** — `readConfigLayer` hoists `paths` to `config.secrets_files: string[]` for ergonomics; Layer 3 consumers see a flat string array.
 - **allowlist arrays CONCAT across merge layers** — Phase 2 changes Phase 1's wholesale-replacement behavior; user allowlist + project allowlist both accumulate.
-- **src/detect/findings.ts and src/detect/type-map.ts owned by 02-00** — canonical single-source-of-truth modules; Wave 2 plans import, never re-create.
-- **dedupBySpan precedence: longer-span-wins, then source-order** — secretlint > gitleaks > entropy > env > words for equal-length overlap resolution.
+- **src/detect/findings.ts and src/detect/type-map.ts owned by 02-00** — canonical single-source-of-truth modules; Wave 2 plans import, never re-create. (v2.0 NOTE: PII source/TYPE additions go HERE — revise the owning plan first.)
+- **dedupBySpan precedence: longer-span-wins, then source-order** — secretlint > gitleaks > entropy > env > words for equal-length overlap resolution. (v2.0: append pii-regex > pii-ner at the tail of SOURCE_PRECEDENCE.)
 - **dotenv 17.x (not 16.x) installed** — RESEARCH allowed 17.x; backward-compatible for parse-only usage.
 - **secretlint enableIDScanRule:true for AWS rule** — disabled by default; mrclean enables it via individual rule creator registration (not preset wrapper) to detect bare AWS access keys in hook payloads.
 - **gitleaks TOML pinned at SHA 9febafb62** — 222 rules, 183 usable after JS adaptation, 39 skipped (JS-incompatible inline mode flags); SHA-256 checksum committed for tamper detection.
@@ -171,7 +171,7 @@ Last activity: 2026-06-01 — Milestone v2.0 started
 - **initSessionState uses Promise.all** — env blocklist and word list are independent I/O operations; parallel loading keeps SessionStart latency minimal.
 - **PlaceholderManager global counter (not per-TYPE)** — PH-03 collision-free across TYPEs; operator mental model is "the Nth thing redacted this session", not "the Nth AWS key".
 - **OVF path is non-fatal (stderr JSON warning, not throw)** — hook is in Claude Code hot path; blocking the user on >999 unique secrets would be worse than degraded placeholder labels.
-- **assertNoCanaryLeak checks JSON.stringify(record) substring** — normalises field order, catches partial leaks where value appears inside nested objects; ENOENT returns ok:true; malformed JSON returns ok:false with <malformed> canary.
+- **assertNoCanaryLeak checks JSON.stringify(record) substring** — normalises field order, catches partial leaks where value appears inside nested objects; ENOENT returns ok:true; malformed JSON returns ok:false with <malformed> canary. (v2.0: Phase 7 leak-grep extends this to raw PII values + error paths.)
 - **findingToAuditRecord LOCKED comment + grep gate** — prevents future refactors from accidentally adding finding.value to the audit record; canary-leak test enforces at runtime.
 
 ### Additional Decisions (Phase 2 — Plan 06)
@@ -195,10 +195,10 @@ Last activity: 2026-06-01 — Milestone v2.0 started
 
 ## Session Continuity
 
-**Last command:** `/gsd-execute-phase` (plan 03-04 — quality gates + CI workflows)
-**Last action:** Task 1 (b92f4d3): @hook-integration tags in integration-detection.test.ts. Task 2 (82a1dcd): test.yml matrix workflow + canary-leak.yml security gate. 03-04-SUMMARY.md committed. QA-01/02/03 requirements marked complete.
-**Stopped at:** Plan 03-04 FULLY COMPLETE (all 2 tasks done).
-**Next action:** Execute Plan 03-05 (npm publish + release smoke + repo URL finalization).
+**Last command:** `/gsd-new-project` → roadmapper (v2.0 milestone roadmap)
+**Last action:** Created v2.0 roadmap — appended Phases 4-7 (Native-Node PII/NER Layer) to ROADMAP.md after v1 Phases 1-3; updated REQUIREMENTS.md Traceability with 14 v2.0 REQ→phase mappings; updated STATE.md totals/position.
+**Stopped at:** v2.0 roadmap complete, awaiting approval.
+**Next action:** `/gsd-plan-phase 4` to decompose Phase 4 (PII Contracts & Architecture Foundations) into executable plans.
 
 ---
-*Last updated: 2026-06-01 - Completed quick task 260601-2fj: surgical uninstall (no wholesale restore)*
+*Last updated: 2026-06-02 - v2.0 roadmap created (Phases 4-7 appended; phase numbering continued from v1)*

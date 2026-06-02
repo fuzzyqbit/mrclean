@@ -4,13 +4,19 @@
 
 **Granularity:** coarse (3-5 phases)
 **Project mode:** mvp (vertical slices, end-to-end)
-**Coverage:** 54/54 v1 requirements mapped (100%)
+**Coverage:** v1 — 54/54 requirements mapped (100%). v2.0 — 14/14 requirements mapped (100%).
 
 ## Phases
+
+> Milestone v1 (Phases 1-3) shipped 2026-05-14. Milestone v2.0 (Phases 4-7) adds the opt-in Native-Node PII/NER layer.
 
 - [x] **Phase 1: Wired Skeleton** - `npx mrclean install` lands a working hook + MCP server in Claude Code; operator sees the "mrclean active" banner and `mrclean doctor` reports green — no real detection yet, but the integration is provably alive
 - [x] **Phase 2: Live Redaction (Layers 1-4 + One-Way)** - Real secrets pasted into a Claude Code session are blocked-with-reason on prompts and substituted with stable `<MRCLEAN:TYPE:NNN>` placeholders in tool calls; `.env` values, regex hits, entropy, and project word-list all caught; audit log records hash-only entries
 - [x] **Phase 3: MCP Tools, Performance Gate, Public Release** - Operator can invoke `mrclean_check / mrclean_redact / mrclean_status` from inside Claude Code; CI enforces `<100ms / <200ms` budgets; README + THREAT_MODEL ship; `npm install -g mrclean-claude` installs the published 1.0.0 package (completed 2026-05-14)
+- [ ] **Phase 4: PII Contracts & Architecture Foundations** - The load-bearing v2.0 decisions are locked in code before any model exists: a `[pii]` config sub-table (off by default), PII finding-shape + audit-schema additions, ML deps as `optionalDependencies`, and a documented+enforced scope fence — the core secret tool is provably unchanged
+- [ ] **Phase 5: Regex PII Hot-Path Lane (L6a) + Model Acquisition** - Structured PII (email/SSN/credit-card/phone/IP) is caught in-session within the existing perf budget with no model, flowing through the existing placeholder/audit/allowlist pipeline; the model download/cache/integrity/side-load infra is built and verifiable via `mrclean doctor`
+- [ ] **Phase 6: NER Inference (L6b) + MCP Wiring** - Opt-in PERSON/ORG/LOCATION detection runs as a warm singleton inside the long-lived MCP server only (never the hook), advisory-by-default, fail-closed-for-NER, with model revision/quant/backend recorded in every PII audit entry
+- [ ] **Phase 7: PII Security Hardening & Honest Framing** - A leak-grep regression test proves no raw PII reaches audit logs or error paths, and all user-facing copy frames the PII/NER layer as a best-effort recall aid — not a guarantee — closing the trust surface a security tool is held to
 
 ## Phase Details
 
@@ -72,6 +78,62 @@
   - [x] 03-04-PLAN.md — Quality gates: ≥80% coverage enforcement + integration coverage tagging per hook event + canary-leak CI workflow (QA-01, QA-02, QA-03)
   - [x] 03-05-PLAN.md — Publish pipeline: release.yml (changesets/action) + release-smoke.yml + initial-release changeset + docs/RELEASE.md + first manual publish (DOC-03)
 
+---
+
+## Milestone v2.0 — Native-Node PII/NER Layer (Phases 4-7)
+
+> Opt-in PII/NER tier added on top of the shipped secret sanitizer. No Python, no data egress,
+> no break to the < 100 ms hot path or zero-config `npx`. Secrets remain the deterministic hard
+> gate; PII is a best-effort recall aid. Build order honors research/SUMMARY.md + ARCHITECTURE-v2-pii.md:
+> contracts → regex hot-path lane + model infra → NER inference + MCP wiring → security hardening.
+
+### Phase 4: PII Contracts & Architecture Foundations
+**Goal**: Lock the load-bearing v2.0 decisions in code before any model code exists. After this phase, the schema, config surface, audit schema, dependency strategy, and scope fence that the entire PII layer plugs into are in place — and the core secret tool installs and behaves identically (PII off by default, ML deps absent from the core install path). Several of these decisions (audit hash-only schema, advisory-gate semantics, optionalDeps, scope fence) are cheap now and expensive-to-reverse later, so they come first.
+**Mode:** mvp
+**Depends on**: Phase 3 (v1 finding-shape, audit log, 5-axis allowlist, config-layering are the fixed substrate)
+**Requirements**: PII-03, MODEL-01, PIISEC-03
+**Success Criteria** (what must be TRUE):
+  1. Operator adds a `[pii]` sub-table to `.mrclean/config.toml` and the config loads/validates without error; with no `[pii]` table present, behavior is byte-identical to v1 (PII off by default) — and per-entity action policy is expressible (checksum'd entities can be set to `block`, others default to `warn`/`audit`)
+  2. Operator runs `npm install` on a platform with no `onnxruntime-node` prebuild and the core secret tool still installs and runs cleanly — the ML subtree is declared `optionalDependencies` and its absence never fails the install or the hook
+  3. Operator inspects an emitted audit record schema and confirms the new PII-capable fields (`engine`, `model_rev`, `quant`, `backend`) exist and that the no-raw-value guarantee is documented as extended to PII (hash/fingerprint only)
+  4. Operator reads the milestone scope fence in the repo (acceptance criteria / docs) and finds it explicitly bans cloud PII APIs, any model-facing unredact tool, and a Presidio Python sidecar in the default distribution — and a transition checklist enforces it
+**Plans**: TBD
+
+### Phase 5: Regex PII Hot-Path Lane (L6a) + Model Acquisition
+**Goal**: Ship a standalone, model-free PII story and build the model-acquisition plumbing the NER lane depends on. The regex lane (email, US SSN, Luhn-validated credit card, phone, IPv4/IPv6) joins the existing hot-path detection chain after Layer 4, stays inside the < 100 / < 200 ms budget, and reuses the existing placeholder manager, audit log, and 5-axis allowlist with zero new sink code. In parallel, the model cache/download/integrity/side-load infra is built and testable without any inference.
+**Mode:** mvp
+**Depends on**: Phase 4 (finding-shape + config + audit schema contracts)
+**Requirements**: PII-01, PII-02, MODEL-02, MODEL-03
+**Success Criteria** (what must be TRUE):
+  1. With `[pii].enabled = true`, operator pastes an email + a Luhn-valid credit card + a US SSN into a Claude Code prompt and observes them caught and substituted with `<MRCLEAN:PII_*:NNN>` placeholders — flowing through the same audit log and 5-axis allowlist as secrets, with no new redaction code path
+  2. Operator runs the perf gate with regex-PII enabled and `UserPromptSubmit` (4 KB) stays < 100 ms p95 and `PostToolUse` (50 KB) stays < 200 ms p95 — the regex lane is genuinely hot-path-safe and adds no model dependency
+  3. On first opt-in, the model is lazy-downloaded to a stable `~/.mrclean/models/` cache (never cwd-relative) with a one-time progress indicator, and the default (PII-off) `npx` cold path never loads ML deps or touches the network
+  4. The downloaded model is verified against a pinned SHA-256 and refused on mismatch; an offline side-load path (`mrclean pii fetch-model --from <path>`) works air-gapped, and `mrclean doctor` reports model presence/integrity
+**Plans**: TBD
+
+### Phase 6: NER Inference (L6b) + MCP Wiring
+**Goal**: This is where the probabilistic detector meets the deterministic pipeline. Opt-in open-class NER (PERSON, ORG, LOCATION) via `@huggingface/transformers` ONNX runs as a lazy warm singleton inside the long-lived MCP server ONLY — structurally unreachable from the per-event hook hot path. NER is advisory (warn/audit) by default, fails closed for NER only (secret gate never crashes), records model provenance in every PII audit entry, and supports a higher-recall model tier swap. The FP/overlap/reproducibility risks all land and are tested here.
+**Mode:** mvp
+**Depends on**: Phase 4 (schema) + Phase 5 (model cache + singleton plumbing)
+**Requirements**: NER-01, NER-02, NER-03, NER-04, MODEL-04
+**Success Criteria** (what must be TRUE):
+  1. With `[pii.ner].enabled = true`, operator calls `mcp__mrclean__check` / `mcp__mrclean__redact` on prose containing a person/org/location and gets back NER findings — while the per-event hook never loads a model (verified: no pipeline import reachable from the hook path, hook cold-start unchanged)
+  2. A NER-only finding (no deterministic signal) defaults to warn/audit and does NOT hard-block; only the deterministic secret layers (and checksum'd PII) block by default, and a tunable `min_score` threshold drops low-confidence entities
+  3. Operator simulates a model load/inference failure (corrupt/missing model, offline) and the MCP tools return a structured `nerStatus: "unavailable"`, fall back to Layers 1-4 + regex-PII, and never crash the secret-detection gate
+  4. Operator switches `[pii.ner].model` to the higher-recall piiranha (~317 MB) tier via config and it loads in place of the default ~108 MB model; every PII audit entry records `model_rev` + `quant` + `backend` so the same input + pinned model reproduces identical entries across machines
+**Plans**: TBD
+
+### Phase 7: PII Security Hardening & Honest Framing
+**Goal**: Close the security and trust surface a security tool is held to, auditing the fully-integrated PII surface end-to-end. A leak-grep regression test proves no raw PII value ever reaches `.mrclean/audit.jsonl` or any error/diagnostic/exception path, and all user-facing copy is ruthlessly framed as a best-effort ML recall aid (NER false negatives can leak) — explicitly NOT a guarantee, with secrets remaining the deterministic guarantee.
+**Mode:** mvp
+**Depends on**: Phase 6 (fully-integrated PII surface to audit)
+**Requirements**: PIISEC-01, PIISEC-02
+**Success Criteria** (what must be TRUE):
+  1. Operator runs the leak-grep regression test, which feeds known PII (test SSN/email/name) through the full pipeline and asserts none of those raw values appear anywhere in `.mrclean/audit.jsonl` OR in stderr/error output — including deliberately-triggered exception paths
+  2. Operator reads the README/PII section and finds it frames the NER layer as "best-effort ML PII hint, not a guarantee," explicitly states that NER false negatives can leak, and points to `words.txt` + deterministic layers as the real must-not-leak mechanism — no language drifting toward "redacts all PII" or compliance claims
+  3. Operator confirms the framing is consistent across CLI output, `mrclean doctor`, and docs — the probabilistic asterisk on NER findings is visible wherever PII results surface
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -79,8 +141,14 @@
 | 1. Wired Skeleton | 0/5 | Planned, not started | - |
 | 2. Live Redaction (Layers 1-4 + One-Way) | 2/7 | In Progress|  |
 | 3. MCP Tools, Performance Gate, Public Release | 6/6 | Complete   | 2026-05-14 |
+| 4. PII Contracts & Architecture Foundations | 0/? | Not started | - |
+| 5. Regex PII Hot-Path Lane (L6a) + Model Acquisition | 0/? | Not started | - |
+| 6. NER Inference (L6b) + MCP Wiring | 0/? | Not started | - |
+| 7. PII Security Hardening & Honest Framing | 0/? | Not started | - |
 
 ## Coverage Validation
+
+### v1 (Phases 1-3)
 
 All 54 v1 requirements mapped to exactly one phase. No orphans. No duplicates. v2/REVMODE/LLM5/POLISH items from REQUIREMENTS.md explicitly excluded from v1 phases.
 
@@ -102,5 +170,17 @@ All 54 v1 requirements mapped to exactly one phase. No orphans. No duplicates. v
 | QA | 3 | 0 | 0 | 3 |
 | **Total** | **54** | **17** | **26** | **11** |
 
+### v2.0 (Phases 4-7)
+
+All 14 v2.0 requirements mapped to exactly one phase. No orphans. No duplicates.
+
+| Category | Total | Phase 4 | Phase 5 | Phase 6 | Phase 7 |
+|----------|-------|---------|---------|---------|---------|
+| PII | 3 | 1 (PII-03) | 2 (PII-01, PII-02) | 0 | 0 |
+| NER | 4 | 0 | 0 | 4 (NER-01..04) | 0 |
+| MODEL | 4 | 1 (MODEL-01) | 2 (MODEL-02, MODEL-03) | 1 (MODEL-04) | 0 |
+| PIISEC | 3 | 1 (PIISEC-03) | 0 | 0 | 2 (PIISEC-01, PIISEC-02) |
+| **Total** | **14** | **3** | **4** | **5** | **2** |
+
 ---
-*Last updated: 2026-05-14 after Phase 3 plan-phase (6 plans created)*
+*Last updated: 2026-06-02 after v2.0 roadmap (Phases 4-7 appended; v1 Phases 1-3 history preserved)*

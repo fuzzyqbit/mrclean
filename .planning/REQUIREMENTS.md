@@ -165,7 +165,9 @@
 
 ## Traceability
 
-> Filled by ROADMAP.md after roadmapper run. Coverage: 54/54 v1 requirements mapped (100%). Each REQ-ID maps to exactly one phase. v2 / Out-of-scope items are not in any phase.
+> Filled by ROADMAP.md after roadmapper run. Coverage: v1 — 54/54 requirements mapped (100%). v2.0 — 14/14 requirements mapped (100%). Each REQ-ID maps to exactly one phase. Deferred-v2 / Out-of-scope items are not in any phase.
+
+### v1 (Phases 1-3)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -224,6 +226,25 @@
 | QA-02 | Phase 3 | Complete |
 | QA-03 | Phase 3 | Complete |
 
+### v2.0 (Phases 4-7) — Native-Node PII/NER Layer
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| PII-03 | Phase 4 | Pending |
+| MODEL-01 | Phase 4 | Pending |
+| PIISEC-03 | Phase 4 | Pending |
+| PII-01 | Phase 5 | Pending |
+| PII-02 | Phase 5 | Pending |
+| MODEL-02 | Phase 5 | Pending |
+| MODEL-03 | Phase 5 | Pending |
+| NER-01 | Phase 6 | Pending |
+| NER-02 | Phase 6 | Pending |
+| NER-03 | Phase 6 | Pending |
+| NER-04 | Phase 6 | Pending |
+| MODEL-04 | Phase 6 | Pending |
+| PIISEC-01 | Phase 7 | Pending |
+| PIISEC-02 | Phase 7 | Pending |
+
 ### Coverage Summary
 
 | Phase | Requirement Count |
@@ -232,5 +253,10 @@
 | Phase 2 — Live Redaction (Layers 1-4 + One-Way) | 26 |
 | Phase 3 — MCP Tools, Performance Gate, Public Release | 11 |
 | **Total v1** | **54** |
-| v2 / Deferred (REVMODE, LLM5, POLISH, PERF-04) | 8 (not in v1 phases) |
-| Out of Scope | 11 (not in any phase) |
+| Phase 4 — PII Contracts & Architecture Foundations | 3 |
+| Phase 5 — Regex PII Hot-Path Lane (L6a) + Model Acquisition | 4 |
+| Phase 6 — NER Inference (L6b) + MCP Wiring | 5 |
+| Phase 7 — PII Security Hardening & Honest Framing | 2 |
+| **Total v2.0** | **14** |
+| Deferred-v2 (REVMODE, LLM5, POLISH, PERF-04) | 8 (not in any phase) |
+| Out of Scope | 15 (not in any phase) |
