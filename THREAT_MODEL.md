@@ -106,6 +106,36 @@ If you want to prevent secrets from being committed to the repo, configure gitle
 trufflehog as a pre-commit hook. If you want to prevent secrets from reaching the
 Anthropic API during a Claude Code session, use mrclean.
 
+### 10. v2.0 PII/NER scope fence (cloud PII APIs, model-facing unredact tools, Presidio sidecar)
+
+The v2.0 Native-Node PII/NER layer intentionally excludes three classes of capability
+that would be dangerous, break zero-config `npx`, or defeat mrclean's no-egress premise:
+
+1. **Cloud PII APIs** (AWS Comprehend, GCP DLP, Azure AI Language) — sending text to a
+   cloud API to detect whether it contains PII leaks the content before redaction,
+   reversing mrclean's value. Not a defense. See docs/SCOPE-FENCE.md §"Ban 1".
+
+2. **Model-facing unredact / disable MCP tools** — a `pii_unredact`, `disable_pii`, or
+   `pii_config_write` tool callable by the model would be one prompt injection from
+   total bypass (MCP-03 attack class). Not a defense. The MCP-03 forbidden-tool
+   invariant (`FORBIDDEN_TOOL_NAMES` in tests/mcp/tools-list.test.ts) bans these names
+   at CI. See docs/SCOPE-FENCE.md §"Ban 2".
+
+3. **Microsoft Presidio Python sidecar** — a Python subprocess breaks zero-config `npx`
+   and adds a second language runtime to the attack surface. Presidio is a deferred
+   compliance-tier alternative, not the default. Not a defense. See docs/SCOPE-FENCE.md
+   §"Ban 3".
+
+**What mrclean DOES provide for PII in v2.0:** In-process NER (`Xenova/bert-base-NER`
+int8) running only in the long-lived MCP server (never per-event hook), advisory
+warn/audit action only (never a hard gate), PERSON/ORG/LOC entities, and a regex-PII
+lane (email, SSN, credit card, phone, IP) on the hot path. All ML deps are
+`optionalDependencies` — a build failure on native onnxruntime-node never breaks the
+core secret tool.
+
+Full fence definition, in-scope allowlist, and per-phase transition checklist:
+**docs/SCOPE-FENCE.md**
+
 ---
 
 ## What mrclean DOES defend against

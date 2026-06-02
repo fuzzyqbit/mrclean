@@ -33,6 +33,10 @@ const DIST_MCP = resolve(PROJECT_ROOT, 'dist/mcp.js')
  *   - Phase 1 stubs (sanitize, restore, audit_query)
  *   - Reverse-path tools (unredact, mrclean_unredact)
  *   - Config-write/bypass tools (disable, add_word, config_write, ignore)
+ *   - PII-write/unredact tools (Phase 4 — PIISEC-03 + docs/SCOPE-FENCE.md §"Ban 2"):
+ *     A model-facing PII unredact or disable tool is one prompt injection from
+ *     total bypass of the v2.0 PII layer. These names are banned pre-emptively so
+ *     no future phase can accidentally expose them without failing CI.
  *
  * If any of these appear, the prompt-injection attack surface described in
  * CONTEXT.md §"MCP Tool Surface" MCP-03 Pitfall #10 is exposed.
@@ -47,6 +51,12 @@ const FORBIDDEN_TOOL_NAMES = [
   'add_word',
   'config_write',
   'ignore',
+  // PII-write/unredact tools — PIISEC-03 / docs/SCOPE-FENCE.md §"Ban 2"
+  'pii_unredact',
+  'mrclean_pii_unredact',
+  'disable_pii',
+  'add_pii_word',
+  'pii_config_write',
 ] as const
 
 describe('mrclean-mcp stdio integration', { timeout: 30000 }, () => {
