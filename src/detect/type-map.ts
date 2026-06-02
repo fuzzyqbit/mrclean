@@ -11,7 +11,7 @@
  *   3. Update the JSDoc in this file.
  *
  * Exports:
- *   TYPE_VOCABULARY    — frozen array of 17 TYPE strings (locked vocabulary)
+ *   TYPE_VOCABULARY    — frozen array of 25 TYPE strings (locked vocabulary; 17 secret/layer + 8 PII)
  *   getTypeForRuleId   — map a rule-id to its TYPE (with word: prefix + SECRET fallback)
  */
 
@@ -22,11 +22,14 @@
 /**
  * Locked TYPE vocabulary for the `<MRCLEAN:TYPE:NNN>` placeholder format.
  *
- * 17 entries:
+ * 25 entries:
  *   - 14 secret-type TYPEs: AWS_KEY, AWS_SECRET, GH_TOKEN, JWT, STRIPE_KEY,
  *     OPENAI_KEY, ANTHROPIC_KEY, PRIVATE_KEY, SLACK_TOKEN, GCP_KEY,
  *     DATABRICKS_KEY, AZURE_KEY, CF_KEY + SECRET (fallback)
  *   - 3 layer-specific TYPEs: ENV (Layer 3), WORD (Layer 4), ENTROPY (Layer 2)
+ *   - 8 PII TYPEs (v2.0 — Phase 4 contract addition):
+ *     PII_EMAIL, PII_SSN, PII_CREDIT_CARD, PII_PHONE, PII_IP (Layer 6a regex)
+ *     PII_PERSON, PII_ORG, PII_LOC (Layer 6b NER)
  *
  * If a new TYPE is introduced in a later plan, add it here first.
  * Existing entries MUST NOT be removed or reordered (stable placeholder format).
@@ -49,6 +52,17 @@ export const TYPE_VOCABULARY = Object.freeze([
   'WORD',
   'ENTROPY',
   'SECRET',
+  // PII TYPEs — appended at tail (v2.0 Phase 4 contract; no detectors emit these yet)
+  // Layer 6a regex-PII (ARCHITECTURE-v2-pii.md §Component Responsibilities)
+  'PII_EMAIL',
+  'PII_SSN',
+  'PII_CREDIT_CARD',
+  'PII_PHONE',
+  'PII_IP',
+  // Layer 6b NER-PII (ARCHITECTURE-v2-pii.md §Config Surface)
+  'PII_PERSON',
+  'PII_ORG',
+  'PII_LOC',
 ] as const)
 
 // ---------------------------------------------------------------------------
@@ -174,6 +188,26 @@ const RULE_ID_TO_TYPE: Readonly<Record<string, string>> = Object.freeze({
 
   // JWT
   'gitleaks:jwt': 'JWT',
+
+  // -------------------------------------------------------------------------
+  // Layer 6a — PII regex rule-ids
+  // Lowercase snake tokens matching [pii.regex].entities config tokens
+  // (ARCHITECTURE-v2-pii.md §Config Surface; no detectors emit these until Phase 5)
+  // -------------------------------------------------------------------------
+  'pii:email': 'PII_EMAIL',
+  'pii:ssn': 'PII_SSN',
+  'pii:credit_card': 'PII_CREDIT_CARD',
+  'pii:phone': 'PII_PHONE',
+  'pii:ip': 'PII_IP',
+
+  // -------------------------------------------------------------------------
+  // Layer 6b — PII NER rule-ids
+  // Upper-case model labels matching the bert-base-NER entity set
+  // (ARCHITECTURE-v2-pii.md §Config Surface; no detectors emit these until Phase 6)
+  // -------------------------------------------------------------------------
+  'pii:PERSON': 'PII_PERSON',
+  'pii:ORG': 'PII_ORG',
+  'pii:LOC': 'PII_LOC',
 })
 
 // ---------------------------------------------------------------------------
