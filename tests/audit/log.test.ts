@@ -135,4 +135,79 @@ describe('writeAuditRecord', () => {
     expect(record.location.length).toBe(10)
     expect(record.location.hookEvent).toBe('PreToolUse')
   })
+
+  // Test: AuditRecord accepts optional engine/model_rev/quant/backend fields
+  it('AuditRecord type accepts optional provenance fields engine/model_rev/quant/backend', () => {
+    const record: AuditRecord = makeRecord({
+      engine: 'pii-ner@abc1234',
+      model_rev: 'abc1234def5678',
+      quant: 'int8',
+      backend: 'onnxruntime-node',
+    })
+
+    expect(record.engine).toBe('pii-ner@abc1234')
+    expect(record.model_rev).toBe('abc1234def5678')
+    expect(record.quant).toBe('int8')
+    expect(record.backend).toBe('onnxruntime-node')
+  })
+
+  // Test: findingToAuditRecord without provenance — backward-compatible (no provenance fields)
+  it('findingToAuditRecord without provenance produces record byte-identical to v1 (no engine/model_rev/quant/backend)', () => {
+    const finding = makeFinding('secret-value')
+    const record = findingToAuditRecord(finding, 'sess-001', 'UserPromptSubmit', 'substitute')
+
+    expect(record.engine).toBeUndefined()
+    expect(record.model_rev).toBeUndefined()
+    expect(record.quant).toBeUndefined()
+    expect(record.backend).toBeUndefined()
+    // Core fields present
+    expect(record.ruleId).toBe('AWSAccessKeyID')
+    expect(record.sessionId).toBe('sess-001')
+    expect(record.action).toBe('substitute')
+  })
+
+  // Test: findingToAuditRecord WITH provenance includes engine/model_rev/quant/backend
+  it('findingToAuditRecord with provenance includes provenance fields and still omits raw value', () => {
+    const finding = makeFinding('super-secret', {
+      ruleId: 'pii:PERSON',
+      source: 'pii-ner',
+    })
+    const provenance = { engine: 'pii-ner@sha1234', model_rev: 'sha1234', quant: 'int8', backend: 'onnxruntime-node' }
+    const record = findingToAuditRecord(finding, 'sess-002', 'UserPromptSubmit', 'audit', provenance)
+
+    expect(record.engine).toBe('pii-ner@sha1234')
+    expect(record.model_rev).toBe('sha1234')
+    expect(record.quant).toBe('int8')
+    expect(record.backend).toBe('onnxruntime-node')
+    // Must not contain raw value
+    const serialised = JSON.stringify(record)
+    expect(serialised).not.toContain('super-secret')
+  })
+
+  // Test: no-raw rule holds for PII — a finding with SSN/email value produces no raw text in record
+  it('findingToAuditRecord never serialises raw PII value (SSN test)', () => {
+    const ssnValue = '123-45-6789'
+    const finding = makeFinding(ssnValue, {
+      ruleId: 'pii:ssn',
+      source: 'pii-regex',
+    })
+
+    const record = findingToAuditRecord(finding, 'sess-003', 'PreToolUse', 'block')
+    const serialised = JSON.stringify(record)
+
+    expect(serialised).not.toContain(ssnValue)
+  })
+
+  it('findingToAuditRecord never serialises raw PII value (email test)', () => {
+    const emailValue = 'john.doe@example.com'
+    const finding = makeFinding(emailValue, {
+      ruleId: 'pii:email',
+      source: 'pii-regex',
+    })
+
+    const record = findingToAuditRecord(finding, 'sess-004', 'UserPromptSubmit', 'substitute')
+    const serialised = JSON.stringify(record)
+
+    expect(serialised).not.toContain(emailValue)
+  })
 })
