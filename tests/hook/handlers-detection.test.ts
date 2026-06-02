@@ -13,21 +13,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { MrcleanConfig } from '../../src/shared/types.js'
 import type { DetectionResult } from '../../src/detect/index.js'
+import { DEFAULT_CONFIG } from '../../src/config/defaults.js'
 
 // ---------------------------------------------------------------------------
 // Shared mock factories — called freshly in each test
 // ---------------------------------------------------------------------------
 
 const MOCK_CONFIG_ACTIVE: MrcleanConfig = {
+  ...DEFAULT_CONFIG,
   dry_run: false,
-  allowlist: { rules: [], paths: [], stopwords: [], regexes: [], fingerprints: [] },
-  entropy: { threshold: 4.5, min_length: 20 },
-  secrets_files: [],
-  rules: [],
 }
 
 const MOCK_CONFIG_DRY_RUN: MrcleanConfig = {
-  ...MOCK_CONFIG_ACTIVE,
+  ...DEFAULT_CONFIG,
   dry_run: true,
 }
 

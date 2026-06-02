@@ -22,6 +22,7 @@ import { VERSION } from '../../src/shared/version.js'
 import type { MrcleanConfig } from '../../src/shared/types.js'
 import type { SessionState } from '../../src/detect/session-state.js'
 import type { EnvBlocklist } from '../../src/detect/layer3-env.js'
+import { DEFAULT_CONFIG } from '../../src/config/defaults.js'
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -29,11 +30,7 @@ import type { EnvBlocklist } from '../../src/detect/layer3-env.js'
 
 function makeConfig(overrides: Partial<MrcleanConfig> = {}): MrcleanConfig {
   return {
-    dry_run: false,
-    allowlist: { rules: [], paths: [], stopwords: [], regexes: [], fingerprints: [] },
-    entropy: { threshold: 4.5, min_length: 20 },
-    secrets_files: [],
-    rules: [],
+    ...DEFAULT_CONFIG,
     ...overrides,
   }
 }

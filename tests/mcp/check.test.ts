@@ -17,6 +17,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { registerCheckTool } from '../../src/mcp/tools/check.js'
 import type { MrcleanConfig } from '../../src/shared/types.js'
+import { DEFAULT_CONFIG } from '../../src/config/defaults.js'
 import type { SessionState } from '../../src/detect/session-state.js'
 import type { EnvBlocklist } from '../../src/detect/layer3-env.js'
 
@@ -26,11 +27,7 @@ import type { EnvBlocklist } from '../../src/detect/layer3-env.js'
 
 function makeConfig(overrides: Partial<MrcleanConfig> = {}): MrcleanConfig {
   return {
-    dry_run: false,
-    allowlist: { rules: [], paths: [], stopwords: [], regexes: [], fingerprints: [] },
-    entropy: { threshold: 4.5, min_length: 20 },
-    secrets_files: [],
-    rules: [],
+    ...DEFAULT_CONFIG,
     ...overrides,
   }
 }

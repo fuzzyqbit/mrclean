@@ -9,19 +9,12 @@ import { describe, it, expect } from 'vitest'
 import { WorkerPool } from '../../../src/detect/layer1-regex/worker-pool.js'
 import { fingerprint } from '../../../src/detect/findings.js'
 import type { MrcleanConfig } from '../../../src/shared/types.js'
+import { DEFAULT_CONFIG } from '../../../src/config/defaults.js'
 
 // Lazy import index.ts after it exists
 async function getRunLayer1() {
   const mod = await import('../../../src/detect/layer1-regex/index.js')
   return mod.runLayer1
-}
-
-const DEFAULT_CONFIG: MrcleanConfig = {
-  dry_run: false,
-  allowlist: { rules: [], paths: [], stopwords: [], regexes: [], fingerprints: [] },
-  entropy: { threshold: 4.5, min_length: 20 },
-  secrets_files: [],
-  rules: [],
 }
 
 describe('runLayer1 — integration', () => {

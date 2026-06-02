@@ -193,6 +193,87 @@ export interface MrcleanRuleOverride {
 }
 
 /**
+ * PII sub-lane action policy — which disposition to apply when a PII entity is found.
+ * Per-entity map: ssn/credit_card → 'block'; others default to 'warn'/'audit'.
+ * PII-03: "per-entity action policy lets checksum-validated entities (SSN, credit card)
+ *   block while other PII defaults to warn/audit."
+ */
+export type PiiAction = 'block' | 'warn' | 'audit'
+
+/**
+ * Regex-PII sub-lane configuration ([pii.regex] in TOML).
+ * Hot-path safe — deterministic, pure-JS, no model load.
+ */
+export interface MrcleanPiiRegexConfig {
+  /** Enable regex-PII detection when [pii].enabled is also true. Default: true */
+  enabled: boolean
+  /**
+   * Entity names to detect. Default: ["email","ssn","credit_card","phone","ip"].
+   * Merge semantics: LAST-WINS (NOT concat). A project layer can narrow the set.
+   * See ARCHITECTURE-v2-pii.md §"Config Surface" (distinct from allowlist concat behavior).
+   */
+  entities: string[]
+  /**
+   * Per-entity action policy. Validated against {block, warn, audit}.
+   * Default: ssn/credit_card → block; email/phone → warn; ip → audit.
+   */
+  actions: Record<string, PiiAction>
+}
+
+/**
+ * NER sub-lane configuration ([pii.ner] in TOML).
+ * MCP-server-only — warm singleton, perf-exempt. NEVER runs in the hook process.
+ */
+export interface MrcleanPiiNerConfig {
+  /** Enable NER inference. Default: false (opt-in within opt-in). */
+  enabled: boolean
+  /** HuggingFace model identifier. Default: "Xenova/bert-base-NER" */
+  model: string
+  /** ONNX quantization dtype. Default: "int8" (108 MB). "fp32" for higher accuracy. */
+  dtype: string
+  /**
+   * Entity labels to detect. Default: ["PERSON","ORG","LOC"] (MISC excluded — noisy).
+   * Merge semantics: LAST-WINS (NOT concat). See MrcleanPiiRegexConfig.entities note.
+   */
+  entities: string[]
+  /** Confidence threshold below which entity spans are dropped. Default: 0.9 */
+  confidence: number
+  /** Allow lazy first-run model download to ~/.mrclean/models/. Default: true */
+  allowDownload: boolean
+  /** Warm the NER singleton at MCP server boot (vs first tool call). Default: false */
+  warmOnBoot: boolean
+  /**
+   * Per-entity action policy. Validated against {block, warn, audit}.
+   * Default: PERSON/ORG → warn; LOC → audit. NER is advisory — never a hard gate.
+   */
+  actions: Record<string, PiiAction>
+}
+
+/**
+ * Top-level PII configuration ([pii] in TOML).
+ * Phase 4-02 contract: defines the config surface for Phases 5-7.
+ * PII-03: OFF by default; secrets remain mrclean's core hard gate.
+ *
+ * Merge semantics for pii (ARCHITECTURE-v2-pii.md §"Config Surface"):
+ *   - pii.enabled, pii.regex.enabled, pii.ner.*: LAST-WINS (scalar)
+ *   - pii.regex.entities, pii.ner.entities: LAST-WINS (NOT concat — unlike allowlist)
+ *   - pii.regex.actions, pii.ner.actions: LAST-WINS (merged at sub-table level)
+ * This allows a project layer to NARROW the entity set (e.g. ["email"] only),
+ * rather than accumulating all layers' entity lists.
+ */
+export interface MrcleanPiiConfig {
+  /**
+   * Master switch. Default: false.
+   * When false, behavior is byte-identical to v1 — absent-[pii] == v1 guarantee.
+   */
+  enabled: boolean
+  /** Regex-PII hot-path lane (L6a). */
+  regex: MrcleanPiiRegexConfig
+  /** NER inference MCP-only lane (L6b). */
+  ner: MrcleanPiiNerConfig
+}
+
+/**
  * Effective configuration after merging all three layers (defaults < user < project).
  *
  * REQUIREMENTS.md CFG-01: project-local .mrclean/config.toml is optional — missing file ≡ no overrides.
@@ -202,6 +283,8 @@ export interface MrcleanRuleOverride {
  * Merge semantics (RESEARCH §11.4):
  *   - scalar fields (dry_run, entropy.*, secrets_files, rules): last layer wins
  *   - allowlist arrays (5 axes): concatenated across all layers
+ *   - pii (Phase 4-02): scalars + entities arrays use LAST-WINS (NOT concat)
+ *     See MrcleanPiiConfig JSDoc for full detail.
  */
 export interface MrcleanConfig {
   /**
@@ -219,4 +302,10 @@ export interface MrcleanConfig {
   secrets_files: string[]
   /** Per-rule action overrides from [[rules]] array-of-tables (CFG-02). */
   rules: MrcleanRuleOverride[]
+  /**
+   * PII detection configuration ([pii] in TOML). Phase 4-02 contract.
+   * Default: enabled=false (master off). Absent [pii] table == v1 behavior.
+   * PII-03: opt-in; secrets remain the only default hard gate.
+   */
+  pii: MrcleanPiiConfig
 }
