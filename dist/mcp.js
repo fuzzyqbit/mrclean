@@ -40125,6 +40125,27 @@ var init_session_state = __esm({
   }
 });
 
+// src/detect/allowlist.ts
+function isAllowlisted(finding, config2) {
+  const al = config2.allowlist;
+  if (al.rules.includes(finding.ruleId)) return true;
+  if (al.fingerprints.includes(finding.fingerprint)) return true;
+  if (al.regexes.some((pattern) => {
+    try {
+      return new RegExp(pattern).test(finding.value);
+    } catch {
+      return false;
+    }
+  })) return true;
+  if (al.stopwords.some((sw) => finding.value.includes(sw))) return true;
+  return false;
+}
+var init_allowlist = __esm({
+  "src/detect/allowlist.ts"() {
+    "use strict";
+  }
+});
+
 // src/detect/type-map.ts
 function getTypeForRuleId(ruleId) {
   if (ruleId.startsWith("word:")) return "WORD";
@@ -46156,7 +46177,7 @@ function getCompiledAllowlistRegexes(rule) {
   }).filter((r) => r !== null);
   return rule._compiledAllowlistRegexes;
 }
-function isAllowlisted(value, rule) {
+function isAllowlisted2(value, rule) {
   const allStopwords = [
     ...rule.globalAllowlist.stopwords ?? [],
     ...rule.allowlists.flatMap((al) => al.stopwords ?? [])
@@ -46186,7 +46207,7 @@ async function runGitleaks(text, pool2, timeoutMs = 50) {
     for (const match of result.matches) {
       const value = match.value;
       if (!value) continue;
-      if (isAllowlisted(value, rule)) continue;
+      if (isAllowlisted2(value, rule)) continue;
       if (rule.entropy !== void 0 && shannonEntropy(value) < rule.entropy) continue;
       const ruleId = `gitleaks:${rule.id}`;
       findings.push({
@@ -46222,20 +46243,6 @@ var init_redos_worker = __esm({
 });
 
 // src/detect/layer1-regex/index.ts
-function isAllowlisted2(finding, config2) {
-  const al = config2.allowlist;
-  if (al.rules.includes(finding.ruleId)) return true;
-  if (al.fingerprints.includes(finding.fingerprint)) return true;
-  if (al.regexes.some((pattern) => {
-    try {
-      return new RegExp(pattern).test(finding.value);
-    } catch {
-      return false;
-    }
-  })) return true;
-  if (al.stopwords.some((sw) => finding.value.includes(sw))) return true;
-  return false;
-}
 function applyRuleOverride(finding, overrideMap) {
   const override = overrideMap.get(finding.ruleId);
   if (!override) return finding;
@@ -46264,7 +46271,7 @@ async function runLayer1(text, config2, pool2) {
   }
   const filtered = [];
   for (const finding of deduped) {
-    if (isAllowlisted2(finding, config2)) continue;
+    if (isAllowlisted(finding, config2)) continue;
     const afterOverride = applyRuleOverride(finding, overrideMap);
     if (afterOverride === null) continue;
     filtered.push(afterOverride);
@@ -46275,6 +46282,7 @@ var init_layer1_regex = __esm({
   "src/detect/layer1-regex/index.ts"() {
     "use strict";
     init_findings();
+    init_allowlist();
     init_secretlint_engine();
     init_gitleaks_engine();
     init_gitleaks_adapter();
@@ -46352,6 +46360,108 @@ var init_layer2_entropy = __esm({
     KEYWORD_WINDOW = 40;
     ESCALATION_MIN_LENGTH = 40;
     ESCALATION_MIN_ENTROPY = 5;
+  }
+});
+
+// src/detect/layer6a-pii.ts
+function severityForEntity(entity) {
+  switch (entity) {
+    case "ssn":
+    case "credit_card":
+      return "HIGH";
+    case "email":
+    case "phone":
+      return "MEDIUM";
+    case "ip":
+      return "LOW";
+    default:
+      return "MEDIUM";
+  }
+}
+function overlapsCovered2(candidateStart, candidateEnd, covered) {
+  for (const span of covered) {
+    if (candidateStart < span.end && span.start < candidateEnd) return true;
+  }
+  return false;
+}
+function luhnCheck(raw) {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 13 || digits.length > 19) return false;
+  let sum = 0;
+  let alt = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let d = parseInt(digits[i], 10);
+    if (alt) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+    alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+function runLayer6aPii(text, piiConfig, config2, coveredSpans = []) {
+  if (!piiConfig.enabled) return [];
+  const findings = [];
+  for (const entity of piiConfig.entities) {
+    const patternSource = PII_PATTERN_SOURCES.get(entity);
+    if (!patternSource) continue;
+    const re = entity === "email" ? new RegExp(patternSource, "gi") : new RegExp(patternSource, "g");
+    for (const match of text.matchAll(re)) {
+      const value = match[0];
+      const spanStart = match.index;
+      const spanEnd = spanStart + value.length;
+      if (overlapsCovered2(spanStart, spanEnd, coveredSpans)) continue;
+      if (entity === "credit_card" && !luhnCheck(value)) continue;
+      const severity = severityForEntity(entity);
+      const action = piiConfig.actions[entity] ?? "audit";
+      const hash2 = redactedHash(value);
+      const fp = fingerprint(`pii:${entity}`, value);
+      const candidate = {
+        ruleId: `pii:${entity}`,
+        severity,
+        span: { start: spanStart, end: spanEnd },
+        value,
+        redactedHash: hash2,
+        fingerprint: fp,
+        source: "pii-regex",
+        action
+      };
+      if (isAllowlisted(candidate, config2)) continue;
+      findings.push(candidate);
+    }
+  }
+  return findings.sort((a, b) => a.span.start - b.span.start);
+}
+var PII_PATTERN_SOURCES;
+var init_layer6a_pii = __esm({
+  "src/detect/layer6a-pii.ts"() {
+    "use strict";
+    init_findings();
+    init_allowlist();
+    PII_PATTERN_SOURCES = /* @__PURE__ */ new Map([
+      // Email: standard RFC-5321-ish pattern anchored by word boundary
+      ["email", "[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}"],
+      // SSN: negative lookahead rejects group 000/666/9xx and serial 0000
+      // Allows separators: hyphen or space (consistently)
+      ["ssn", "(?<![\\d])(?!000|666|9\\d{2})\\d{3}[\\- ]\\d{2}[\\- ](?!0{4})\\d{4}(?![\\d])"],
+      // Credit card: Visa/MC/Amex/Discover/JCB prefix alternation, tolerant of a single
+      // space or hyphen between digit groups (the most common real-world formats).
+      // CR-01: the prior contiguous-only pattern leaked separator-formatted cards
+      // (`4111 1111 1111 1111`) because luhnCheck strips separators but the regex never
+      // produced a separator-containing candidate. Separators are optional `[ -]?` between
+      // fixed-length groups — every quantifier is bounded, so the pattern stays linear-time
+      // (no catastrophic backtracking). Luhn validation remains the secondary gate; the
+      // (?<![0-9])/(?![0-9]) anchors prevent matching inside a longer digit run.
+      ["credit_card", "(?<![0-9])(?:4[0-9]{3}(?:[ -]?[0-9]{4}){2}(?:[ -]?[0-9]{1,4})?|5[1-5][0-9]{2}(?:[ -]?[0-9]{4}){3}|3[47][0-9]{2}[ -]?[0-9]{6}[ -]?[0-9]{5}|6(?:011|5[0-9]{2})(?:[ -]?[0-9]{4}){3}|(?:2131|1800)[ -]?[0-9]{4}[ -]?[0-9]{4}[ -]?[0-9]{3}|35[0-9]{2}(?:[ -]?[0-9]{4}){3})(?![0-9])"],
+      // Phone: NPA starting [2-9], NXX starting [2-9] — avoids version-string false positives
+      // Supports formats: NNN-NNN-NNNN, NNN.NNN.NNNN, NNN NNN NNNN, (NNN) NNN-NNNN
+      // RESEARCH Pitfall 3: NPA/NXX [2-9] guard prevents matching "3.14.1592"
+      ["phone", "(?:\\+1[\\-.\\s]?)?\\(?[2-9][0-9]{2}\\)?[\\-.\\s]?[2-9][0-9]{2}[\\-.\\s]?[0-9]{4}"],
+      // IPv4: validated octet pattern (0-255 per octet), anchored by word boundary
+      // RESEARCH Pitfall 4: \b prevents matching 56.1.1.1 inside "256.1.1.1"
+      ["ip", "\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b"]
+    ]);
   }
 });
 
@@ -46726,17 +46836,17 @@ async function runDetectionReadOnly(text, config2, sessionState, ctx) {
   findings.push(...l3);
   const l4 = runLayer4Words(text, sessionState.wordEntries, findings.map((f) => f.span));
   findings.push(...l4);
-  const deduped = dedupBySpan(findings);
-  for (const f of deduped) {
-    if (f.action === "warn") {
-      f.action = "audit";
-    }
+  if (config2.pii.enabled && config2.pii.regex.enabled) {
+    const l6a = runLayer6aPii(text, config2.pii.regex, config2, findings.map((f) => f.span));
+    findings.push(...l6a);
   }
+  const deduped = dedupBySpan(findings);
   const resolvedFindings = deduped.map((f) => {
-    const effectiveAction = f.action !== void 0 ? f.action : severityToDefaultAction(f.severity);
+    const action = f.action === "warn" ? "audit" : f.action;
+    const effectiveAction = action !== void 0 ? action : severityToDefaultAction(f.severity);
     const type = getTypeForRuleId(f.ruleId);
     const entry = manager.allocate(f.value, type);
-    return { ...f, placeholder: entry.placeholder, effectiveAction };
+    return { ...f, action, placeholder: entry.placeholder, effectiveAction };
   });
   const finalFindings = config2.dry_run ? applyDryRun(resolvedFindings) : resolvedFindings;
   const substitutedText = config2.dry_run ? text : substituteFindings(text, finalFindings);
@@ -46759,17 +46869,17 @@ async function runDetection(text, config2, sessionState, ctx) {
   findings.push(...l3);
   const l4 = runLayer4Words(text, sessionState.wordEntries, findings.map((f) => f.span));
   findings.push(...l4);
-  const deduped = dedupBySpan(findings);
-  for (const f of deduped) {
-    if (f.action === "warn") {
-      f.action = "audit";
-    }
+  if (config2.pii.enabled && config2.pii.regex.enabled) {
+    const l6a = runLayer6aPii(text, config2.pii.regex, config2, findings.map((f) => f.span));
+    findings.push(...l6a);
   }
+  const deduped = dedupBySpan(findings);
   const resolvedFindings = deduped.map((f) => {
-    const effectiveAction = f.action !== void 0 ? f.action : severityToDefaultAction(f.severity);
+    const action = f.action === "warn" ? "audit" : f.action;
+    const effectiveAction = action !== void 0 ? action : severityToDefaultAction(f.severity);
     const type = getTypeForRuleId(f.ruleId);
     const entry = manager.allocate(f.value, type);
-    return { ...f, placeholder: entry.placeholder, effectiveAction };
+    return { ...f, action, placeholder: entry.placeholder, effectiveAction };
   });
   const finalFindings = config2.dry_run ? applyDryRun(resolvedFindings) : resolvedFindings;
   const substitutedText = config2.dry_run ? text : substituteFindings(text, finalFindings);
@@ -46801,6 +46911,7 @@ var init_detect = __esm({
     init_layer2_entropy();
     init_layer3_env();
     init_layer4_words();
+    init_layer6a_pii();
     init_worker_pool();
     init_manager();
     init_substitute();

@@ -3451,9 +3451,9 @@ var require_picocolors = __commonJS({
     var argv = p.argv || [];
     var env = p.env || {};
     var isColorSupported = !(!!env.NO_COLOR || argv.includes("--no-color")) && (!!env.FORCE_COLOR || argv.includes("--color") || p.platform === "win32" || (p.stdout || {}).isTTY && env.TERM !== "dumb" || !!env.CI);
-    var formatter = (open, close, replace = open) => (input) => {
-      let string3 = "" + input, index = string3.indexOf(close, open.length);
-      return ~index ? open + replaceClose(string3, close, replace, index) + close : open + string3 + close;
+    var formatter = (open2, close, replace = open2) => (input) => {
+      let string3 = "" + input, index = string3.indexOf(close, open2.length);
+      return ~index ? open2 + replaceClose(string3, close, replace, index) + close : open2 + string3 + close;
     };
     var replaceClose = (string3, close, replace, index) => {
       let result = "", cursor = 0;
@@ -4056,7 +4056,7 @@ var init_failclosed = __esm({
 
 // src/hook/stdin.ts
 function readStdinWithTimeout(timeoutMs, stream = process.stdin) {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     let chunks = "";
     let settled = false;
     const timer = setTimeout(() => {
@@ -4073,7 +4073,7 @@ function readStdinWithTimeout(timeoutMs, stream = process.stdin) {
       if (!settled) {
         settled = true;
         clearTimeout(timer);
-        resolve3(chunks);
+        resolve4(chunks);
       }
     });
     stream.on("error", (err) => {
@@ -5680,9 +5680,9 @@ var require_is_glob = __commonJS({
           }
         }
         if (str[index] === "\\") {
-          var open = str[index + 1];
+          var open2 = str[index + 1];
           index += 2;
-          var close = chars[open];
+          var close = chars[open2];
           if (close) {
             var n = str.indexOf(close, index);
             if (n !== -1) {
@@ -5708,9 +5708,9 @@ var require_is_glob = __commonJS({
           return true;
         }
         if (str[index] === "\\") {
-          var open = str[index + 1];
+          var open2 = str[index + 1];
           index += 2;
-          var close = chars[open];
+          var close = chars[open2];
           if (close) {
             var n = str.indexOf(close, index);
             if (n !== -1) {
@@ -6674,7 +6674,7 @@ var require_parse = __commonJS({
           continue;
         }
         if (value === CHAR_DOUBLE_QUOTE || value === CHAR_SINGLE_QUOTE || value === CHAR_BACKTICK) {
-          const open = value;
+          const open2 = value;
           let next;
           if (options.keepQuotes !== true) {
             value = "";
@@ -6684,7 +6684,7 @@ var require_parse = __commonJS({
               value += next + advance();
               continue;
             }
-            if (next === open) {
+            if (next === open2) {
               if (options.keepQuotes === true) value += next;
               break;
             }
@@ -6727,8 +6727,8 @@ var require_parse = __commonJS({
         if (value === CHAR_COMMA && depth > 0) {
           if (block.ranges > 0) {
             block.ranges = 0;
-            const open = block.nodes.shift();
-            block.nodes = [open, { type: "text", value: stringify2(block) }];
+            const open2 = block.nodes.shift();
+            block.nodes = [open2, { type: "text", value: stringify2(block) }];
           }
           push({ type: "comma", value });
           block.commas++;
@@ -7826,16 +7826,16 @@ var require_parse2 = __commonJS({
         const analysis = analyzeRepeatedExtglob(body, opts);
         if ((token.type === "plus" || token.type === "star") && analysis.risky) {
           const safeOutput = analysis.safeOutput ? (token.output ? "" : ONE_CHAR) + (opts.capture ? `(${analysis.safeOutput})` : analysis.safeOutput) : void 0;
-          const open = tokens[token.tokensIndex];
-          open.type = "text";
-          open.value = literal2;
-          open.output = safeOutput || utils.escapeRegex(literal2);
+          const open2 = tokens[token.tokensIndex];
+          open2.type = "text";
+          open2.value = literal2;
+          open2.output = safeOutput || utils.escapeRegex(literal2);
           for (let i = token.tokensIndex + 1; i < tokens.length; i++) {
             tokens[i].value = "";
             tokens[i].output = "";
             delete tokens[i].suffix;
           }
-          state.output = token.output + open.output;
+          state.output = token.output + open2.output;
           state.backtrack = true;
           push({ type: "paren", extglob: true, value, output: "" });
           decrement("parens");
@@ -8055,15 +8055,15 @@ var require_parse2 = __commonJS({
         }
         if (value === "{" && opts.nobrace !== true) {
           increment("braces");
-          const open = {
+          const open2 = {
             type: "brace",
             value,
             output: "(",
             outputIndex: state.output.length,
             tokensIndex: state.tokens.length
           };
-          braces.push(open);
-          push(open);
+          braces.push(open2);
+          push(open2);
           continue;
         }
         if (value === "}") {
@@ -9216,7 +9216,7 @@ var require_async = __commonJS({
           callSuccessCallback(callback, lstat);
           return;
         }
-        settings.fs.stat(path2, (statError, stat) => {
+        settings.fs.stat(path2, (statError, stat2) => {
           if (statError !== null) {
             if (settings.throwErrorOnBrokenSymbolicLink) {
               callFailureCallback(callback, statError);
@@ -9226,9 +9226,9 @@ var require_async = __commonJS({
             return;
           }
           if (settings.markSymbolicLink) {
-            stat.isSymbolicLink = () => true;
+            stat2.isSymbolicLink = () => true;
           }
-          callSuccessCallback(callback, stat);
+          callSuccessCallback(callback, stat2);
         });
       });
     }
@@ -9254,11 +9254,11 @@ var require_sync = __commonJS({
         return lstat;
       }
       try {
-        const stat = settings.fs.statSync(path2);
+        const stat2 = settings.fs.statSync(path2);
         if (settings.markSymbolicLink) {
-          stat.isSymbolicLink = () => true;
+          stat2.isSymbolicLink = () => true;
         }
-        return stat;
+        return stat2;
       } catch (error2) {
         if (!settings.throwErrorOnBrokenSymbolicLink) {
           return lstat;
@@ -9325,14 +9325,14 @@ var require_out = __commonJS({
     var sync = require_sync();
     var settings_1 = require_settings();
     exports.Settings = settings_1.default;
-    function stat(path2, optionsOrSettingsOrCallback, callback) {
+    function stat2(path2, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
         async.read(path2, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
       async.read(path2, getSettings(optionsOrSettingsOrCallback), callback);
     }
-    exports.stat = stat;
+    exports.stat = stat2;
     function statSync(path2, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
       return sync.read(path2, settings);
@@ -10004,41 +10004,41 @@ var require_queue = __commonJS({
       queue.drained = drained;
       return queue;
       function push(value) {
-        var p = new Promise(function(resolve3, reject) {
+        var p = new Promise(function(resolve4, reject) {
           pushCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve3(result);
+            resolve4(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function unshift(value) {
-        var p = new Promise(function(resolve3, reject) {
+        var p = new Promise(function(resolve4, reject) {
           unshiftCb(value, function(err, result) {
             if (err) {
               reject(err);
               return;
             }
-            resolve3(result);
+            resolve4(result);
           });
         });
         p.catch(noop);
         return p;
       }
       function drained() {
-        var p = new Promise(function(resolve3) {
+        var p = new Promise(function(resolve4) {
           process.nextTick(function() {
             if (queue.idle()) {
-              resolve3();
+              resolve4();
             } else {
               var previousDrain = queue.drain;
               queue.drain = function() {
                 if (typeof previousDrain === "function") previousDrain();
-                resolve3();
+                resolve4();
                 queue.drain = previousDrain;
               };
             }
@@ -10524,9 +10524,9 @@ var require_stream3 = __commonJS({
         });
       }
       _getStat(filepath) {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve4, reject) => {
           this._stat(filepath, this._fsStatSettings, (error2, stats) => {
-            return error2 === null ? resolve3(stats) : reject(error2);
+            return error2 === null ? resolve4(stats) : reject(error2);
           });
         });
       }
@@ -10550,10 +10550,10 @@ var require_async5 = __commonJS({
         this._readerStream = new stream_1.default(this._settings);
       }
       dynamic(root, options) {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve4, reject) => {
           this._walkAsync(root, options, (error2, entries) => {
             if (error2 === null) {
-              resolve3(entries);
+              resolve4(entries);
             } else {
               reject(error2);
             }
@@ -10563,10 +10563,10 @@ var require_async5 = __commonJS({
       async static(patterns, options) {
         const entries = [];
         const stream = this._readerStream.static(patterns, options);
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve4, reject) => {
           stream.once("error", reject);
           stream.on("data", (entry) => entries.push(entry));
-          stream.once("end", () => resolve3(entries));
+          stream.once("end", () => resolve4(entries));
         });
       }
     };
@@ -11763,6 +11763,27 @@ var init_session_state = __esm({
     init_layer3_env();
     init_layer4_words();
     cachedSessionState = null;
+  }
+});
+
+// src/detect/allowlist.ts
+function isAllowlisted(finding, config2) {
+  const al = config2.allowlist;
+  if (al.rules.includes(finding.ruleId)) return true;
+  if (al.fingerprints.includes(finding.fingerprint)) return true;
+  if (al.regexes.some((pattern) => {
+    try {
+      return new RegExp(pattern).test(finding.value);
+    } catch {
+      return false;
+    }
+  })) return true;
+  if (al.stopwords.some((sw) => finding.value.includes(sw))) return true;
+  return false;
+}
+var init_allowlist = __esm({
+  "src/detect/allowlist.ts"() {
+    "use strict";
   }
 });
 
@@ -17797,7 +17818,7 @@ function getCompiledAllowlistRegexes(rule) {
   }).filter((r) => r !== null);
   return rule._compiledAllowlistRegexes;
 }
-function isAllowlisted(value, rule) {
+function isAllowlisted2(value, rule) {
   const allStopwords = [
     ...rule.globalAllowlist.stopwords ?? [],
     ...rule.allowlists.flatMap((al) => al.stopwords ?? [])
@@ -17827,7 +17848,7 @@ async function runGitleaks(text, pool2, timeoutMs = 50) {
     for (const match of result.matches) {
       const value = match.value;
       if (!value) continue;
-      if (isAllowlisted(value, rule)) continue;
+      if (isAllowlisted2(value, rule)) continue;
       if (rule.entropy !== void 0 && shannonEntropy(value) < rule.entropy) continue;
       const ruleId = `gitleaks:${rule.id}`;
       findings.push({
@@ -17863,20 +17884,6 @@ var init_redos_worker = __esm({
 });
 
 // src/detect/layer1-regex/index.ts
-function isAllowlisted2(finding, config2) {
-  const al = config2.allowlist;
-  if (al.rules.includes(finding.ruleId)) return true;
-  if (al.fingerprints.includes(finding.fingerprint)) return true;
-  if (al.regexes.some((pattern) => {
-    try {
-      return new RegExp(pattern).test(finding.value);
-    } catch {
-      return false;
-    }
-  })) return true;
-  if (al.stopwords.some((sw) => finding.value.includes(sw))) return true;
-  return false;
-}
 function applyRuleOverride(finding, overrideMap) {
   const override = overrideMap.get(finding.ruleId);
   if (!override) return finding;
@@ -17905,7 +17912,7 @@ async function runLayer1(text, config2, pool2) {
   }
   const filtered = [];
   for (const finding of deduped) {
-    if (isAllowlisted2(finding, config2)) continue;
+    if (isAllowlisted(finding, config2)) continue;
     const afterOverride = applyRuleOverride(finding, overrideMap);
     if (afterOverride === null) continue;
     filtered.push(afterOverride);
@@ -17916,6 +17923,7 @@ var init_layer1_regex = __esm({
   "src/detect/layer1-regex/index.ts"() {
     "use strict";
     init_findings();
+    init_allowlist();
     init_secretlint_engine();
     init_gitleaks_engine();
     init_gitleaks_adapter();
@@ -18043,6 +18051,108 @@ var init_layer2_entropy = __esm({
   }
 });
 
+// src/detect/layer6a-pii.ts
+function severityForEntity(entity) {
+  switch (entity) {
+    case "ssn":
+    case "credit_card":
+      return "HIGH";
+    case "email":
+    case "phone":
+      return "MEDIUM";
+    case "ip":
+      return "LOW";
+    default:
+      return "MEDIUM";
+  }
+}
+function overlapsCovered2(candidateStart, candidateEnd, covered) {
+  for (const span of covered) {
+    if (candidateStart < span.end && span.start < candidateEnd) return true;
+  }
+  return false;
+}
+function luhnCheck(raw) {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 13 || digits.length > 19) return false;
+  let sum = 0;
+  let alt = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let d = parseInt(digits[i], 10);
+    if (alt) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+    alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+function runLayer6aPii(text, piiConfig, config2, coveredSpans = []) {
+  if (!piiConfig.enabled) return [];
+  const findings = [];
+  for (const entity of piiConfig.entities) {
+    const patternSource = PII_PATTERN_SOURCES.get(entity);
+    if (!patternSource) continue;
+    const re = entity === "email" ? new RegExp(patternSource, "gi") : new RegExp(patternSource, "g");
+    for (const match of text.matchAll(re)) {
+      const value = match[0];
+      const spanStart = match.index;
+      const spanEnd = spanStart + value.length;
+      if (overlapsCovered2(spanStart, spanEnd, coveredSpans)) continue;
+      if (entity === "credit_card" && !luhnCheck(value)) continue;
+      const severity = severityForEntity(entity);
+      const action = piiConfig.actions[entity] ?? "audit";
+      const hash = redactedHash(value);
+      const fp = fingerprint(`pii:${entity}`, value);
+      const candidate = {
+        ruleId: `pii:${entity}`,
+        severity,
+        span: { start: spanStart, end: spanEnd },
+        value,
+        redactedHash: hash,
+        fingerprint: fp,
+        source: "pii-regex",
+        action
+      };
+      if (isAllowlisted(candidate, config2)) continue;
+      findings.push(candidate);
+    }
+  }
+  return findings.sort((a, b) => a.span.start - b.span.start);
+}
+var PII_PATTERN_SOURCES;
+var init_layer6a_pii = __esm({
+  "src/detect/layer6a-pii.ts"() {
+    "use strict";
+    init_findings();
+    init_allowlist();
+    PII_PATTERN_SOURCES = /* @__PURE__ */ new Map([
+      // Email: standard RFC-5321-ish pattern anchored by word boundary
+      ["email", "[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}"],
+      // SSN: negative lookahead rejects group 000/666/9xx and serial 0000
+      // Allows separators: hyphen or space (consistently)
+      ["ssn", "(?<![\\d])(?!000|666|9\\d{2})\\d{3}[\\- ]\\d{2}[\\- ](?!0{4})\\d{4}(?![\\d])"],
+      // Credit card: Visa/MC/Amex/Discover/JCB prefix alternation, tolerant of a single
+      // space or hyphen between digit groups (the most common real-world formats).
+      // CR-01: the prior contiguous-only pattern leaked separator-formatted cards
+      // (`4111 1111 1111 1111`) because luhnCheck strips separators but the regex never
+      // produced a separator-containing candidate. Separators are optional `[ -]?` between
+      // fixed-length groups — every quantifier is bounded, so the pattern stays linear-time
+      // (no catastrophic backtracking). Luhn validation remains the secondary gate; the
+      // (?<![0-9])/(?![0-9]) anchors prevent matching inside a longer digit run.
+      ["credit_card", "(?<![0-9])(?:4[0-9]{3}(?:[ -]?[0-9]{4}){2}(?:[ -]?[0-9]{1,4})?|5[1-5][0-9]{2}(?:[ -]?[0-9]{4}){3}|3[47][0-9]{2}[ -]?[0-9]{6}[ -]?[0-9]{5}|6(?:011|5[0-9]{2})(?:[ -]?[0-9]{4}){3}|(?:2131|1800)[ -]?[0-9]{4}[ -]?[0-9]{4}[ -]?[0-9]{3}|35[0-9]{2}(?:[ -]?[0-9]{4}){3})(?![0-9])"],
+      // Phone: NPA starting [2-9], NXX starting [2-9] — avoids version-string false positives
+      // Supports formats: NNN-NNN-NNNN, NNN.NNN.NNNN, NNN NNN NNNN, (NNN) NNN-NNNN
+      // RESEARCH Pitfall 3: NPA/NXX [2-9] guard prevents matching "3.14.1592"
+      ["phone", "(?:\\+1[\\-.\\s]?)?\\(?[2-9][0-9]{2}\\)?[\\-.\\s]?[2-9][0-9]{2}[\\-.\\s]?[0-9]{4}"],
+      // IPv4: validated octet pattern (0-255 per octet), anchored by word boundary
+      // RESEARCH Pitfall 4: \b prevents matching 56.1.1.1 inside "256.1.1.1"
+      ["ip", "\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b"]
+    ]);
+  }
+});
+
 // src/detect/layer1-regex/worker-pool.ts
 import { Worker as Worker2 } from "worker_threads";
 var POOL_WORKER_CODE, SINGLE_SHOT_CODE, WorkerPool;
@@ -18129,26 +18239,26 @@ try {
         }
         const slot = this.workers[slotIdx];
         slot.state = "running";
-        return new Promise((resolve3) => {
+        return new Promise((resolve4) => {
           const w = slot.worker;
           const timer = setTimeout(() => {
             w.terminate().catch(() => void 0);
             this.workers[slotIdx] = this.createWorker();
-            resolve3({ ok: false, timedOut: true });
+            resolve4({ ok: false, timedOut: true });
           }, timeoutMs);
           const onMessage = (result) => {
             clearTimeout(timer);
             w.off("message", onMessage);
             w.off("error", onError);
             slot.state = "idle";
-            resolve3(result);
+            resolve4(result);
           };
           const onError = (err) => {
             clearTimeout(timer);
             w.off("message", onMessage);
             w.off("error", onError);
             slot.state = "idle";
-            resolve3({ ok: false, error: err.message });
+            resolve4({ ok: false, error: err.message });
           };
           w.on("message", onMessage);
           w.on("error", onError);
@@ -18157,24 +18267,24 @@ try {
       }
       /** Fall back to a single-shot worker when all pool slots are busy. */
       runSingleShot(pattern, flags, text, timeoutMs) {
-        return new Promise((resolve3) => {
+        return new Promise((resolve4) => {
           const w = new Worker2(SINGLE_SHOT_CODE, {
             eval: true,
             workerData: { pattern, flags, text }
           });
           const timer = setTimeout(() => {
             w.terminate();
-            resolve3({ ok: false, timedOut: true });
+            resolve4({ ok: false, timedOut: true });
           }, timeoutMs);
           w.on("message", (result) => {
             clearTimeout(timer);
             void w.terminate();
-            resolve3(result);
+            resolve4(result);
           });
           w.on("error", (err) => {
             clearTimeout(timer);
             void w.terminate();
-            resolve3({ ok: false, error: err.message });
+            resolve4({ ok: false, error: err.message });
           });
         });
       }
@@ -18407,17 +18517,17 @@ async function runDetection(text, config2, sessionState, ctx) {
   findings.push(...l3);
   const l4 = runLayer4Words(text, sessionState.wordEntries, findings.map((f) => f.span));
   findings.push(...l4);
-  const deduped = dedupBySpan(findings);
-  for (const f of deduped) {
-    if (f.action === "warn") {
-      f.action = "audit";
-    }
+  if (config2.pii.enabled && config2.pii.regex.enabled) {
+    const l6a = runLayer6aPii(text, config2.pii.regex, config2, findings.map((f) => f.span));
+    findings.push(...l6a);
   }
+  const deduped = dedupBySpan(findings);
   const resolvedFindings = deduped.map((f) => {
-    const effectiveAction = f.action !== void 0 ? f.action : severityToDefaultAction(f.severity);
+    const action = f.action === "warn" ? "audit" : f.action;
+    const effectiveAction = action !== void 0 ? action : severityToDefaultAction(f.severity);
     const type = getTypeForRuleId(f.ruleId);
     const entry = manager.allocate(f.value, type);
-    return { ...f, placeholder: entry.placeholder, effectiveAction };
+    return { ...f, action, placeholder: entry.placeholder, effectiveAction };
   });
   const finalFindings = config2.dry_run ? applyDryRun(resolvedFindings) : resolvedFindings;
   const substitutedText = config2.dry_run ? text : substituteFindings(text, finalFindings);
@@ -18449,6 +18559,7 @@ var init_detect = __esm({
     init_layer2_entropy();
     init_layer3_env();
     init_layer4_words();
+    init_layer6a_pii();
     init_worker_pool();
     init_manager();
     init_substitute();
@@ -18869,6 +18980,185 @@ var init_ignore = __esm({
     "use strict";
     init_dist();
     FINGERPRINT_REGEX = /^[a-z0-9:_.-]+:[0-9a-f]{16}$/i;
+  }
+});
+
+// src/model/constants.ts
+import { join as join12 } from "path";
+var MODEL_DOWNLOAD_URL, PINNED_MODEL_SHA256, MODEL_CACHE_PATH;
+var init_constants = __esm({
+  "src/model/constants.ts"() {
+    "use strict";
+    MODEL_DOWNLOAD_URL = "https://huggingface.co/Xenova/bert-base-NER/resolve/main/onnx/model_int8.onnx";
+    PINNED_MODEL_SHA256 = "7de0a4606c65b60da275a72f37b76a102c41e2b79c6463096a9d0cb800bf3f2c";
+    MODEL_CACHE_PATH = (homeDir) => join12(homeDir, ".mrclean", "models", "Xenova", "bert-base-NER", "onnx", "model_int8.onnx");
+  }
+});
+
+// src/model/model-cache.ts
+var model_cache_exports = {};
+__export(model_cache_exports, {
+  InvalidSideLoadPathError: () => InvalidSideLoadPathError,
+  ModelIntegrityError: () => ModelIntegrityError,
+  downloadModel: () => downloadModel,
+  isModelCached: () => isModelCached,
+  sideLoadModel: () => sideLoadModel,
+  verifyModelIntegrity: () => verifyModelIntegrity
+});
+import { createHash as createHash2 } from "crypto";
+import {
+  access as access6,
+  constants as fsConstants,
+  mkdir as mkdir3,
+  rename as rename3,
+  unlink as unlink3,
+  stat,
+  copyFile as copyFile2,
+  open
+} from "fs/promises";
+import { resolve as resolve3 } from "path";
+import { dirname as dirname6 } from "path";
+async function isModelCached(homeDir) {
+  try {
+    await access6(MODEL_CACHE_PATH(homeDir), fsConstants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function verifyModelIntegrity(homeDir, expectedHash = PINNED_MODEL_SHA256) {
+  const filePath = MODEL_CACHE_PATH(homeDir);
+  const hash = createHash2("sha256");
+  const fh = await open(filePath, "r");
+  try {
+    const stream = fh.createReadStream();
+    for await (const chunk of stream) {
+      hash.update(chunk);
+    }
+  } finally {
+    await fh.close();
+  }
+  return hash.digest("hex") === expectedHash;
+}
+async function computeFileSha256(filePath) {
+  const hash = createHash2("sha256");
+  const fh = await open(filePath, "r");
+  try {
+    const stream = fh.createReadStream();
+    for await (const chunk of stream) {
+      hash.update(chunk);
+    }
+  } finally {
+    await fh.close();
+  }
+  return hash.digest("hex");
+}
+async function downloadModel(homeDir, opts = {}) {
+  const {
+    fetchImpl = fetch,
+    expectedHash = PINNED_MODEL_SHA256,
+    onProgress
+  } = opts;
+  const dest = MODEL_CACHE_PATH(homeDir);
+  const destDir = dirname6(dest);
+  const tempPath = dest + ".partial";
+  await mkdir3(destDir, { recursive: true });
+  const response = await fetchImpl(MODEL_DOWNLOAD_URL);
+  if (!response.ok) {
+    throw new Error(`Model download failed: HTTP ${response.status}`);
+  }
+  const totalBytes = parseInt(response.headers?.get?.("content-length") ?? "0", 10) || 0;
+  const hash = createHash2("sha256");
+  let writtenBytes = 0;
+  const fh = await open(tempPath, "w");
+  try {
+    if (!response.body) {
+      throw new Error("Response body is null \u2014 cannot stream model download");
+    }
+    for await (const chunk of response.body) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      hash.update(buf);
+      await fh.write(buf);
+      writtenBytes += buf.length;
+      if (onProgress && totalBytes > 0) {
+        onProgress(Math.min(100, Math.round(writtenBytes / totalBytes * 100)));
+      }
+    }
+  } catch (err) {
+    await fh.close();
+    await unlink3(tempPath).catch(() => {
+    });
+    throw err;
+  }
+  await fh.close();
+  const actual = hash.digest("hex");
+  if (actual !== expectedHash) {
+    await unlink3(tempPath).catch(() => {
+    });
+    throw new ModelIntegrityError("download", expectedHash, actual);
+  }
+  await rename3(tempPath, dest);
+}
+async function sideLoadModel(homeDir, fromPath, expectedHash = PINNED_MODEL_SHA256) {
+  const absFromPath = resolve3(fromPath);
+  let fileStat;
+  try {
+    fileStat = await stat(absFromPath);
+  } catch {
+    throw new InvalidSideLoadPathError(
+      `Side-load path does not exist: ${absFromPath}`
+    );
+  }
+  if (!fileStat.isFile()) {
+    throw new InvalidSideLoadPathError(
+      `Side-load path is not a regular file: ${absFromPath}`
+    );
+  }
+  const dest = MODEL_CACHE_PATH(homeDir);
+  const destDir = dirname6(dest);
+  const tempPath = dest + ".partial";
+  await mkdir3(destDir, { recursive: true });
+  await copyFile2(absFromPath, tempPath);
+  let actual;
+  try {
+    actual = await computeFileSha256(tempPath);
+  } catch (err) {
+    await unlink3(tempPath).catch(() => {
+    });
+    throw err;
+  }
+  if (actual !== expectedHash) {
+    await unlink3(tempPath).catch(() => {
+    });
+    throw new ModelIntegrityError("sideload", expectedHash, actual);
+  }
+  await rename3(tempPath, dest);
+}
+var ModelIntegrityError, InvalidSideLoadPathError;
+var init_model_cache = __esm({
+  "src/model/model-cache.ts"() {
+    "use strict";
+    init_constants();
+    ModelIntegrityError = class extends Error {
+      constructor(kind, expected, actual) {
+        super(
+          `Model SHA-256 mismatch (${kind}): expected ${expected.slice(0, 16)}... got ${actual.slice(0, 16)}...`
+        );
+        this.kind = kind;
+        this.expected = expected;
+        this.actual = actual;
+        this.name = "ModelIntegrityError";
+      }
+      kind;
+      expected;
+      actual;
+    };
+    InvalidSideLoadPathError = class extends Error {
+      constructor(message) {
+        super(message);
+        this.name = "InvalidSideLoadPathError";
+      }
+    };
   }
 });
 
@@ -26917,7 +27207,7 @@ var init_protocol = __esm({
               return;
             }
             const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-            await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
+            await new Promise((resolve4) => setTimeout(resolve4, pollInterval));
             options?.signal?.throwIfAborted();
           }
         } catch (error2) {
@@ -26934,7 +27224,7 @@ var init_protocol = __esm({
        */
       request(request, resultSchema, options) {
         const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve4, reject) => {
           const earlyReject = (error2) => {
             reject(error2);
           };
@@ -27012,7 +27302,7 @@ var init_protocol = __esm({
               if (!parseResult.success) {
                 reject(parseResult.error);
               } else {
-                resolve3(parseResult.data);
+                resolve4(parseResult.data);
               }
             } catch (error2) {
               reject(error2);
@@ -27273,12 +27563,12 @@ var init_protocol = __esm({
           }
         } catch {
         }
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve4, reject) => {
           if (signal.aborted) {
             reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
             return;
           }
-          const timeoutId = setTimeout(resolve3, interval);
+          const timeoutId = setTimeout(resolve4, interval);
           signal.addEventListener("abort", () => {
             clearTimeout(timeoutId);
             reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -30305,7 +30595,7 @@ var require_compile2 = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve3.call(this, root, ref);
+      let _sch = resolve4.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -30332,7 +30622,7 @@ var require_compile2 = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve3(root, ref) {
+    function resolve4(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -30963,7 +31253,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve3(baseURI, relativeURI, options) {
+    function resolve4(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse4(baseURI, schemelessOptions), parse4(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -31221,7 +31511,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve3,
+      resolve: resolve4,
       resolveComponent,
       equal,
       serialize,
@@ -35046,15 +35336,15 @@ var require_windows = __commonJS({
       }
       return false;
     }
-    function checkStat(stat, path2, options) {
-      if (!stat.isSymbolicLink() && !stat.isFile()) {
+    function checkStat(stat2, path2, options) {
+      if (!stat2.isSymbolicLink() && !stat2.isFile()) {
         return false;
       }
       return checkPathExt(path2, options);
     }
     function isexe(path2, options, cb) {
-      fs.stat(path2, function(er, stat) {
-        cb(er, er ? false : checkStat(stat, path2, options));
+      fs.stat(path2, function(er, stat2) {
+        cb(er, er ? false : checkStat(stat2, path2, options));
       });
     }
     function sync(path2, options) {
@@ -35071,20 +35361,20 @@ var require_mode = __commonJS({
     isexe.sync = sync;
     var fs = __require("fs");
     function isexe(path2, options, cb) {
-      fs.stat(path2, function(er, stat) {
-        cb(er, er ? false : checkStat(stat, options));
+      fs.stat(path2, function(er, stat2) {
+        cb(er, er ? false : checkStat(stat2, options));
       });
     }
     function sync(path2, options) {
       return checkStat(fs.statSync(path2), options);
     }
-    function checkStat(stat, options) {
-      return stat.isFile() && checkMode(stat, options);
+    function checkStat(stat2, options) {
+      return stat2.isFile() && checkMode(stat2, options);
     }
-    function checkMode(stat, options) {
-      var mod = stat.mode;
-      var uid = stat.uid;
-      var gid = stat.gid;
+    function checkMode(stat2, options) {
+      var mod = stat2.mode;
+      var uid = stat2.uid;
+      var gid = stat2.gid;
       var myUid = options.uid !== void 0 ? options.uid : process.getuid && process.getuid();
       var myGid = options.gid !== void 0 ? options.gid : process.getgid && process.getgid();
       var u = parseInt("100", 8);
@@ -35119,12 +35409,12 @@ var require_isexe = __commonJS({
         if (typeof Promise !== "function") {
           throw new TypeError("callback not provided");
         }
-        return new Promise(function(resolve3, reject) {
+        return new Promise(function(resolve4, reject) {
           isexe(path2, options || {}, function(er, is) {
             if (er) {
               reject(er);
             } else {
-              resolve3(is);
+              resolve4(is);
             }
           });
         });
@@ -35191,27 +35481,27 @@ var require_which = __commonJS({
         opt = {};
       const { pathEnv, pathExt, pathExtExe } = getPathInfo(cmd, opt);
       const found = [];
-      const step = (i) => new Promise((resolve3, reject) => {
+      const step = (i) => new Promise((resolve4, reject) => {
         if (i === pathEnv.length)
-          return opt.all && found.length ? resolve3(found) : reject(getNotFoundError(cmd));
+          return opt.all && found.length ? resolve4(found) : reject(getNotFoundError(cmd));
         const ppRaw = pathEnv[i];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
         const pCmd = path2.join(pathPart, cmd);
         const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
-        resolve3(subStep(p, i, 0));
+        resolve4(subStep(p, i, 0));
       });
-      const subStep = (p, i, ii) => new Promise((resolve3, reject) => {
+      const subStep = (p, i, ii) => new Promise((resolve4, reject) => {
         if (ii === pathExt.length)
-          return resolve3(step(i + 1));
+          return resolve4(step(i + 1));
         const ext = pathExt[ii];
         isexe(p + ext, { pathExt: pathExtExe }, (er, is) => {
           if (!er && is) {
             if (opt.all)
               found.push(p + ext);
             else
-              return resolve3(p + ext);
+              return resolve4(p + ext);
           }
-          return resolve3(subStep(p, i, ii + 1));
+          return resolve4(subStep(p, i, ii + 1));
         });
       });
       return cb ? step(0).then((res) => cb(null, res), cb) : step(0);
@@ -35620,7 +35910,7 @@ var init_stdio2 = __esm({
         if (this._process) {
           throw new Error("StdioClientTransport already started! If using Client class, note that connect() calls start() automatically.");
         }
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve4, reject) => {
           this._process = (0, import_cross_spawn.default)(this._serverParams.command, this._serverParams.args ?? [], {
             // merge default env with server env because mcp server needs some env vars
             env: {
@@ -35637,7 +35927,7 @@ var init_stdio2 = __esm({
             this.onerror?.(error2);
           });
           this._process.on("spawn", () => {
-            resolve3();
+            resolve4();
           });
           this._process.on("close", (_code) => {
             this._process = void 0;
@@ -35696,22 +35986,22 @@ var init_stdio2 = __esm({
         if (this._process) {
           const processToClose = this._process;
           this._process = void 0;
-          const closePromise = new Promise((resolve3) => {
+          const closePromise = new Promise((resolve4) => {
             processToClose.once("close", () => {
-              resolve3();
+              resolve4();
             });
           });
           try {
             processToClose.stdin?.end();
           } catch {
           }
-          await Promise.race([closePromise, new Promise((resolve3) => setTimeout(resolve3, 2e3).unref())]);
+          await Promise.race([closePromise, new Promise((resolve4) => setTimeout(resolve4, 2e3).unref())]);
           if (processToClose.exitCode === null) {
             try {
               processToClose.kill("SIGTERM");
             } catch {
             }
-            await Promise.race([closePromise, new Promise((resolve3) => setTimeout(resolve3, 2e3).unref())]);
+            await Promise.race([closePromise, new Promise((resolve4) => setTimeout(resolve4, 2e3).unref())]);
           }
           if (processToClose.exitCode === null) {
             try {
@@ -35723,15 +36013,15 @@ var init_stdio2 = __esm({
         this._readBuffer.clear();
       }
       send(message) {
-        return new Promise((resolve3) => {
+        return new Promise((resolve4) => {
           if (!this._process?.stdin) {
             throw new Error("Not connected");
           }
           const json = serializeMessage(message);
           if (this._process.stdin.write(json)) {
-            resolve3();
+            resolve4();
           } else {
-            this._process.stdin.once("drain", resolve3);
+            this._process.stdin.once("drain", resolve4);
           }
         });
       }
@@ -35834,7 +36124,7 @@ var init_canary = __esm({
 });
 
 // src/doctor/checks.ts
-import { access as access6, constants as constants6 } from "fs/promises";
+import { access as access7, constants as constants6 } from "fs/promises";
 async function checkHooksRegistered(settingsPath) {
   const data = await readJsonOrEmpty(settingsPath);
   const hooks = data.hooks;
@@ -35973,7 +36263,7 @@ async function checkBinsExecutable(settingsPath, claudeJsonPath, projectCwd) {
   }
   for (const binPath of binPaths) {
     try {
-      await access6(binPath, constants6.X_OK);
+      await access7(binPath, constants6.X_OK);
     } catch {
       return {
         name: "bins",
@@ -36008,20 +36298,47 @@ async function checkMcpCanary(nodePath, mcpBin) {
     exitCodeOnFail: 4
   };
 }
+async function checkModelCache(homeDir) {
+  const { isModelCached: isModelCached2, verifyModelIntegrity: verifyModelIntegrity2 } = await Promise.resolve().then(() => (init_model_cache(), model_cache_exports));
+  const cached2 = await isModelCached2(homeDir);
+  if (!cached2) {
+    return {
+      name: "model-cache",
+      status: "SKIP",
+      detail: "NER model not downloaded (PII NER opt-in required \u2014 run `mrclean pii fetch-model`)",
+      exitCodeOnFail: 0
+    };
+  }
+  const valid = await verifyModelIntegrity2(homeDir);
+  if (!valid) {
+    return {
+      name: "model-cache",
+      status: "FAIL",
+      detail: "NER model SHA-256 mismatch \u2014 re-fetch with `mrclean pii fetch-model`",
+      exitCodeOnFail: 6
+    };
+  }
+  return {
+    name: "model-cache",
+    status: "PASS",
+    detail: "NER model present and SHA-256 verified",
+    exitCodeOnFail: 6
+  };
+}
 async function checkConfigLoad(homeDir, cwd) {
-  const { join: join13 } = await import("path");
-  const { access: fsAccess, constants: fsConstants } = await import("fs/promises");
-  const userConfigPath = join13(homeDir, ".mrclean", "config.toml");
-  const projectConfigPath = join13(cwd, ".mrclean", "config.toml");
+  const { join: join14 } = await import("path");
+  const { access: fsAccess, constants: fsConstants2 } = await import("fs/promises");
+  const userConfigPath = join14(homeDir, ".mrclean", "config.toml");
+  const projectConfigPath = join14(cwd, ".mrclean", "config.toml");
   let userExists = false;
   let projectExists = false;
   try {
-    await fsAccess(userConfigPath, fsConstants.F_OK);
+    await fsAccess(userConfigPath, fsConstants2.F_OK);
     userExists = true;
   } catch {
   }
   try {
-    await fsAccess(projectConfigPath, fsConstants.F_OK);
+    await fsAccess(projectConfigPath, fsConstants2.F_OK);
     projectExists = true;
   } catch {
   }
@@ -36236,11 +36553,11 @@ __export(doctor_exports, {
   runDoctor: () => runDoctor
 });
 import { homedir as homedir7 } from "os";
-import { join as join12 } from "path";
+import { join as join13 } from "path";
 async function computeDoctorReport(opts) {
   const { homeDir, cwd } = opts;
-  const settingsPath = join12(homeDir, ".claude", "settings.json");
-  const claudeJsonPath = join12(homeDir, ".claude.json");
+  const settingsPath = join13(homeDir, ".claude", "settings.json");
+  const claudeJsonPath = join13(homeDir, ".claude.json");
   const results = [];
   results.push(await checkHooksRegistered(settingsPath));
   results.push(await checkMcpRegistered(claudeJsonPath, cwd));
@@ -36269,6 +36586,7 @@ async function computeDoctorReport(opts) {
     });
   }
   results.push(await checkConfigLoad(homeDir, cwd));
+  results.push(await checkModelCache(homeDir));
   const fakeVersion = process.env["MRCLEAN_TEST_FAKE_CLAUDE_VERSION"];
   const versionResult = await checkClaudeCodeVersion(
     fakeVersion ? { runVersionCommand: async () => fakeVersion } : void 0
@@ -36347,6 +36665,28 @@ program2.command("hook").description("Hook handler \u2014 reads Claude Code hook
 program2.command("ignore <fingerprint>").description("Add a fingerprint to the project-local allowlist (.mrclean/config.toml)").action(async (fingerprint2) => {
   const { runIgnore: runIgnore2 } = await Promise.resolve().then(() => (init_ignore(), ignore_exports));
   await runIgnore2({ fingerprint: fingerprint2 });
+});
+var piiCmd = program2.command("pii").description("PII NER model management (opt-in \u2014 off by default)");
+piiCmd.command("fetch-model").description(
+  "Download or side-load the NER model (Xenova/bert-base-NER) into ~/.mrclean/models/"
+).option("--from <path>", "Side-load from a local file instead of downloading from HuggingFace").action(async (opts) => {
+  const { downloadModel: downloadModel2, sideLoadModel: sideLoadModel2 } = await Promise.resolve().then(() => (init_model_cache(), model_cache_exports));
+  const { homedir: homedir8 } = await import("os");
+  const homeDir = homedir8();
+  if (opts.from) {
+    process.stderr.write(`[mrclean] Side-loading model from ${opts.from}
+`);
+    await sideLoadModel2(homeDir, opts.from);
+    process.stderr.write("[mrclean] Model side-loaded and verified successfully.\n");
+  } else {
+    process.stderr.write("[mrclean] Downloading NER model (~108 MB, one-time)...\n");
+    await downloadModel2(homeDir, {
+      onProgress: (pct) => {
+        process.stderr.write(`\r[mrclean] Download progress: ${pct}%`);
+      }
+    });
+    process.stderr.write("\n[mrclean] Model downloaded and verified successfully.\n");
+  }
 });
 program2.command("doctor").description("Verify mrclean installation: hook entries, MCP server, canary round-trip").option("--verbose", "Print detailed check output", false).option("--bench", "Run a performance benchmark stub (Phase 3 will add the assertion gate)", false).action(async (opts) => {
   const { runDoctor: runDoctor2 } = await Promise.resolve().then(() => (init_doctor(), doctor_exports));
