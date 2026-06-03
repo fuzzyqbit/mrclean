@@ -47400,6 +47400,15 @@ var init_supervisor = __esm({
   }
 });
 
+// src/shared/strings.ts
+var PII_BEST_EFFORT_DISCLAIMER;
+var init_strings = __esm({
+  "src/shared/strings.ts"() {
+    "use strict";
+    PII_BEST_EFFORT_DISCLAIMER = "PII/NER detection is a best-effort ML hint, not a guarantee \u2014 NER false negatives can leak; for data that must not leak, rely on words.txt and the deterministic layers (secrets + checksummed PII).";
+  }
+});
+
 // src/mcp/tools/check.ts
 var check_exports = {};
 __export(check_exports, {
@@ -47424,7 +47433,8 @@ function registerCheckTool(server, getConfig, getSessionState, getCwd, getNerSta
     "mrclean_check",
     {
       title: "Check text for sensitive data (read-only)",
-      description: "Scan text through all mrclean detection layers and return findings. Does NOT redact the text or write any audit log entry. Use mrclean_redact to redact and audit-log findings.",
+      description: "Scan text through all mrclean detection layers and return findings. Does NOT redact the text or write any audit log entry. Use mrclean_redact to redact and audit-log findings. " + // D-05/D-07: once-per-output honest-framing disclaimer (single source of truth).
+      PII_BEST_EFFORT_DISCLAIMER,
       inputSchema: checkInputSchema,
       outputSchema: checkOutputSchema,
       annotations: { readOnlyHint: true, idempotentHint: true }
@@ -47441,8 +47451,9 @@ function registerCheckTool(server, getConfig, getSessionState, getCwd, getNerSta
         () => runDetectionReadOnly(text, getConfig(), getSessionState(), ctx, { ner: true })
       );
       if (!outcome.ok) {
+        const safe = sanitizeForOutput(`mrclean_check error: ${outcome.error}`, []);
         return {
-          content: [{ type: "text", text: `mrclean_check error: ${outcome.error}` }],
+          content: [{ type: "text", text: safe }],
           isError: true
         };
       }
@@ -47466,6 +47477,8 @@ var init_check = __esm({
     init_v4();
     init_detect();
     init_supervisor();
+    init_sanitize_output();
+    init_strings();
     checkInputSchema = external_exports.object({
       text: external_exports.string(),
       sessionId: external_exports.string().optional()
@@ -47516,7 +47529,8 @@ function registerRedactTool(server, getConfig, getSessionState, getCwd, getNerSt
     "mrclean_redact",
     {
       title: "Redact sensitive data from text",
-      description: "Scan text through all mrclean detection layers, replace detected secrets with stable placeholders, and write one audit log record per finding. Returns the redacted text and a list of findings (without raw values). Use mrclean_check for a read-only scan with no audit log writes.",
+      description: "Scan text through all mrclean detection layers, replace detected secrets with stable placeholders, and write one audit log record per finding. Returns the redacted text and a list of findings (without raw values). Use mrclean_check for a read-only scan with no audit log writes. " + // D-05/D-07: once-per-output honest-framing disclaimer (single source of truth).
+      PII_BEST_EFFORT_DISCLAIMER,
       inputSchema: redactInputSchema,
       outputSchema: redactOutputSchema
     },
@@ -47532,8 +47546,9 @@ function registerRedactTool(server, getConfig, getSessionState, getCwd, getNerSt
         () => runDetection(text, getConfig(), getSessionState(), ctx, { ner: true })
       );
       if (!outcome.ok) {
+        const safe = sanitizeForOutput(`mrclean_redact error: ${outcome.error}`, []);
         return {
-          content: [{ type: "text", text: `mrclean_redact error: ${outcome.error}` }],
+          content: [{ type: "text", text: safe }],
           isError: true
         };
       }
@@ -47565,6 +47580,8 @@ var init_redact = __esm({
     init_v4();
     init_detect();
     init_supervisor();
+    init_sanitize_output();
+    init_strings();
     redactInputSchema = external_exports.object({
       text: external_exports.string(),
       sessionId: external_exports.string().optional()

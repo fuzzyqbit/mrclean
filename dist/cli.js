@@ -18021,6 +18021,15 @@ var init_banner = __esm({
   }
 });
 
+// src/shared/strings.ts
+var PII_BEST_EFFORT_DISCLAIMER;
+var init_strings = __esm({
+  "src/shared/strings.ts"() {
+    "use strict";
+    PII_BEST_EFFORT_DISCLAIMER = "PII/NER detection is a best-effort ML hint, not a guarantee \u2014 NER false negatives can leak; for data that must not leak, rely on words.txt and the deterministic layers (secrets + checksummed PII).";
+  }
+});
+
 // src/hook/handlers/session-start.ts
 import { homedir as homedir3 } from "os";
 async function handleSessionStart(input) {
@@ -18038,7 +18047,7 @@ async function handleSessionStart(input) {
   return {
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: banner
+      additionalContext: banner + "\n" + PII_BEST_EFFORT_DISCLAIMER
     }
   };
 }
@@ -18049,6 +18058,7 @@ var init_session_start = __esm({
     init_session_state();
     init_layer1_regex();
     init_banner();
+    init_strings();
   }
 });
 
@@ -36802,6 +36812,7 @@ function renderReport(results, versionResult) {
     `${vLabel} claude --version: ${versionResult.version} \u2014 ${versionResult.detail}
 `
   );
+  process.stdout.write(import_picocolors3.default.dim(PII_BEST_EFFORT_DISCLAIMER) + "\n");
 }
 function computeExitCode(results) {
   for (const r of results) {
@@ -36816,6 +36827,7 @@ var init_report = __esm({
   "src/doctor/report.ts"() {
     "use strict";
     import_picocolors3 = __toESM(require_picocolors(), 1);
+    init_strings();
   }
 });
 
