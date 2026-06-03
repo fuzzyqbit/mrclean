@@ -29,6 +29,7 @@ import {
 } from 'node:fs/promises'
 import { join } from 'node:path'
 import { resolve } from 'node:path'
+import { dirname } from 'node:path'
 
 import { MODEL_CACHE_PATH, MODEL_DOWNLOAD_URL, PINNED_MODEL_SHA256 } from './constants.js'
 
@@ -165,7 +166,7 @@ export async function downloadModel(
   } = opts
 
   const dest = MODEL_CACHE_PATH(homeDir)
-  const destDir = dest.substring(0, dest.lastIndexOf('/'))
+  const destDir = dirname(dest)
   const tempPath = dest + '.partial'
 
   // Ensure cache directory exists
@@ -263,7 +264,7 @@ export async function sideLoadModel(
   }
 
   const dest = MODEL_CACHE_PATH(homeDir)
-  const destDir = dest.substring(0, dest.lastIndexOf('/'))
+  const destDir = dirname(dest)
   const tempPath = dest + '.partial'
 
   // Ensure cache directory exists

@@ -53,9 +53,15 @@ const PII_PATTERN_SOURCES: ReadonlyMap<string, string> = new Map([
   // Allows separators: hyphen or space (consistently)
   ['ssn', '(?<![\\d])(?!000|666|9\\d{2})\\d{3}[\\- ]\\d{2}[\\- ](?!0{4})\\d{4}(?![\\d])'],
 
-  // Credit card: broad Visa/MC/Amex/Discover/JCB prefix alternation
-  // Luhn validation applied as secondary gate after regex match
-  ['credit_card', '(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\\d{3})\\d{11})'],
+  // Credit card: Visa/MC/Amex/Discover/JCB prefix alternation, tolerant of a single
+  // space or hyphen between digit groups (the most common real-world formats).
+  // CR-01: the prior contiguous-only pattern leaked separator-formatted cards
+  // (`4111 1111 1111 1111`) because luhnCheck strips separators but the regex never
+  // produced a separator-containing candidate. Separators are optional `[ -]?` between
+  // fixed-length groups — every quantifier is bounded, so the pattern stays linear-time
+  // (no catastrophic backtracking). Luhn validation remains the secondary gate; the
+  // (?<![0-9])/(?![0-9]) anchors prevent matching inside a longer digit run.
+  ['credit_card', '(?<![0-9])(?:4[0-9]{3}(?:[ -]?[0-9]{4}){2}(?:[ -]?[0-9]{1,4})?|5[1-5][0-9]{2}(?:[ -]?[0-9]{4}){3}|3[47][0-9]{2}[ -]?[0-9]{6}[ -]?[0-9]{5}|6(?:011|5[0-9]{2})(?:[ -]?[0-9]{4}){3}|(?:2131|1800)[ -]?[0-9]{4}[ -]?[0-9]{4}[ -]?[0-9]{3}|35[0-9]{2}(?:[ -]?[0-9]{4}){3})(?![0-9])'],
 
   // Phone: NPA starting [2-9], NXX starting [2-9] — avoids version-string false positives
   // Supports formats: NNN-NNN-NNNN, NNN.NNN.NNNN, NNN NNN NNNN, (NNN) NNN-NNNN

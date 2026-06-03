@@ -117,6 +117,52 @@ describe('runLayer6aPii', () => {
     expect(ccFinding).toBeUndefined()
   })
 
+  // CR-01 regression: separator-formatted cards are the most common real-world
+  // format. The prior contiguous-only regex never matched them, so they leaked.
+  it('Test 2b (CR-01): detects a space-separated Visa card (4111 1111 1111 1111)', () => {
+    const config = makeConfig()
+    const text = 'Card number: 4111 1111 1111 1111'
+    const findings = runLayer6aPii(text, getPiiConfig(config), config)
+
+    const ccFinding = findings.find((f) => f.ruleId === 'pii:credit_card')
+    expect(ccFinding).toBeDefined()
+    // The full separated string must be the matched span (so substitution redacts it all)
+    expect(ccFinding!.value).toBe('4111 1111 1111 1111')
+    expect(ccFinding!.severity).toBe('HIGH')
+    expect(ccFinding!.action).toBe('block')
+  })
+
+  it('Test 2c (CR-01): detects a hyphen-separated Visa card (4111-1111-1111-1111)', () => {
+    const config = makeConfig()
+    const text = 'Card: 4111-1111-1111-1111 on file'
+    const findings = runLayer6aPii(text, getPiiConfig(config), config)
+
+    const ccFinding = findings.find((f) => f.ruleId === 'pii:credit_card')
+    expect(ccFinding).toBeDefined()
+    expect(ccFinding!.value).toBe('4111-1111-1111-1111')
+  })
+
+  it('Test 2d (CR-01): detects a space-separated Amex card (3782 822463 10005)', () => {
+    const config = makeConfig()
+    // 378282246310005 — well-known Amex Luhn-valid test card, 4-6-5 grouping
+    const text = 'Amex: 3782 822463 10005'
+    const findings = runLayer6aPii(text, getPiiConfig(config), config)
+
+    const ccFinding = findings.find((f) => f.ruleId === 'pii:credit_card')
+    expect(ccFinding).toBeDefined()
+    expect(ccFinding!.value).toBe('3782 822463 10005')
+  })
+
+  it('Test 2e (CR-01): a separator-formatted Luhn-INVALID number is NOT emitted', () => {
+    const config = makeConfig()
+    // 4111 1111 1111 1112 — Luhn invalid
+    const text = 'Bad: 4111 1111 1111 1112'
+    const findings = runLayer6aPii(text, getPiiConfig(config), config)
+
+    const ccFinding = findings.find((f) => f.ruleId === 'pii:credit_card')
+    expect(ccFinding).toBeUndefined()
+  })
+
   it('Test 4a: detects a valid US SSN with separators', () => {
     const config = makeConfig()
     // Valid SSN: 123-45-6789 (not 000/666/9xx group, not 0000 serial)

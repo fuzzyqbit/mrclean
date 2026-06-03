@@ -229,22 +229,20 @@ export async function runDetectionReadOnly(
 
   const deduped = dedupBySpan(findings)
 
-  for (const f of deduped) {
-    if (f.action === 'warn') {
-      f.action = 'audit'
-    }
-  }
-
   const resolvedFindings: ResolvedFinding[] = deduped.map((f) => {
+    // Step 8a — warn→audit normalization, done immutably (never mutate the shared
+    // Finding; the prior in-place loop violated the project immutability rule and was
+    // redundant with this spread).
+    const action = f.action === 'warn' ? 'audit' : f.action
     const effectiveAction: 'block' | 'substitute' | 'audit' =
-      f.action !== undefined
-        ? (f.action as 'block' | 'substitute' | 'audit')
+      action !== undefined
+        ? (action as 'block' | 'substitute' | 'audit')
         : severityToDefaultAction(f.severity)
 
     const type = getTypeForRuleId(f.ruleId)
     const entry = manager.allocate(f.value, type)
 
-    return { ...f, placeholder: entry.placeholder, effectiveAction }
+    return { ...f, action, placeholder: entry.placeholder, effectiveAction }
   })
 
   const finalFindings = config.dry_run ? applyDryRun(resolvedFindings) : resolvedFindings
@@ -332,28 +330,25 @@ export async function runDetection(
   // LOCKED CRITERION: Layer 4 wordEntry.action == 'warn' produces
   //   ResolvedFinding.effectiveAction == 'audit' (proven by orchestrator test 4).
   // ---------------------------------------------------------------------------
-  for (const f of deduped) {
-    if (f.action === 'warn') {
-      f.action = 'audit'
-    }
-  }
-
   // ---------------------------------------------------------------------------
-  // Steps 8b + 8c + placeholder allocation: resolve effectiveAction per finding
+  // Steps 8a + 8b + 8c + placeholder allocation: resolve effectiveAction per finding
   // ---------------------------------------------------------------------------
   const resolvedFindings: ResolvedFinding[] = deduped.map((f) => {
+    // Step 8a: warn→audit normalization, done immutably (never mutate the shared
+    // Finding). 'warn' NEVER appears on a ResolvedFinding's action or effectiveAction.
+    const action = f.action === 'warn' ? 'audit' : f.action
     // Step 8b: use finding.action if explicitly set (after 8a normalisation)
     // Step 8c: fall back to severity-default when action is undefined
     const effectiveAction: 'block' | 'substitute' | 'audit' =
-      f.action !== undefined
-        ? (f.action as 'block' | 'substitute' | 'audit')
+      action !== undefined
+        ? (action as 'block' | 'substitute' | 'audit')
         : severityToDefaultAction(f.severity)
 
     // Allocate placeholder (stable: same value → same placeholder per session)
     const type = getTypeForRuleId(f.ruleId)
     const entry = manager.allocate(f.value, type)
 
-    return { ...f, placeholder: entry.placeholder, effectiveAction }
+    return { ...f, action, placeholder: entry.placeholder, effectiveAction }
   })
 
   // ---------------------------------------------------------------------------
