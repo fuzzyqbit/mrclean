@@ -47355,6 +47355,15 @@ var init_detect = __esm({
 });
 
 // src/shared/sanitize-output.ts
+function hasResidualValueFragment(scrubbed, value) {
+  if (value.length < MIN_PARTIAL_LEAK_FRAGMENT_LENGTH) return false;
+  const lastStart = value.length - MIN_PARTIAL_LEAK_FRAGMENT_LENGTH;
+  for (let start = 0; start <= lastStart; start += 1) {
+    const fragment = value.slice(start, start + MIN_PARTIAL_LEAK_FRAGMENT_LENGTH);
+    if (scrubbed.includes(fragment)) return true;
+  }
+  return false;
+}
 function scrubSpan(message, span) {
   if (span.value.length === 0) return message;
   return message.split(span.value).join(span.redactedHash);
@@ -47367,13 +47376,19 @@ function sanitizeForOutput(message, spans) {
   for (const span of spans) {
     scrubbed = scrubSpan(scrubbed, span);
   }
+  for (const span of spans) {
+    if (hasResidualValueFragment(scrubbed, span.value)) {
+      return STATIC_CONTEXT_FREE_MESSAGE;
+    }
+  }
   return scrubbed;
 }
-var STATIC_CONTEXT_FREE_MESSAGE;
+var STATIC_CONTEXT_FREE_MESSAGE, MIN_PARTIAL_LEAK_FRAGMENT_LENGTH;
 var init_sanitize_output = __esm({
   "src/shared/sanitize-output.ts"() {
     "use strict";
     STATIC_CONTEXT_FREE_MESSAGE = "mrclean: an internal error occurred; details withheld to avoid leaking sensitive input";
+    MIN_PARTIAL_LEAK_FRAGMENT_LENGTH = 8;
   }
 });
 
@@ -47451,7 +47466,7 @@ function registerCheckTool(server, getConfig, getSessionState, getCwd, getNerSta
         () => runDetectionReadOnly(text, getConfig(), getSessionState(), ctx, { ner: true })
       );
       if (!outcome.ok) {
-        const safe = sanitizeForOutput(`mrclean_check error: ${outcome.error}`, []);
+        const safe = `mrclean_check: ${outcome.error}`;
         return {
           content: [{ type: "text", text: safe }],
           isError: true
@@ -47477,7 +47492,6 @@ var init_check = __esm({
     init_v4();
     init_detect();
     init_supervisor();
-    init_sanitize_output();
     init_strings();
     checkInputSchema = external_exports.object({
       text: external_exports.string(),
@@ -47546,7 +47560,7 @@ function registerRedactTool(server, getConfig, getSessionState, getCwd, getNerSt
         () => runDetection(text, getConfig(), getSessionState(), ctx, { ner: true })
       );
       if (!outcome.ok) {
-        const safe = sanitizeForOutput(`mrclean_redact error: ${outcome.error}`, []);
+        const safe = `mrclean_redact: ${outcome.error}`;
         return {
           content: [{ type: "text", text: safe }],
           isError: true
@@ -47580,7 +47594,6 @@ var init_redact = __esm({
     init_v4();
     init_detect();
     init_supervisor();
-    init_sanitize_output();
     init_strings();
     redactInputSchema = external_exports.object({
       text: external_exports.string(),
