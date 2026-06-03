@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Native-Node PII/NER Layer
-status: executing
+status: ready_to_plan
 stopped_at: v2.0 roadmap complete, awaiting approval.
 last_updated: "2026-06-03T00:26:24.277Z"
 last_activity: 2026-06-03 -- Phase 05 execution started
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
   completed_plans: 3
-  percent: 60
+  percent: 50
 ---
 
 # State: mrclean
@@ -28,10 +28,10 @@ progress:
 
 ## Current Position
 
-Phase: 05 (regex-pii-hot-path-lane-l6a-model-acquisition) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 05
-Last activity: 2026-06-03 -- Phase 05 execution started
+Phase: 6
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-06-03
 
 > v1 milestone (Phases 1-3) shipped 2026-05-14. v2.0 adds the opt-in Native-Node PII/NER layer
 > as Phases 4-7. Phase numbering CONTINUES from v1 — it does not reset to 1.
