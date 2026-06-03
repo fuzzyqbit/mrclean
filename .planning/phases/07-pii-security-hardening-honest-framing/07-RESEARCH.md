@@ -548,7 +548,7 @@ it('no compliance/guarantee overclaim in user-facing copy', () => {
 **Note:** Decisions D-01..D-08 are LOCKED (CONTEXT.md), not assumptions. The above are
 implementation-detail assumptions the planner should confirm against current source during planning.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact set of stderr sinks the chokepoint must wrap**
    - What we know: four real PII-carrying error sinks identified in source — `failclosed.writeFailClosedError`,
