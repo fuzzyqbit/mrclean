@@ -167,6 +167,47 @@ var init_lifecycle = __esm({
   }
 });
 
+// src/model/pipeline-singleton.ts
+var pipeline_singleton_exports = {};
+__export(pipeline_singleton_exports, {
+  getNerBackend: () => getNerBackend,
+  getNerPipeline: () => getNerPipeline,
+  resetNerSingleton: () => resetNerSingleton
+});
+import { join } from "path";
+import { homedir } from "os";
+function getNerBackend() {
+  return backendLabel;
+}
+function resetNerSingleton() {
+  instance = null;
+}
+function getNerPipeline(ner) {
+  if (instance) return instance;
+  instance = (async () => {
+    const { pipeline, env } = await import("@huggingface/transformers");
+    env.cacheDir = join(homedir(), ".mrclean", "models");
+    env.allowRemoteModels = ner.allowDownload;
+    try {
+      backendLabel = env.backends?.onnx ? "onnxruntime-node" : "unknown";
+    } catch {
+      backendLabel = "unknown";
+    }
+    return await pipeline("token-classification", ner.model, {
+      dtype: ner.dtype
+    });
+  })();
+  return instance;
+}
+var instance, backendLabel;
+var init_pipeline_singleton = __esm({
+  "src/model/pipeline-singleton.ts"() {
+    "use strict";
+    instance = null;
+    backendLabel = "unknown";
+  }
+});
+
 // node_modules/zod/v3/helpers/util.js
 var util, objectUtil, ZodParsedType, getParsedType;
 var init_util = __esm({
@@ -33414,8 +33455,8 @@ __export(config_exports, {
   readConfigLayer: () => readConfigLayer
 });
 import { readFile } from "fs/promises";
-import { join } from "path";
-import { homedir } from "os";
+import { join as join2 } from "path";
+import { homedir as homedir2 } from "os";
 function isRecord(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -33710,10 +33751,10 @@ function mergeConfigs(...layers) {
   return { dry_run: dryRun, allowlist, entropy, secrets_files: secretsFiles, rules: rules2, pii };
 }
 async function loadEffectiveConfig(opts) {
-  const resolvedHome = opts?.homeDir ?? homedir();
+  const resolvedHome = opts?.homeDir ?? homedir2();
   const resolvedCwd = opts?.cwd ?? process.cwd();
-  const userPath = join(resolvedHome, ".mrclean", "config.toml");
-  const projectPath = join(resolvedCwd, ".mrclean", "config.toml");
+  const userPath = join2(resolvedHome, ".mrclean", "config.toml");
+  const projectPath = join2(resolvedCwd, ".mrclean", "config.toml");
   const userLayer = await readConfigLayer(userPath);
   const projectLayer = await readConfigLayer(projectPath);
   return mergeConfigs(DEFAULT_CONFIG, userLayer, projectLayer);
@@ -39995,7 +40036,7 @@ var init_layer3_env = __esm({
 
 // src/detect/layer4-words.ts
 import { readFile as readFile3 } from "fs/promises";
-import { join as join2 } from "path";
+import { join as join3 } from "path";
 function parseWordsFile(content) {
   const entries = [];
   const validActions = /* @__PURE__ */ new Set(["block", "warn", "audit"]);
@@ -40017,8 +40058,8 @@ async function loadWordsList({
   homeDir,
   cwd
 }) {
-  const globalPath = join2(homeDir, ".mrclean", "words.txt");
-  const projectPath = join2(cwd, ".mrclean", "words.txt");
+  const globalPath = join3(homeDir, ".mrclean", "words.txt");
+  const projectPath = join3(cwd, ".mrclean", "words.txt");
   async function readWords(filePath) {
     try {
       const content = await readFile3(filePath, "utf8");
@@ -46059,7 +46100,7 @@ var init_secretlint_engine = __esm({
 
 // src/detect/layer1-regex/gitleaks-adapter.ts
 import { readFileSync } from "fs";
-import { join as join3, dirname } from "path";
+import { join as join4, dirname } from "path";
 import { fileURLToPath } from "url";
 import { existsSync as _existsSync } from "fs";
 function adaptGitleaksPattern(rawRegex) {
@@ -46073,11 +46114,11 @@ function resolveVendorPathSync() {
   const thisFile = fileURLToPath(import.meta.url);
   const thisDir = dirname(thisFile);
   const candidates = [
-    join3(thisDir, "..", "..", "..", "vendor", "gitleaks-rules.toml"),
+    join4(thisDir, "..", "..", "..", "vendor", "gitleaks-rules.toml"),
     // tsx: src/detect/layer1-regex/
-    join3(thisDir, "..", "vendor", "gitleaks-rules.toml"),
+    join4(thisDir, "..", "vendor", "gitleaks-rules.toml"),
     // bundle: dist/
-    join3(thisDir, "vendor", "gitleaks-rules.toml")
+    join4(thisDir, "vendor", "gitleaks-rules.toml")
     // bundle: if dist/ is at root
   ];
   for (const candidate of candidates) {
@@ -46744,9 +46785,9 @@ var init_substitute = __esm({
 
 // src/audit/log.ts
 import { appendFile } from "fs/promises";
-import { join as join4 } from "path";
+import { join as join5 } from "path";
 async function writeAuditRecord(cwd, record2) {
-  const logPath = join4(cwd, ".mrclean", "audit.jsonl");
+  const logPath = join5(cwd, ".mrclean", "audit.jsonl");
   const line = JSON.stringify(record2) + "\n";
   try {
     await appendFile(logPath, line, { flag: "a", encoding: "utf8" });
@@ -46810,48 +46851,14 @@ var init_dry_run = __esm({
   }
 });
 
-// src/model/pipeline-singleton.ts
-import { join as join5 } from "path";
-import { homedir as homedir2 } from "os";
-function getNerBackend() {
-  return backendLabel;
-}
-function resetNerSingleton() {
-  instance = null;
-}
-function getNerPipeline(ner) {
-  if (instance) return instance;
-  instance = (async () => {
-    const { pipeline, env } = await import("@huggingface/transformers");
-    env.cacheDir = join5(homedir2(), ".mrclean", "models");
-    env.allowRemoteModels = ner.allowDownload;
-    try {
-      backendLabel = env.backends?.onnx ? "onnxruntime-node" : "unknown";
-    } catch {
-      backendLabel = "unknown";
-    }
-    return await pipeline("token-classification", ner.model, {
-      dtype: ner.dtype
-    });
-  })();
-  return instance;
-}
-var instance, backendLabel;
-var init_pipeline_singleton = __esm({
-  "src/model/pipeline-singleton.ts"() {
-    "use strict";
-    instance = null;
-    backendLabel = "unknown";
-  }
-});
-
 // src/model/constants.ts
 import { join as join6 } from "path";
-var PINNED_MODEL_SHA256;
+var PINNED_MODEL_SHA256, PIIRANHA_MODEL_ID;
 var init_constants = __esm({
   "src/model/constants.ts"() {
     "use strict";
     PINNED_MODEL_SHA256 = "7de0a4606c65b60da275a72f37b76a102c41e2b79c6463096a9d0cb800bf3f2c";
+    PIIRANHA_MODEL_ID = "onnx-community/piiranha-v1-detect-personal-information-ONNX";
   }
 });
 
@@ -46870,14 +46877,26 @@ var MODEL_LABEL_MAPS;
 var init_ner_entities = __esm({
   "src/detect/ner-entities.ts"() {
     "use strict";
+    init_constants();
     MODEL_LABEL_MAPS = Object.freeze({
       // bert-base-NER: PER/ORG/LOC are substitutable; MISC + O are intentionally absent → null.
       "Xenova/bert-base-NER": Object.freeze({
         PER: "PERSON",
         ORG: "ORG",
         LOC: "LOC"
+      }),
+      // piiranha (NER-04, Plan 06-03): a DIFFERENT label space with NO ORG concept. Personal-name
+      // tokens collapse to PERSON; address components collapse to LOC. Every other piiranha label
+      // (EMAIL, TELEPHONENUM, SOCIALNUM, …) is intentionally absent → null (not substituted by the
+      // NER lane; some are covered by the L6a regex lane instead). NO entry ever maps to 'ORG'.
+      [PIIRANHA_MODEL_ID]: Object.freeze({
+        GIVENNAME: "PERSON",
+        SURNAME: "PERSON",
+        CITY: "LOC",
+        STREET: "LOC",
+        ZIPCODE: "LOC",
+        BUILDINGNUM: "LOC"
       })
-      // piiranha (a DIFFERENT label space, no ORG concept) is added in Plan 06-03 (NER-04).
     });
   }
 });
@@ -47201,7 +47220,7 @@ function toFindingDTO(f) {
     fingerprint: f.fingerprint
   };
 }
-function registerCheckTool(server, getConfig, getSessionState, getCwd) {
+function registerCheckTool(server, getConfig, getSessionState, getCwd, getNerStatus) {
   server.registerTool(
     "mrclean_check",
     {
@@ -47220,7 +47239,7 @@ function registerCheckTool(server, getConfig, getSessionState, getCwd) {
         cwd: getCwd()
       };
       const outcome = await supervisedToolCall(
-        () => runDetectionReadOnly(text, getConfig(), getSessionState(), ctx)
+        () => runDetectionReadOnly(text, getConfig(), getSessionState(), ctx, { ner: true })
       );
       if (!outcome.ok) {
         return {
@@ -47229,7 +47248,11 @@ function registerCheckTool(server, getConfig, getSessionState, getCwd) {
         };
       }
       const findings = outcome.result.findings.map(toFindingDTO);
-      const structured = { findings, count: findings.length };
+      const structured = {
+        findings,
+        count: findings.length,
+        nerStatus: outcome.result.nerStatus ?? getNerStatus()
+      };
       return {
         content: [{ type: "text", text: JSON.stringify(structured) }],
         structuredContent: structured
@@ -47257,7 +47280,10 @@ var init_check = __esm({
     });
     checkOutputSchema = external_exports.object({
       findings: external_exports.array(findingSchema),
-      count: external_exports.number()
+      count: external_exports.number(),
+      // D-03: surface the Layer 6b NER lifecycle status to the MCP caller. An enum (not free-form
+      // text) so it can never carry matched PII (T-06-03-03). 'disabled' on the no-NER path.
+      nerStatus: external_exports.enum(["ready", "unavailable", "loading", "disabled"])
     });
   }
 });
@@ -47277,7 +47303,7 @@ function toFindingDTO2(f) {
     fingerprint: f.fingerprint
   };
 }
-function registerRedactTool(server, getConfig, getSessionState, getCwd) {
+function registerRedactTool(server, getConfig, getSessionState, getCwd, getNerStatus) {
   server.registerTool(
     "mrclean_redact",
     {
@@ -47295,7 +47321,7 @@ function registerRedactTool(server, getConfig, getSessionState, getCwd) {
         cwd: getCwd()
       };
       const outcome = await supervisedToolCall(
-        () => runDetection(text, getConfig(), getSessionState(), ctx)
+        () => runDetection(text, getConfig(), getSessionState(), ctx, { ner: true })
       );
       if (!outcome.ok) {
         return {
@@ -47303,7 +47329,7 @@ function registerRedactTool(server, getConfig, getSessionState, getCwd) {
           isError: true
         };
       }
-      const { substitutedText, findings: rawFindings, budgetExhausted } = outcome.result;
+      const { substitutedText, findings: rawFindings, budgetExhausted, nerStatus } = outcome.result;
       if (budgetExhausted) {
         return {
           content: [
@@ -47316,7 +47342,7 @@ function registerRedactTool(server, getConfig, getSessionState, getCwd) {
         };
       }
       const findings = rawFindings.map(toFindingDTO2);
-      const structured = { redacted: substitutedText, findings };
+      const structured = { redacted: substitutedText, findings, nerStatus: nerStatus ?? getNerStatus() };
       return {
         content: [{ type: "text", text: JSON.stringify(structured) }],
         structuredContent: structured
@@ -47344,7 +47370,10 @@ var init_redact = __esm({
     });
     redactOutputSchema = external_exports.object({
       redacted: external_exports.string(),
-      findings: external_exports.array(findingSchema2)
+      findings: external_exports.array(findingSchema2),
+      // D-03: surface the Layer 6b NER lifecycle status to the MCP caller. An enum (not free-form
+      // text) so it can never carry matched PII (T-06-03-03). 'disabled' on the no-NER path.
+      nerStatus: external_exports.enum(["ready", "unavailable", "loading", "disabled"])
     });
   }
 });
@@ -47423,8 +47452,26 @@ var init_status = __esm({
 // src/mcp/server.ts
 var server_exports = {};
 __export(server_exports, {
-  runMcpServer: () => runMcpServer
+  runMcpServer: () => runMcpServer,
+  startNerPreload: () => startNerPreload
 });
+function startNerPreload(config2) {
+  let nerStatus = config2.pii.ner.enabled ? "loading" : "disabled";
+  const getNerStatus = () => nerStatus;
+  if (config2.pii.ner.enabled) {
+    void (async () => {
+      try {
+        const { getNerPipeline: getNerPipeline2 } = await Promise.resolve().then(() => (init_pipeline_singleton(), pipeline_singleton_exports));
+        await getNerPipeline2(config2.pii.ner);
+        nerStatus = "ready";
+      } catch {
+        nerStatus = "unavailable";
+        process.stderr.write("mrclean-mcp: NER unavailable; serving secrets only\n");
+      }
+    })();
+  }
+  return getNerStatus;
+}
 async function runMcpServer() {
   const { McpServer: McpServer2 } = await Promise.resolve().then(() => (init_mcp(), mcp_exports));
   const { StdioServerTransport: StdioServerTransport2 } = await Promise.resolve().then(() => (init_stdio2(), stdio_exports));
@@ -47441,12 +47488,13 @@ async function runMcpServer() {
   const getConfig = () => config2;
   const getSessionState = () => sessionState;
   const getCwd = () => cwd;
+  const getNerStatus = startNerPreload(config2);
   const server = new McpServer2({ name: "mrclean", version: VERSION });
   const { registerCheckTool: registerCheckTool2 } = await Promise.resolve().then(() => (init_check(), check_exports));
   const { registerRedactTool: registerRedactTool2 } = await Promise.resolve().then(() => (init_redact(), redact_exports));
   const { registerStatusTool: registerStatusTool2 } = await Promise.resolve().then(() => (init_status(), status_exports));
-  registerCheckTool2(server, getConfig, getSessionState, getCwd);
-  registerRedactTool2(server, getConfig, getSessionState, getCwd);
+  registerCheckTool2(server, getConfig, getSessionState, getCwd, getNerStatus);
+  registerRedactTool2(server, getConfig, getSessionState, getCwd, getNerStatus);
   registerStatusTool2(server, getConfig, getSessionState, getCwd);
   const transport = new StdioServerTransport2();
   const { shutdownMcpSupervisor } = await Promise.resolve().then(() => (init_supervisor(), supervisor_exports));

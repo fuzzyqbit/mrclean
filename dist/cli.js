@@ -18532,13 +18532,14 @@ var init_pipeline_singleton = __esm({
 
 // src/model/constants.ts
 import { join as join12 } from "path";
-var MODEL_DOWNLOAD_URL, PINNED_MODEL_SHA256, MODEL_CACHE_PATH;
+var MODEL_DOWNLOAD_URL, PINNED_MODEL_SHA256, MODEL_CACHE_PATH, PIIRANHA_MODEL_ID;
 var init_constants = __esm({
   "src/model/constants.ts"() {
     "use strict";
     MODEL_DOWNLOAD_URL = "https://huggingface.co/Xenova/bert-base-NER/resolve/main/onnx/model_int8.onnx";
     PINNED_MODEL_SHA256 = "7de0a4606c65b60da275a72f37b76a102c41e2b79c6463096a9d0cb800bf3f2c";
     MODEL_CACHE_PATH = (homeDir) => join12(homeDir, ".mrclean", "models", "Xenova", "bert-base-NER", "onnx", "model_int8.onnx");
+    PIIRANHA_MODEL_ID = "onnx-community/piiranha-v1-detect-personal-information-ONNX";
   }
 });
 
@@ -18557,14 +18558,26 @@ var MODEL_LABEL_MAPS;
 var init_ner_entities = __esm({
   "src/detect/ner-entities.ts"() {
     "use strict";
+    init_constants();
     MODEL_LABEL_MAPS = Object.freeze({
       // bert-base-NER: PER/ORG/LOC are substitutable; MISC + O are intentionally absent → null.
       "Xenova/bert-base-NER": Object.freeze({
         PER: "PERSON",
         ORG: "ORG",
         LOC: "LOC"
+      }),
+      // piiranha (NER-04, Plan 06-03): a DIFFERENT label space with NO ORG concept. Personal-name
+      // tokens collapse to PERSON; address components collapse to LOC. Every other piiranha label
+      // (EMAIL, TELEPHONENUM, SOCIALNUM, …) is intentionally absent → null (not substituted by the
+      // NER lane; some are covered by the L6a regex lane instead). NO entry ever maps to 'ORG'.
+      [PIIRANHA_MODEL_ID]: Object.freeze({
+        GIVENNAME: "PERSON",
+        SURNAME: "PERSON",
+        CITY: "LOC",
+        STREET: "LOC",
+        ZIPCODE: "LOC",
+        BUILDINGNUM: "LOC"
       })
-      // piiranha (a DIFFERENT label space, no ORG concept) is added in Plan 06-03 (NER-04).
     });
   }
 });
