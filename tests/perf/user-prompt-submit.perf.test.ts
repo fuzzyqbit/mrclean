@@ -11,12 +11,12 @@
  * Runs in the integration project (fileParallelism:false, testTimeout:60_000).
  */
 
-import { test, expect } from 'vitest'
+import { test, expect, afterAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { runDetection } from '../../src/detect/index.js'
+import { runDetection, shutdownDetection } from '../../src/detect/index.js'
 import { loadEffectiveConfig } from '../../src/config/index.js'
 import { initSessionState } from '../../src/detect/session-state.js'
 
@@ -85,6 +85,59 @@ test(
     const result = p95(samples)
     console.log(
       `[perf] UserPromptSubmit p95=${result.toFixed(2)}ms (N=${N}, threshold=${THRESHOLD}ms, headroom=${(((THRESHOLD - result) / THRESHOLD) * 100).toFixed(0)}%)`,
+    )
+
+    expect(result).toBeLessThanOrEqual(THRESHOLD)
+  },
+)
+
+// ---------------------------------------------------------------------------
+// Cold-path NER unreachability perf gate (Plan 06-02, Task 2 / T-06-02-01)
+//
+// The Layer 6b NER code now exists in src/detect/index.ts, but the hook cold path calls
+// runDetection WITHOUT the opts.ner flag, so the L6b branch (and its `await import(...)` of
+// `@huggingface/transformers`) is never entered. This test re-runs the same 4KB-fixture gate
+// with NO opts to prove the NER addition did not regress hook cold-start latency — p95 must
+// still hold <= 100ms (PERF-01a; dev baseline p95 ~17.4ms, STATE.md 2026-05-14).
+// ---------------------------------------------------------------------------
+
+afterAll(async () => {
+  await shutdownDetection()
+})
+
+test(
+  'UserPromptSubmit p95 <= 100ms with NER code present but opts.ner UNSET (cold-path unchanged)',
+  { timeout: 60_000 },
+  async () => {
+    const config = await loadEffectiveConfig({ cwd: process.cwd() })
+    const sessionState = await initSessionState({
+      sessionId: randomUUID(),
+      homeDir: process.env['HOME'] ?? process.cwd(),
+      cwd: process.cwd(),
+      config,
+    })
+
+    const ctx = {
+      sessionId: randomUUID(),
+      hookEvent: 'UserPromptSubmit' as const,
+      cwd: process.cwd(),
+    }
+
+    // No 5th arg → opts.ner is undefined → the L6b branch is never entered (cold path).
+    for (let i = 0; i < WARMUP; i++) {
+      await runDetection(FIXTURE, config, sessionState, ctx)
+    }
+
+    const samples: number[] = []
+    for (let i = 0; i < N; i++) {
+      const t0 = performance.now()
+      await runDetection(FIXTURE, config, sessionState, ctx)
+      samples.push(performance.now() - t0)
+    }
+
+    const result = p95(samples)
+    console.log(
+      `[perf] UserPromptSubmit (NER-present, opts.ner UNSET) p95=${result.toFixed(2)}ms (N=${N}, threshold=${THRESHOLD}ms, headroom=${(((THRESHOLD - result) / THRESHOLD) * 100).toFixed(0)}%)`,
     )
 
     expect(result).toBeLessThanOrEqual(THRESHOLD)
