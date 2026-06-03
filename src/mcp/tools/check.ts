@@ -19,6 +19,7 @@ import { randomUUID } from 'node:crypto'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { runDetectionReadOnly } from '../../detect/index.js'
 import { supervisedToolCall } from '../supervisor.js'
+import { PII_BEST_EFFORT_DISCLAIMER } from '../../shared/strings.js'
 import type { MrcleanConfig } from '../../shared/types.js'
 import type { SessionState } from '../../detect/session-state.js'
 import type { ResolvedFinding } from '../../detect/index.js'
@@ -108,7 +109,9 @@ export function registerCheckTool(
       description:
         'Scan text through all mrclean detection layers and return findings. ' +
         'Does NOT redact the text or write any audit log entry. ' +
-        'Use mrclean_redact to redact and audit-log findings.',
+        'Use mrclean_redact to redact and audit-log findings. ' +
+        // D-05/D-07: once-per-output honest-framing disclaimer (single source of truth).
+        PII_BEST_EFFORT_DISCLAIMER,
       inputSchema: checkInputSchema,
       outputSchema: checkOutputSchema,
       annotations: { readOnlyHint: true, idempotentHint: true },

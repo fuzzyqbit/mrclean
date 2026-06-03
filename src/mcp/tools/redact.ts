@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { runDetection } from '../../detect/index.js'
 import { supervisedToolCall } from '../supervisor.js'
+import { PII_BEST_EFFORT_DISCLAIMER } from '../../shared/strings.js'
 import type { MrcleanConfig } from '../../shared/types.js'
 import type { SessionState } from '../../detect/session-state.js'
 import type { ResolvedFinding } from '../../detect/index.js'
@@ -104,7 +105,9 @@ export function registerRedactTool(
         'Scan text through all mrclean detection layers, replace detected secrets ' +
         'with stable placeholders, and write one audit log record per finding. ' +
         'Returns the redacted text and a list of findings (without raw values). ' +
-        'Use mrclean_check for a read-only scan with no audit log writes.',
+        'Use mrclean_check for a read-only scan with no audit log writes. ' +
+        // D-05/D-07: once-per-output honest-framing disclaimer (single source of truth).
+        PII_BEST_EFFORT_DISCLAIMER,
       inputSchema: redactInputSchema,
       outputSchema: redactOutputSchema,
     },

@@ -22,6 +22,7 @@ import { loadEffectiveConfig } from '../../config/index.js'
 import { initSessionState, setCachedSessionState } from '../../detect/session-state.js'
 import { getRuleCount } from '../../detect/layer1-regex/index.js'
 import { buildBanner, computeAllowlistCount } from '../banner.js'
+import { PII_BEST_EFFORT_DISCLAIMER } from '../../shared/strings.js'
 import type { SessionStartInput, SessionStartOutput } from '../../shared/types.js'
 
 export async function handleSessionStart(input: SessionStartInput): Promise<SessionStartOutput> {
@@ -45,11 +46,15 @@ export async function handleSessionStart(input: SessionStartInput): Promise<Sess
   const allowlistCount = computeAllowlistCount(config)
   const banner = buildBanner(config, ruleCount, allowlistCount)
 
-  // Step 5: Return banner via additionalContext
+  // Step 5: Return banner via additionalContext, with the D-05/D-07 honest-framing
+  // disclaimer appended once per SessionStart. The banner is RETURNED via additionalContext
+  // (NOT written to stderr), so the disclaimer must ride the same string to reach the surface.
+  // buildBanner stays pure (BANNER_PATTERN intact); the doctor canary only startsWith-checks the
+  // banner prefix, so the trailing disclaimer line is safe. Single source of truth: shared/strings.ts.
   return {
     hookSpecificOutput: {
       hookEventName: 'SessionStart',
-      additionalContext: banner,
+      additionalContext: banner + '\n' + PII_BEST_EFFORT_DISCLAIMER,
     },
   }
 }

@@ -195,9 +195,13 @@ describe('End-to-end hook integration with detection', () => {
       const parsed = JSON.parse(stdout)
 
       // Long-form banner format: mrclean active vN.N.N (rules: NNN, allowlist: NN, mode: active)
-      expect(parsed.hookSpecificOutput.additionalContext).toMatch(
+      // Plan 07-03 (D-05): additionalContext is now `banner + '\n' + disclaimer`, so the anchored
+      // ^...$ banner pattern matches the FIRST line, and the disclaimer line follows.
+      const ctx = parsed.hookSpecificOutput.additionalContext as string
+      expect(ctx.split('\n')[0]).toMatch(
         /^mrclean active v\d+\.\d+\.\d+[^ ]* \(rules: \d+, allowlist: \d+, mode: (active|dry-run)\)$/,
       )
+      expect(ctx).toContain('not a guarantee')
     })
   })
 
