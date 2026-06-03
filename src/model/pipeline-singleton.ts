@@ -27,6 +27,8 @@
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import type { MrcleanPiiNerConfig } from '../shared/types.js'
+import { MODEL_DESCRIPTORS } from './constants.js'
+import { isModelCached, verifyModelIntegrity, downloadModel } from './model-cache.js'
 
 /**
  * Opaque NER pipeline type. We deliberately NEVER statically import transformers types — that
@@ -45,6 +47,16 @@ let instance: Promise<NerPipeline> | null = null
 let backendLabel: NerBackend = 'unknown'
 
 /**
+ * Resolved provenance of the ACTUALLY-loaded model, captured during the build (D-12 / MODEL-04).
+ * `resolvedModelSha` is the pinned SHA-256 of the descriptor that was verified+loaded (bert OR
+ * piiranha). `resolvedDtype` is the dtype passed to `pipeline()`. Both are `undefined` before the
+ * first successful build and after `resetNerSingleton()`. The audit layer reads these so every NER
+ * provenance entry stamps the bytes that were executed, never a hardcoded constant.
+ */
+let resolvedModelSha: string | undefined
+let resolvedDtype: string | undefined
+
+/**
  * Return the backend the active pipeline is running on, for the audit `backend` field.
  * `'onnxruntime-node'` in supported environments; `'unknown'` before the first build or when
  * backend introspection fails. (No automatic WASM fallback exists in Node — see RESEARCH Pitfall 1.)
@@ -54,11 +66,30 @@ export function getNerBackend(): string {
 }
 
 /**
+ * Return the pinned SHA-256 of the model that was actually verified + loaded, for the audit
+ * `model_rev` / `engine` provenance fields (D-12 / MODEL-04). `undefined` before the first
+ * successful build or after `resetNerSingleton()`. For the piiranha tier this is the piiranha hash.
+ */
+export function getNerResolvedSha256(): string | undefined {
+  return resolvedModelSha
+}
+
+/**
+ * Return the dtype the active pipeline was built with, for the audit `quant` provenance field
+ * (WR-04 — resolved, not merely requested). `undefined` before the first build / after reset.
+ */
+export function getNerResolvedDtype(): string | undefined {
+  return resolvedDtype
+}
+
+/**
  * Clear the cached singleton so the next `getNerPipeline()` rebuilds.
  * Called from the MCP shutdown chain (`shutdownMcpSupervisor`) and from tests.
  */
 export function resetNerSingleton(): void {
   instance = null
+  resolvedModelSha = undefined
+  resolvedDtype = undefined
 }
 
 /**
@@ -79,15 +110,50 @@ export function getNerPipeline(ner: MrcleanPiiNerConfig): Promise<NerPipeline> {
   if (instance) return instance
 
   instance = (async () => {
+    // -----------------------------------------------------------------------
+    // D-06 / CR-01: integrity gate BEFORE the model is loaded by transformers.js.
+    // Resolve the per-model descriptor (defense-in-depth; config load is the primary
+    // guard rejecting unknown ids). model-cache + constants are Node-stdlib-only, so
+    // these imports add ZERO @huggingface/transformers surface to the cold path.
+    // -----------------------------------------------------------------------
+    const descriptor = MODEL_DESCRIPTORS[ner.model]
+    if (!descriptor) {
+      throw new Error(
+        `NER model "${ner.model}" is not a pinned/known model — refusing to load (fail-closed).`,
+      )
+    }
+
+    const home = homedir()
+    // Acquire-and-verify: the on-disk bytes MUST hash to the descriptor's pinned SHA-256
+    // before we let transformers.js load them. A missing OR mismatched file is NOT trusted.
+    const present = await isModelCached(home, descriptor)
+    const verified = present && (await verifyModelIntegrity(home, descriptor.pinnedSha256, descriptor))
+    if (!verified) {
+      if (!ner.allowDownload) {
+        throw new Error(
+          'NER model absent or failed SHA-256 verification and download is disabled — failing closed.',
+        )
+      }
+      // downloadModel verifies-before-rename and throws ModelIntegrityError on mismatch, so a
+      // returning call guarantees the on-disk bytes match the pin (no unverified bytes reach load).
+      await downloadModel(home, {}, descriptor)
+    }
+
+    // Stash resolved provenance (the bytes we are about to execute) for the audit layer.
+    resolvedModelSha = descriptor.pinnedSha256
+    resolvedDtype = ner.dtype
+
     // ↓ The SOLE dynamic-import boundary to the heavy ML dep (cold-path-unreachable).
     // @ts-expect-error — @huggingface/transformers is an optionalDependency NOT installed by
     // default (PII off by default), so its types are absent at typecheck time. The runtime
     // import only executes behind the MCP-only opts.ner gate, never on the cold path.
     const { pipeline, env } = await import('@huggingface/transformers')
 
-    // D-06 / RESEARCH Pitfall 1/2: set cacheDir + remote-model gate BEFORE any model load.
-    env.cacheDir = join(homedir(), '.mrclean', 'models')
-    env.allowRemoteModels = ner.allowDownload
+    // D-06 / RESEARCH Pitfall 1/2 / CR-01: set cacheDir + remote-model gate BEFORE any model load.
+    // allowRemoteModels is ALWAYS false — transformers.js loads ONLY the SHA-verified local file
+    // we acquired above; it must NEVER reach out to fetch an unverified model itself.
+    env.cacheDir = join(home, '.mrclean', 'models')
+    env.allowRemoteModels = false
 
     // Capture the backend for the audit `backend` field (D-12). Truthy env.backends.onnx ⇒ native.
     try {

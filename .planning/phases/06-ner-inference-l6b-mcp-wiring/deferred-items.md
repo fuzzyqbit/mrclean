@@ -19,3 +19,15 @@ Out-of-scope discoveries logged during execution. NOT fixed in the originating p
   (config defaults, shared types, NER modules). Pre-existing and unrelated to the NER work.
 - **Recommended owner:** a hook/test-infra fix (verify tsx child-process exit semantics in CI),
   tracked separately from the Phase 6 NER lane.
+
+## 06-04
+
+### tests/hook/failclosed.test.ts — Test 4 & Test 5 STILL fail (same pre-existing issue)
+
+- **Found during:** Plan 06-04 (gap SC-4) full-suite regression check.
+- **Confirmed unchanged:** identical to the 06-01 finding above — the child process spawned via
+  `node_modules/.bin/tsx` returns `status: null` (in this parallel worktree `node_modules/.bin/tsx`
+  is not present, so the child cannot start). `src/hook/failclosed.ts` imports NONE of the files
+  changed by 06-04 (model/constants, model-cache, pipeline-singleton, config/index, detect/index —
+  grep count 0). Out of scope per the SCOPE BOUNDARY rule; not a regression from the integrity /
+  provenance changes. Re-run after worktree merge into the main checkout (where tsx resolves).

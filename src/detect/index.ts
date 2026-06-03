@@ -51,8 +51,12 @@ import { writeAuditRecord, findingToAuditRecord } from '../audit/log.js'
 import type { FindingProvenance } from '../audit/log.js'
 import { getTypeForRuleId } from './type-map.js'
 import { applyDryRun } from './dry-run.js'
-import { getNerBackend, resetNerSingleton } from '../model/pipeline-singleton.js'
-import { PINNED_MODEL_SHA256 } from '../model/constants.js'
+import {
+  getNerBackend,
+  resetNerSingleton,
+  getNerResolvedSha256,
+  getNerResolvedDtype,
+} from '../model/pipeline-singleton.js'
 import type { MrcleanConfig } from '../shared/types.js'
 import type { SessionState } from './session-state.js'
 // TYPE-ONLY import of the NER status union. The NER engine module (layer6b-ner.ts) and its
@@ -436,14 +440,22 @@ export async function runDetection(
   // Step 12: Write audit records in parallel (fire-and-collect)
   // Failures are logged to stderr as single-line JSON warnings — never thrown.
   // ---------------------------------------------------------------------------
-  // Provenance is populated ONLY for pii-ner findings (MODEL-04 / D-12). The four fields carry
-  // model-identity metadata derived from constants + config + the backend label — NEVER finding.value
-  // (findingToAuditRecord destructure-picks only these keys, so no raw PII can leak). Non-NER
-  // findings pass `undefined`, keeping their audit records byte-identical to v1.
+  // Provenance is populated ONLY for pii-ner findings (MODEL-04 / D-12). The fields carry
+  // model-identity metadata derived from the RESOLVED descriptor (the bytes actually loaded +
+  // executed) — NEVER a hardcoded constant and NEVER finding.value (findingToAuditRecord
+  // destructure-picks only these keys, so no raw PII can leak). Non-NER findings pass `undefined`,
+  // keeping their audit records byte-identical to v1.
+  //
+  // model_rev/engine come from getNerResolvedSha256() — for the piiranha tier this is the piiranha
+  // hash, not bert (the SC-4 reproducibility fix). If the resolved sha is somehow unavailable, we
+  // OMIT model_rev/engine rather than stamp a wrong/empty hash. quant prefers the RESOLVED dtype
+  // over the requested config dtype (WR-04).
+  const resolvedSha = getNerResolvedSha256()
   const nerProvenance: FindingProvenance = {
-    engine: `pii-ner@${PINNED_MODEL_SHA256.slice(0, 12)}`,
-    model_rev: PINNED_MODEL_SHA256,
-    quant: config.pii.ner.dtype,
+    ...(resolvedSha
+      ? { engine: `pii-ner@${resolvedSha.slice(0, 12)}`, model_rev: resolvedSha }
+      : {}),
+    quant: getNerResolvedDtype() ?? config.pii.ner.dtype,
     backend: getNerBackend(),
   }
 

@@ -101,3 +101,49 @@ export const PIIRANHA_CACHE_PATH = (homeDir: string): string =>
     'onnx',
     'model_int8.onnx',
   )
+
+// ---------------------------------------------------------------------------
+// Per-model descriptors (gap 06-04 — wires the dead PIIRANHA_* constants)
+// ---------------------------------------------------------------------------
+//
+// A ModelDescriptor bundles the four per-model integrity facts (id, download URL,
+// pinned SHA-256, cache path) so the model-cache + inference load paths can verify
+// the RIGHT model against its OWN pinned hash. This composes the standalone constants
+// above into a single resolvable record keyed by model id — it does NOT replace them
+// (other modules still import the individual constants).
+//
+// This file stays Node-stdlib-only (zero ML deps) so it remains cold-path-safe to import.
+
+/**
+ * Immutable per-model integrity descriptor.
+ * `cachePath(homeDir)` always resolves under `<homeDir>/.mrclean/models/` (never cwd-relative).
+ */
+export interface ModelDescriptor {
+  readonly id: string
+  readonly downloadUrl: string
+  readonly pinnedSha256: string
+  readonly cachePath: (homeDir: string) => string
+}
+
+/**
+ * Frozen map of supported model id → descriptor. The ONLY model ids mrclean will
+ * verify/acquire/load. An id absent from this map is rejected fail-closed at config
+ * load (see src/config/index.ts) and defensively at the inference load path.
+ */
+export const MODEL_DESCRIPTORS: Readonly<Record<string, ModelDescriptor>> = Object.freeze({
+  [MODEL_ID]: Object.freeze({
+    id: MODEL_ID,
+    downloadUrl: MODEL_DOWNLOAD_URL,
+    pinnedSha256: PINNED_MODEL_SHA256,
+    cachePath: MODEL_CACHE_PATH,
+  }),
+  [PIIRANHA_MODEL_ID]: Object.freeze({
+    id: PIIRANHA_MODEL_ID,
+    downloadUrl: PIIRANHA_DOWNLOAD_URL,
+    pinnedSha256: PIIRANHA_PINNED_SHA256,
+    cachePath: PIIRANHA_CACHE_PATH,
+  }),
+})
+
+/** Convenience binding for the default (bert) descriptor — the back-compat default. */
+export const BERT_DESCRIPTOR: ModelDescriptor = MODEL_DESCRIPTORS[MODEL_ID]!
