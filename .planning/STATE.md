@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Native-Node PII/NER Layer
 status: executing
 stopped_at: Phase 6 context gathered
-last_updated: "2026-06-03T02:21:12.840Z"
-last_activity: 2026-06-03 -- Phase 06 planning complete
+last_updated: "2026-06-03T02:24:06.668Z"
+last_activity: 2026-06-03 -- Phase 06 execution started
 progress:
   total_phases: 4
   completed_phases: 2
@@ -22,16 +22,16 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** Phase 05 — regex-pii-hot-path-lane-l6a-model-acquisition
+**Current Focus:** Phase 06 — ner-inference-l6b-mcp-wiring
 **Project Mode:** mvp (vertical slices)
 **Granularity:** coarse (3-5 phases)
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-03 -- Phase 06 planning complete
+Phase: 06 (ner-inference-l6b-mcp-wiring) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 06
+Last activity: 2026-06-03 -- Phase 06 execution started
 
 > v1 milestone (Phases 1-3) shipped 2026-05-14. v2.0 adds the opt-in Native-Node PII/NER layer
 > as Phases 4-7. Phase numbering CONTINUES from v1 — it does not reset to 1.
