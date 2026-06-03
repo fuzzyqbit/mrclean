@@ -558,17 +558,28 @@ implementation-detail assumptions the planner should confirm against current sou
      can ever carry input text (they currently carry only signal names / shutdown errors).
    - Recommendation: wrap the four confirmed sinks; assess lifecycle writes — likely no input context,
      so static messages already satisfy D-04. Planner enumerates the final sink list as a task.
+   - RESOLVED by 07-01 Task 2: the chokepoint wraps `supervisor.supervisedToolCall` (catch boundary) and
+     `failclosed.writeFailClosedError` (stderr JSON writer, raw `stack` echo dropped); the MCP `isError`
+     returns in `check.ts`/`redact.ts` are routed in 07-03 Task 4. `mcp/lifecycle.ts:20/:26` shutdown-signal
+     writes were assessed as static / no input-text interpolation (they carry only signal names + shutdown
+     errors), so they already satisfy D-04 and are intentionally NOT wrapped — documented as the final sink list.
 
 2. **Whether `advisory` is always-emitted or only-when-true**
    - What we know: D-06 wants a stable flag; the schema currently has no optional fields on findings.
    - What's unclear: stable-shape (always `advisory: boolean`) vs. minimal (`advisory?: true`).
    - Recommendation: always-emit `advisory: z.boolean()` for a predictable schema; deterministic
      findings get `false`. (Claude's discretion per CONTEXT — recommend always-emit.)
+   - RESOLVED by 07-02 Task 1: always-emitted. The field ships as `bestEffort: z.boolean()` (renamed from the
+     research-era `advisory` placeholder) on every finding DTO — `true` for `source === 'pii-ner'`, `false`
+     for every deterministic lane — giving the stable, predictable schema shape.
 
 3. **Disclaimer copy wording (D-07 stance)**
    - What we know: stance is locked; exact wording is Claude's discretion, user reviews.
    - Recommendation: draft one disclaimer string in `src/shared/strings.ts`, reuse across surfaces;
      gate it behind the banned-phrase test (Pitfall 5) and stage as a `checkpoint:human-review` for copy.
+   - RESOLVED by 07-03: a single `PII_BEST_EFFORT_DISCLAIMER` const in `src/shared/strings.ts` is drafted
+     (Task 1), gated by the copy-drift banned-phrase test (Task 3, Pitfall 5 self-check), and the exact
+     wording is staged behind the 07-03 Task 5 `checkpoint:human-verify` copy-review sign-off (D-07).
 
 ## Environment Availability
 
