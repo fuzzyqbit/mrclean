@@ -178,6 +178,14 @@ describe('mrclean hook integration', () => {
       error: expect.any(String),
       version: expect.any(String),
     })
-    expect(JSON.stringify(parsed)).toContain('synthetic')
+    // D-04 (Plan 07-01): the raw throw text ('synthetic mrclean crash') is a
+    // context-free leak vector — it MUST NOT reach stderr. writeFailClosedError now
+    // routes the message through the sanitizeForOutput chokepoint (static safe string)
+    // and drops the raw stack, so 'synthetic' never appears in the payload.
+    expect(JSON.stringify(parsed)).not.toContain('synthetic')
+    expect(parsed.message).not.toContain('synthetic')
+    expect(typeof parsed.message).toBe('string')
+    expect(parsed.message.length).toBeGreaterThan(0)
+    expect(parsed.stack).toBe('redacted')
   })
 })

@@ -36,6 +36,8 @@
 
 export { shutdownDetection as shutdownMcpSupervisor } from '../detect/index.js'
 
+import { sanitizeForOutput } from '../shared/sanitize-output.js'
+
 /**
  * Wrap a tool handler invocation in try/catch Promise isolation.
  *
@@ -53,10 +55,11 @@ export async function supervisedToolCall<T>(
     const result = await fn()
     return { ok: true, result }
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : String(err)
-    return { ok: false, error: message }
+    // No detection spans exist at this catch boundary — the supervisor wraps the
+    // whole tool call, not a single finding. Route through the context-free chokepoint
+    // (D-04) so the raw throw text NEVER reaches MCP tool text (check.ts/redact.ts
+    // interpolate this `error` field). The discriminated-union API is unchanged.
+    const error = sanitizeForOutput(err instanceof Error ? err.message : String(err))
+    return { ok: false, error }
   }
 }
