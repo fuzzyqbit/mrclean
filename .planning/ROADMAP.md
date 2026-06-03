@@ -113,8 +113,8 @@
   3. On first opt-in, the model is lazy-downloaded to a stable `~/.mrclean/models/` cache (never cwd-relative) with a one-time progress indicator, and the default (PII-off) `npx` cold path never loads ML deps or touches the network
   4. The downloaded model is verified against a pinned SHA-256 and refused on mismatch; an offline side-load path (`mrclean pii fetch-model --from <path>`) works air-gapped, and `mrclean doctor` reports model presence/integrity
 **Plans**: 2 plans
-  - [ ] 05-01-PLAN.md — L6a regex-PII lane (email/SSN/Luhn-CC/phone/IPv4) + shared isAllowlisted extraction + orchestrator wiring behind pii.enabled [PII-01, PII-02]
-  - [ ] 05-02-PLAN.md — Model cache/download/SHA-256-integrity/side-load infra + `mrclean doctor` model check + `mrclean pii fetch-model` (blocking Wave-0 SHA-256 pin) [MODEL-02, MODEL-03]
+  - [x] 05-01-PLAN.md — L6a regex-PII lane (email/SSN/Luhn-CC/phone/IPv4) + shared isAllowlisted extraction + orchestrator wiring behind pii.enabled [PII-01, PII-02]
+  - [x] 05-02-PLAN.md — Model cache/download/SHA-256-integrity/side-load infra + `mrclean doctor` model check + `mrclean pii fetch-model` (blocking Wave-0 SHA-256 pin) [MODEL-02, MODEL-03]
 
 ### Phase 6: NER Inference (L6b) + MCP Wiring
 **Goal**: This is where the probabilistic detector meets the deterministic pipeline. Opt-in open-class NER (PERSON, ORG, LOCATION) via `@huggingface/transformers` ONNX runs as a lazy warm singleton inside the long-lived MCP server ONLY — structurally unreachable from the per-event hook hot path. NER is advisory (warn/audit) by default, fails closed for NER only (secret gate never crashes), records model provenance in every PII audit entry, and supports a higher-recall model tier swap. The FP/overlap/reproducibility risks all land and are tested here.
