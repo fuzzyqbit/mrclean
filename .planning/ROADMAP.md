@@ -128,7 +128,7 @@
   4. Operator switches `[pii.ner].model` to the higher-recall piiranha (~317 MB) tier via config and it loads in place of the default ~108 MB model; every PII audit entry records `model_rev` + `quant` + `backend` so the same input + pinned model reproduces identical entries across machines
 **Plans**: 3 plans
   - [x] 06-01-PLAN.md — pipeline singleton + L6b NER engine + label-map + D-11 overlap filter + confidence-default reconcile (NER-01/02/03)
-  - [ ] 06-02-PLAN.md — orchestrator opts.ner wiring + D-11 pre-dedup + audit provenance + structural-unreachability + perf gate (NER-01, MODEL-04)
+  - [x] 06-02-PLAN.md — orchestrator opts.ner wiring + D-11 pre-dedup + audit provenance + structural-unreachability + perf gate (NER-01, MODEL-04)
   - [ ] 06-03-PLAN.md — MCP eager preload + nerStatus in check/redact + piiranha tier behind license checkpoint (NER-01, NER-04)
 
 ### Phase 7: PII Security Hardening & Honest Framing
