@@ -170,6 +170,70 @@ describe('registerRedactTool (mrclean_redact)', () => {
     expect(afterCount - beforeCount).toBe(expectedNewRecords)
   })
 
+  // D-06 (PIISEC-02): every finding DTO carries a stable machine-readable bestEffort
+  // boolean — true ONLY for the probabilistic NER lane (source 'pii-ner'), false for
+  // every deterministic source. Mirror of the check.ts assertions (the two tools must
+  // remain exact mirrors). source is never serialized into the DTO (T-07-02-01).
+  it('T6: deterministic finding (AWS key) has bestEffort: false', async () => {
+    const result = await client.callTool({
+      name: 'mrclean_redact',
+      arguments: { text: AWS_KEY_TEXT },
+    })
+    expect(result.isError).toBeFalsy()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const structured = (result as any).structuredContent as { findings: Array<Record<string, unknown>> }
+    expect(structured.findings.length).toBeGreaterThanOrEqual(1)
+    const finding = structured.findings[0]!
+    expect(finding['bestEffort']).toBe(false)
+    expect(finding['source']).toBeUndefined()
+  })
+
+  it('T7: a pii-ner finding maps to bestEffort: true', async () => {
+    // Drive a synthetic pii-ner finding by mocking runDetection (mirrors the T5
+    // budgetExhausted mock pattern). No model download.
+    const detectModule = await import('../../src/detect/index.js')
+    const nerFinding = {
+      ruleId: 'pii-ner:PER',
+      severity: 'MEDIUM' as const,
+      span: { start: 0, end: 8 },
+      value: 'Jane Doe',
+      redactedHash: 'deadbeefdeadbeef',
+      fingerprint: 'pii-ner:PER:deadbeefdeadbeef',
+      source: 'pii-ner' as const,
+      placeholder: '<MRCLEAN:PII:001>',
+      effectiveAction: 'substitute' as const,
+    }
+    vi.spyOn(detectModule, 'runDetection').mockResolvedValueOnce({
+      findings: [nerFinding],
+      substitutedText: '<MRCLEAN:PII:001>',
+      budgetExhausted: false,
+      rawTimeoutCount: 0,
+      nerStatus: 'ready',
+    })
+
+    const pair2 = makeConnectedPair(cwd)
+    const server2 = pair2.server
+    const client2 = pair2.client
+    await server2.connect(pair2.serverTransport)
+    await client2.connect(pair2.clientTransport)
+
+    const result = await client2.callTool({
+      name: 'mrclean_redact',
+      arguments: { text: 'Jane Doe' },
+    })
+    expect(result.isError).toBeFalsy()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const structured = (result as any).structuredContent as { findings: Array<Record<string, unknown>> }
+    expect(structured.findings.length).toBe(1)
+    const finding = structured.findings[0]!
+    expect(finding['bestEffort']).toBe(true)
+    expect(finding['source']).toBeUndefined()
+    expect(finding['value']).toBeUndefined()
+    expect(finding['span']).toBeUndefined()
+
+    await client2.close().catch(() => {})
+  })
+
   it('T5: budgetExhausted → isError: true with descriptive message', async () => {
     // Mock runDetection to simulate budget exhaustion
     const detectModule = await import('../../src/detect/index.js')

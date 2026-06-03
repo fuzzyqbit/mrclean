@@ -8,7 +8,7 @@
  * would produce findings, the audit.jsonl file is NOT written.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtemp, readFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -172,5 +172,93 @@ describe('registerCheckTool (mrclean_check)', () => {
     const structured = (result as any).structuredContent as { findings: unknown[]; count: number }
     expect(parsed.findings).toEqual(structured.findings)
     expect(parsed.count).toBe(structured.count)
+  })
+
+  // D-06 (PIISEC-02): every finding DTO carries a stable machine-readable bestEffort
+  // boolean — true ONLY for the probabilistic NER lane (source 'pii-ner'), false for
+  // every deterministic source. The flag is derived from source at map time; source
+  // itself is never serialized into the DTO (SC-3 / T-07-02-01).
+  it('T6: deterministic finding (AWS key) has bestEffort: false', async () => {
+    const result = await client.callTool({
+      name: 'mrclean_check',
+      arguments: { text: AWS_KEY_TEXT },
+    })
+    expect(result.isError).toBeFalsy()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const structured = (result as any).structuredContent as { findings: Array<Record<string, unknown>> }
+    expect(structured.findings.length).toBeGreaterThanOrEqual(1)
+    const finding = structured.findings[0]!
+    expect(finding['bestEffort']).toBe(false)
+    // source must never be serialized into the DTO (Pitfall 4 / T-07-02-01)
+    expect(finding['source']).toBeUndefined()
+  })
+})
+
+describe('mrclean_check — bestEffort flag for NER findings (D-06)', () => {
+  let cwd: string
+  let pair: { server: McpServer; client: Client }
+
+  beforeEach(async () => {
+    cwd = await makeTmpCwd()
+  })
+
+  afterEach(async () => {
+    await pair?.client.close().catch(() => {})
+    vi.restoreAllMocks()
+  })
+
+  it('T7: a pii-ner finding maps to bestEffort: true', async () => {
+    // Drive a synthetic pii-ner finding through the tool by mocking the detection
+    // layer (mirrors the redact T5 budgetExhausted mock pattern). No model download.
+    const detectModule = await import('../../src/detect/index.js')
+    const nerFinding = {
+      ruleId: 'pii-ner:PER',
+      severity: 'MEDIUM' as const,
+      span: { start: 0, end: 8 },
+      value: 'Jane Doe',
+      redactedHash: 'deadbeefdeadbeef',
+      fingerprint: 'pii-ner:PER:deadbeefdeadbeef',
+      source: 'pii-ner' as const,
+      placeholder: '<MRCLEAN:PII:001>',
+      effectiveAction: 'substitute' as const,
+    }
+    vi.spyOn(detectModule, 'runDetectionReadOnly').mockResolvedValueOnce({
+      findings: [nerFinding],
+      substitutedText: '<MRCLEAN:PII:001>',
+      budgetExhausted: false,
+      rawTimeoutCount: 0,
+      nerStatus: 'ready',
+    })
+
+    const config = { ...DEFAULT_CONFIG }
+    const sessionState = makeSessionState('test-session-check-ner-flag')
+    const server = new McpServer({ name: 'test', version: '0.0.0' })
+    registerCheckTool(
+      server,
+      () => config,
+      () => sessionState,
+      () => cwd,
+      () => 'ready',
+    )
+    const client = new Client({ name: 'test-client', version: '0.0.0' }, { capabilities: {} })
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    await client.connect(clientTransport)
+    pair = { server, client }
+
+    const result = await client.callTool({
+      name: 'mrclean_check',
+      arguments: { text: 'Jane Doe' },
+    })
+    expect(result.isError).toBeFalsy()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const structured = (result as any).structuredContent as { findings: Array<Record<string, unknown>> }
+    expect(structured.findings.length).toBe(1)
+    const finding = structured.findings[0]!
+    expect(finding['bestEffort']).toBe(true)
+    // source/value/span must never be serialized into the DTO
+    expect(finding['source']).toBeUndefined()
+    expect(finding['value']).toBeUndefined()
+    expect(finding['span']).toBeUndefined()
   })
 })
