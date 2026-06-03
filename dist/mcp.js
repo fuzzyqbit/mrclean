@@ -33391,7 +33391,7 @@ var init_defaults = __esm({
           model: "Xenova/bert-base-NER",
           dtype: "int8",
           entities: Object.freeze(["PERSON", "ORG", "LOC"]),
-          confidence: 0.9,
+          confidence: 0.7,
           allowDownload: true,
           warmOnBoot: false,
           actions: Object.freeze({
@@ -46465,6 +46465,23 @@ var init_layer6a_pii = __esm({
   }
 });
 
+// src/detect/ner-overlap.ts
+function spansOverlap2(a, b) {
+  return a.start < b.end && b.start < a.end;
+}
+function dropNerOverlaps(findings) {
+  const higher = findings.filter((f) => f.source !== "pii-ner");
+  return findings.filter((f) => {
+    if (f.source !== "pii-ner") return true;
+    return !higher.some((h) => spansOverlap2(f.span, h.span));
+  });
+}
+var init_ner_overlap = __esm({
+  "src/detect/ner-overlap.ts"() {
+    "use strict";
+  }
+});
+
 // src/detect/layer1-regex/worker-pool.ts
 import { Worker as Worker2 } from "worker_threads";
 var POOL_WORKER_CODE, SINGLE_SHOT_CODE, WorkerPool;
@@ -46793,6 +46810,193 @@ var init_dry_run = __esm({
   }
 });
 
+// src/model/pipeline-singleton.ts
+import { join as join5 } from "path";
+import { homedir as homedir2 } from "os";
+function getNerBackend() {
+  return backendLabel;
+}
+function resetNerSingleton() {
+  instance = null;
+}
+function getNerPipeline(ner) {
+  if (instance) return instance;
+  instance = (async () => {
+    const { pipeline, env } = await import("@huggingface/transformers");
+    env.cacheDir = join5(homedir2(), ".mrclean", "models");
+    env.allowRemoteModels = ner.allowDownload;
+    try {
+      backendLabel = env.backends?.onnx ? "onnxruntime-node" : "unknown";
+    } catch {
+      backendLabel = "unknown";
+    }
+    return await pipeline("token-classification", ner.model, {
+      dtype: ner.dtype
+    });
+  })();
+  return instance;
+}
+var instance, backendLabel;
+var init_pipeline_singleton = __esm({
+  "src/model/pipeline-singleton.ts"() {
+    "use strict";
+    instance = null;
+    backendLabel = "unknown";
+  }
+});
+
+// src/model/constants.ts
+import { join as join6 } from "path";
+var PINNED_MODEL_SHA256;
+var init_constants = __esm({
+  "src/model/constants.ts"() {
+    "use strict";
+    PINNED_MODEL_SHA256 = "7de0a4606c65b60da275a72f37b76a102c41e2b79c6463096a9d0cb800bf3f2c";
+  }
+});
+
+// src/detect/ner-entities.ts
+function stripBio(label) {
+  if (label.startsWith("B-") || label.startsWith("I-")) return label.slice(2);
+  return label;
+}
+function mapModelLabel(model, label) {
+  const labelMap = MODEL_LABEL_MAPS[model];
+  if (!labelMap) return null;
+  const tag = stripBio(label);
+  return labelMap[tag] ?? null;
+}
+var MODEL_LABEL_MAPS;
+var init_ner_entities = __esm({
+  "src/detect/ner-entities.ts"() {
+    "use strict";
+    MODEL_LABEL_MAPS = Object.freeze({
+      // bert-base-NER: PER/ORG/LOC are substitutable; MISC + O are intentionally absent → null.
+      "Xenova/bert-base-NER": Object.freeze({
+        PER: "PERSON",
+        ORG: "ORG",
+        LOC: "LOC"
+      })
+      // piiranha (a DIFFERENT label space, no ORG concept) is added in Plan 06-03 (NER-04).
+    });
+  }
+});
+
+// src/detect/layer6b-ner.ts
+var layer6b_ner_exports = {};
+__export(layer6b_ner_exports, {
+  runLayer6bNer: () => runLayer6bNer
+});
+function overlapsCovered3(candidateStart, candidateEnd, covered) {
+  for (const span of covered) {
+    if (candidateStart < span.end && span.start < candidateEnd) return true;
+  }
+  return false;
+}
+function stripWordPiece(word) {
+  return word.startsWith("##") ? word.slice(2) : word;
+}
+function bioTag(label) {
+  if (label.startsWith("B-") || label.startsWith("I-")) return label.slice(2);
+  return label;
+}
+function locateToken(tok, text, cursor) {
+  if (typeof tok.start === "number" && typeof tok.end === "number") {
+    return { start: tok.start, end: tok.end };
+  }
+  const surface = stripWordPiece(tok.word);
+  if (surface.length === 0) return null;
+  const idx = text.indexOf(surface, cursor);
+  if (idx === -1) return null;
+  return { start: idx, end: idx + surface.length };
+}
+function aggregateBio(raw, text) {
+  const spans = [];
+  let cursor = 0;
+  let current = null;
+  let currentTag = "";
+  const flush = () => {
+    if (current) {
+      spans.push(current);
+      current = null;
+      currentTag = "";
+    }
+  };
+  for (const tok of raw) {
+    const tag = bioTag(tok.entity);
+    if (tag === "O" || tag === "") {
+      flush();
+      continue;
+    }
+    const loc = locateToken(tok, text, cursor);
+    if (!loc) {
+      flush();
+      continue;
+    }
+    cursor = loc.end;
+    const isBegin = tok.entity.startsWith("B-");
+    const sameRun = current !== null && tag === currentTag && !isBegin;
+    if (sameRun && current) {
+      current.end = loc.end;
+      current.score = Math.min(current.score, tok.score);
+    } else {
+      flush();
+      current = { label: tok.entity, start: loc.start, end: loc.end, score: tok.score };
+      currentTag = tag;
+    }
+  }
+  flush();
+  return spans;
+}
+async function runLayer6bNer(text, ner, config2, coveredSpans = []) {
+  let pipe2;
+  try {
+    pipe2 = await getNerPipeline(ner);
+  } catch {
+    return { findings: [], status: "unavailable" };
+  }
+  let raw;
+  try {
+    raw = await pipe2(text);
+  } catch {
+    return { findings: [], status: "unavailable" };
+  }
+  const spans = aggregateBio(raw, text);
+  const findings = [];
+  for (const s of spans) {
+    if (s.score < ner.confidence) continue;
+    const canonical = mapModelLabel(ner.model, s.label);
+    if (!canonical || !ner.entities.includes(canonical)) continue;
+    if (overlapsCovered3(s.start, s.end, coveredSpans)) continue;
+    const value = text.slice(s.start, s.end);
+    if (value.length === 0) continue;
+    const candidate = {
+      ruleId: `pii:${canonical}`,
+      severity: "MEDIUM",
+      // MEDIUM → substitute; explicit action below makes it unambiguous (D-02).
+      span: { start: s.start, end: s.end },
+      value,
+      redactedHash: redactedHash(value),
+      fingerprint: fingerprint(`pii:${canonical}`, value),
+      source: "pii-ner",
+      action: "substitute"
+      // explicit — NER never blocks (D-02); do NOT rely on severity default.
+    };
+    if (isAllowlisted(candidate, config2)) continue;
+    findings.push(candidate);
+  }
+  return { findings: findings.sort((a, b) => a.span.start - b.span.start), status: "ready" };
+}
+var init_layer6b_ner = __esm({
+  "src/detect/layer6b-ner.ts"() {
+    "use strict";
+    init_findings();
+    init_allowlist();
+    init_pipeline_singleton();
+    init_ner_entities();
+  }
+});
+
 // src/detect/index.ts
 function getOrCreatePool() {
   if (!pool) pool = new WorkerPool(4);
@@ -46812,6 +47016,7 @@ async function shutdownDetection() {
     pool = null;
   }
   cachedManagers.clear();
+  resetNerSingleton();
 }
 function severityToDefaultAction(severity) {
   switch (severity) {
@@ -46824,7 +47029,7 @@ function severityToDefaultAction(severity) {
       return "audit";
   }
 }
-async function runDetectionReadOnly(text, config2, sessionState, ctx) {
+async function runDetectionReadOnly(text, config2, sessionState, ctx, opts = {}) {
   const workerPool = getOrCreatePool();
   const manager = getOrCreateManager(ctx.sessionId);
   const l1 = await runLayer1(text, config2, workerPool);
@@ -46840,7 +47045,15 @@ async function runDetectionReadOnly(text, config2, sessionState, ctx) {
     const l6a = runLayer6aPii(text, config2.pii.regex, config2, findings.map((f) => f.span));
     findings.push(...l6a);
   }
-  const deduped = dedupBySpan(findings);
+  let nerStatus = "disabled";
+  if (opts.ner && config2.pii.ner.enabled) {
+    const { runLayer6bNer: runLayer6bNer2 } = await Promise.resolve().then(() => (init_layer6b_ner(), layer6b_ner_exports));
+    const out = await runLayer6bNer2(text, config2.pii.ner, config2, findings.map((f) => f.span));
+    findings.push(...out.findings);
+    nerStatus = out.status;
+  }
+  const filtered = dropNerOverlaps(findings);
+  const deduped = dedupBySpan(filtered);
   const resolvedFindings = deduped.map((f) => {
     const action = f.action === "warn" ? "audit" : f.action;
     const effectiveAction = action !== void 0 ? action : severityToDefaultAction(f.severity);
@@ -46854,10 +47067,11 @@ async function runDetectionReadOnly(text, config2, sessionState, ctx) {
     findings: finalFindings,
     substitutedText,
     budgetExhausted: timeoutCount >= 5,
-    rawTimeoutCount: timeoutCount
+    rawTimeoutCount: timeoutCount,
+    nerStatus
   };
 }
-async function runDetection(text, config2, sessionState, ctx) {
+async function runDetection(text, config2, sessionState, ctx, opts = {}) {
   const workerPool = getOrCreatePool();
   const manager = getOrCreateManager(ctx.sessionId);
   const l1 = await runLayer1(text, config2, workerPool);
@@ -46873,7 +47087,15 @@ async function runDetection(text, config2, sessionState, ctx) {
     const l6a = runLayer6aPii(text, config2.pii.regex, config2, findings.map((f) => f.span));
     findings.push(...l6a);
   }
-  const deduped = dedupBySpan(findings);
+  let nerStatus = "disabled";
+  if (opts.ner && config2.pii.ner.enabled) {
+    const { runLayer6bNer: runLayer6bNer2 } = await Promise.resolve().then(() => (init_layer6b_ner(), layer6b_ner_exports));
+    const out = await runLayer6bNer2(text, config2.pii.ner, config2, findings.map((f) => f.span));
+    findings.push(...out.findings);
+    nerStatus = out.status;
+  }
+  const filtered = dropNerOverlaps(findings);
+  const deduped = dedupBySpan(filtered);
   const resolvedFindings = deduped.map((f) => {
     const action = f.action === "warn" ? "audit" : f.action;
     const effectiveAction = action !== void 0 ? action : severityToDefaultAction(f.severity);
@@ -46883,9 +47105,24 @@ async function runDetection(text, config2, sessionState, ctx) {
   });
   const finalFindings = config2.dry_run ? applyDryRun(resolvedFindings) : resolvedFindings;
   const substitutedText = config2.dry_run ? text : substituteFindings(text, finalFindings);
+  const nerProvenance = {
+    engine: `pii-ner@${PINNED_MODEL_SHA256.slice(0, 12)}`,
+    model_rev: PINNED_MODEL_SHA256,
+    quant: config2.pii.ner.dtype,
+    backend: getNerBackend()
+  };
   const auditResults = await Promise.allSettled(
     finalFindings.map(
-      (f) => writeAuditRecord(ctx.cwd, findingToAuditRecord(f, ctx.sessionId, ctx.hookEvent, f.effectiveAction))
+      (f) => writeAuditRecord(
+        ctx.cwd,
+        findingToAuditRecord(
+          f,
+          ctx.sessionId,
+          ctx.hookEvent,
+          f.effectiveAction,
+          f.source === "pii-ner" ? nerProvenance : void 0
+        )
+      )
     )
   );
   for (const outcome of auditResults) {
@@ -46899,7 +47136,8 @@ async function runDetection(text, config2, sessionState, ctx) {
     findings: finalFindings,
     substitutedText,
     budgetExhausted: timeoutCount >= 5,
-    rawTimeoutCount: timeoutCount
+    rawTimeoutCount: timeoutCount,
+    nerStatus
   };
 }
 var pool, cachedManagers;
@@ -46912,12 +47150,15 @@ var init_detect = __esm({
     init_layer3_env();
     init_layer4_words();
     init_layer6a_pii();
+    init_ner_overlap();
     init_worker_pool();
     init_manager();
     init_substitute();
     init_log();
     init_type_map();
     init_dry_run();
+    init_pipeline_singleton();
+    init_constants();
     pool = null;
     cachedManagers = /* @__PURE__ */ new Map();
   }
@@ -47125,7 +47366,7 @@ var status_exports = {};
 __export(status_exports, {
   registerStatusTool: () => registerStatusTool
 });
-import { join as join5 } from "path";
+import { join as join7 } from "path";
 function registerStatusTool(server, getConfig, _getSessionState, getCwd) {
   server.registerTool(
     "mrclean_status",
@@ -47142,7 +47383,7 @@ function registerStatusTool(server, getConfig, _getSessionState, getCwd) {
       const ruleCount = ruleCountResult.total;
       const allowlistCount = computeAllowlistCount(config2);
       const mode = config2.dry_run ? "dry-run" : "active";
-      const auditLogPath = join5(getCwd(), ".mrclean", "audit.jsonl");
+      const auditLogPath = join7(getCwd(), ".mrclean", "audit.jsonl");
       const status = {
         version: VERSION,
         rule_count: ruleCount,

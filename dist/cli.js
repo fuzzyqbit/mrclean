@@ -5045,7 +5045,7 @@ var init_defaults = __esm({
           model: "Xenova/bert-base-NER",
           dtype: "int8",
           entities: Object.freeze(["PERSON", "ORG", "LOC"]),
-          confidence: 0.9,
+          confidence: 0.7,
           allowDownload: true,
           warmOnBoot: false,
           actions: Object.freeze({
@@ -18153,6 +18153,23 @@ var init_layer6a_pii = __esm({
   }
 });
 
+// src/detect/ner-overlap.ts
+function spansOverlap2(a, b) {
+  return a.start < b.end && b.start < a.end;
+}
+function dropNerOverlaps(findings) {
+  const higher = findings.filter((f) => f.source !== "pii-ner");
+  return findings.filter((f) => {
+    if (f.source !== "pii-ner") return true;
+    return !higher.some((h) => spansOverlap2(f.span, h.span));
+  });
+}
+var init_ner_overlap = __esm({
+  "src/detect/ner-overlap.ts"() {
+    "use strict";
+  }
+});
+
 // src/detect/layer1-regex/worker-pool.ts
 import { Worker as Worker2 } from "worker_threads";
 var POOL_WORKER_CODE, SINGLE_SHOT_CODE, WorkerPool;
@@ -18481,6 +18498,192 @@ var init_dry_run = __esm({
   }
 });
 
+// src/model/pipeline-singleton.ts
+import { join as join11 } from "path";
+import { homedir as homedir4 } from "os";
+function getNerBackend() {
+  return backendLabel;
+}
+function getNerPipeline(ner) {
+  if (instance) return instance;
+  instance = (async () => {
+    const { pipeline, env } = await import("@huggingface/transformers");
+    env.cacheDir = join11(homedir4(), ".mrclean", "models");
+    env.allowRemoteModels = ner.allowDownload;
+    try {
+      backendLabel = env.backends?.onnx ? "onnxruntime-node" : "unknown";
+    } catch {
+      backendLabel = "unknown";
+    }
+    return await pipeline("token-classification", ner.model, {
+      dtype: ner.dtype
+    });
+  })();
+  return instance;
+}
+var instance, backendLabel;
+var init_pipeline_singleton = __esm({
+  "src/model/pipeline-singleton.ts"() {
+    "use strict";
+    instance = null;
+    backendLabel = "unknown";
+  }
+});
+
+// src/model/constants.ts
+import { join as join12 } from "path";
+var MODEL_DOWNLOAD_URL, PINNED_MODEL_SHA256, MODEL_CACHE_PATH;
+var init_constants = __esm({
+  "src/model/constants.ts"() {
+    "use strict";
+    MODEL_DOWNLOAD_URL = "https://huggingface.co/Xenova/bert-base-NER/resolve/main/onnx/model_int8.onnx";
+    PINNED_MODEL_SHA256 = "7de0a4606c65b60da275a72f37b76a102c41e2b79c6463096a9d0cb800bf3f2c";
+    MODEL_CACHE_PATH = (homeDir) => join12(homeDir, ".mrclean", "models", "Xenova", "bert-base-NER", "onnx", "model_int8.onnx");
+  }
+});
+
+// src/detect/ner-entities.ts
+function stripBio(label) {
+  if (label.startsWith("B-") || label.startsWith("I-")) return label.slice(2);
+  return label;
+}
+function mapModelLabel(model, label) {
+  const labelMap = MODEL_LABEL_MAPS[model];
+  if (!labelMap) return null;
+  const tag = stripBio(label);
+  return labelMap[tag] ?? null;
+}
+var MODEL_LABEL_MAPS;
+var init_ner_entities = __esm({
+  "src/detect/ner-entities.ts"() {
+    "use strict";
+    MODEL_LABEL_MAPS = Object.freeze({
+      // bert-base-NER: PER/ORG/LOC are substitutable; MISC + O are intentionally absent → null.
+      "Xenova/bert-base-NER": Object.freeze({
+        PER: "PERSON",
+        ORG: "ORG",
+        LOC: "LOC"
+      })
+      // piiranha (a DIFFERENT label space, no ORG concept) is added in Plan 06-03 (NER-04).
+    });
+  }
+});
+
+// src/detect/layer6b-ner.ts
+var layer6b_ner_exports = {};
+__export(layer6b_ner_exports, {
+  runLayer6bNer: () => runLayer6bNer
+});
+function overlapsCovered3(candidateStart, candidateEnd, covered) {
+  for (const span of covered) {
+    if (candidateStart < span.end && span.start < candidateEnd) return true;
+  }
+  return false;
+}
+function stripWordPiece(word) {
+  return word.startsWith("##") ? word.slice(2) : word;
+}
+function bioTag(label) {
+  if (label.startsWith("B-") || label.startsWith("I-")) return label.slice(2);
+  return label;
+}
+function locateToken(tok, text, cursor) {
+  if (typeof tok.start === "number" && typeof tok.end === "number") {
+    return { start: tok.start, end: tok.end };
+  }
+  const surface = stripWordPiece(tok.word);
+  if (surface.length === 0) return null;
+  const idx = text.indexOf(surface, cursor);
+  if (idx === -1) return null;
+  return { start: idx, end: idx + surface.length };
+}
+function aggregateBio(raw, text) {
+  const spans = [];
+  let cursor = 0;
+  let current = null;
+  let currentTag = "";
+  const flush = () => {
+    if (current) {
+      spans.push(current);
+      current = null;
+      currentTag = "";
+    }
+  };
+  for (const tok of raw) {
+    const tag = bioTag(tok.entity);
+    if (tag === "O" || tag === "") {
+      flush();
+      continue;
+    }
+    const loc = locateToken(tok, text, cursor);
+    if (!loc) {
+      flush();
+      continue;
+    }
+    cursor = loc.end;
+    const isBegin = tok.entity.startsWith("B-");
+    const sameRun = current !== null && tag === currentTag && !isBegin;
+    if (sameRun && current) {
+      current.end = loc.end;
+      current.score = Math.min(current.score, tok.score);
+    } else {
+      flush();
+      current = { label: tok.entity, start: loc.start, end: loc.end, score: tok.score };
+      currentTag = tag;
+    }
+  }
+  flush();
+  return spans;
+}
+async function runLayer6bNer(text, ner, config2, coveredSpans = []) {
+  let pipe2;
+  try {
+    pipe2 = await getNerPipeline(ner);
+  } catch {
+    return { findings: [], status: "unavailable" };
+  }
+  let raw;
+  try {
+    raw = await pipe2(text);
+  } catch {
+    return { findings: [], status: "unavailable" };
+  }
+  const spans = aggregateBio(raw, text);
+  const findings = [];
+  for (const s of spans) {
+    if (s.score < ner.confidence) continue;
+    const canonical = mapModelLabel(ner.model, s.label);
+    if (!canonical || !ner.entities.includes(canonical)) continue;
+    if (overlapsCovered3(s.start, s.end, coveredSpans)) continue;
+    const value = text.slice(s.start, s.end);
+    if (value.length === 0) continue;
+    const candidate = {
+      ruleId: `pii:${canonical}`,
+      severity: "MEDIUM",
+      // MEDIUM → substitute; explicit action below makes it unambiguous (D-02).
+      span: { start: s.start, end: s.end },
+      value,
+      redactedHash: redactedHash(value),
+      fingerprint: fingerprint(`pii:${canonical}`, value),
+      source: "pii-ner",
+      action: "substitute"
+      // explicit — NER never blocks (D-02); do NOT rely on severity default.
+    };
+    if (isAllowlisted(candidate, config2)) continue;
+    findings.push(candidate);
+  }
+  return { findings: findings.sort((a, b) => a.span.start - b.span.start), status: "ready" };
+}
+var init_layer6b_ner = __esm({
+  "src/detect/layer6b-ner.ts"() {
+    "use strict";
+    init_findings();
+    init_allowlist();
+    init_pipeline_singleton();
+    init_ner_entities();
+  }
+});
+
 // src/detect/index.ts
 function getOrCreatePool() {
   if (!pool) pool = new WorkerPool(4);
@@ -18505,7 +18708,7 @@ function severityToDefaultAction(severity) {
       return "audit";
   }
 }
-async function runDetection(text, config2, sessionState, ctx) {
+async function runDetection(text, config2, sessionState, ctx, opts = {}) {
   const workerPool = getOrCreatePool();
   const manager = getOrCreateManager(ctx.sessionId);
   const l1 = await runLayer1(text, config2, workerPool);
@@ -18521,7 +18724,15 @@ async function runDetection(text, config2, sessionState, ctx) {
     const l6a = runLayer6aPii(text, config2.pii.regex, config2, findings.map((f) => f.span));
     findings.push(...l6a);
   }
-  const deduped = dedupBySpan(findings);
+  let nerStatus = "disabled";
+  if (opts.ner && config2.pii.ner.enabled) {
+    const { runLayer6bNer: runLayer6bNer2 } = await Promise.resolve().then(() => (init_layer6b_ner(), layer6b_ner_exports));
+    const out = await runLayer6bNer2(text, config2.pii.ner, config2, findings.map((f) => f.span));
+    findings.push(...out.findings);
+    nerStatus = out.status;
+  }
+  const filtered = dropNerOverlaps(findings);
+  const deduped = dedupBySpan(filtered);
   const resolvedFindings = deduped.map((f) => {
     const action = f.action === "warn" ? "audit" : f.action;
     const effectiveAction = action !== void 0 ? action : severityToDefaultAction(f.severity);
@@ -18531,9 +18742,24 @@ async function runDetection(text, config2, sessionState, ctx) {
   });
   const finalFindings = config2.dry_run ? applyDryRun(resolvedFindings) : resolvedFindings;
   const substitutedText = config2.dry_run ? text : substituteFindings(text, finalFindings);
+  const nerProvenance = {
+    engine: `pii-ner@${PINNED_MODEL_SHA256.slice(0, 12)}`,
+    model_rev: PINNED_MODEL_SHA256,
+    quant: config2.pii.ner.dtype,
+    backend: getNerBackend()
+  };
   const auditResults = await Promise.allSettled(
     finalFindings.map(
-      (f) => writeAuditRecord(ctx.cwd, findingToAuditRecord(f, ctx.sessionId, ctx.hookEvent, f.effectiveAction))
+      (f) => writeAuditRecord(
+        ctx.cwd,
+        findingToAuditRecord(
+          f,
+          ctx.sessionId,
+          ctx.hookEvent,
+          f.effectiveAction,
+          f.source === "pii-ner" ? nerProvenance : void 0
+        )
+      )
     )
   );
   for (const outcome of auditResults) {
@@ -18547,7 +18773,8 @@ async function runDetection(text, config2, sessionState, ctx) {
     findings: finalFindings,
     substitutedText,
     budgetExhausted: timeoutCount >= 5,
-    rawTimeoutCount: timeoutCount
+    rawTimeoutCount: timeoutCount,
+    nerStatus
   };
 }
 var pool, cachedManagers;
@@ -18560,26 +18787,29 @@ var init_detect = __esm({
     init_layer3_env();
     init_layer4_words();
     init_layer6a_pii();
+    init_ner_overlap();
     init_worker_pool();
     init_manager();
     init_substitute();
     init_log();
     init_type_map();
     init_dry_run();
+    init_pipeline_singleton();
+    init_constants();
     pool = null;
     cachedManagers = /* @__PURE__ */ new Map();
   }
 });
 
 // src/hook/handlers/user-prompt-submit.ts
-import { homedir as homedir4 } from "os";
+import { homedir as homedir5 } from "os";
 async function handleUserPromptSubmit(input) {
-  const config2 = await loadEffectiveConfig({ homeDir: homedir4(), cwd: input.cwd });
+  const config2 = await loadEffectiveConfig({ homeDir: homedir5(), cwd: input.cwd });
   let state = getCachedSessionState(input.session_id);
   if (!state) {
     state = await initSessionState({
       sessionId: input.session_id,
-      homeDir: homedir4(),
+      homeDir: homedir5(),
       cwd: input.cwd,
       config: config2
     });
@@ -18652,7 +18882,7 @@ var init_user_prompt_submit = __esm({
 });
 
 // src/hook/handlers/pre-tool-use.ts
-import { homedir as homedir5 } from "os";
+import { homedir as homedir6 } from "os";
 async function substituteToolInputDeep(obj, config2, state, ctx, depth, allFindings, budgetSignal) {
   if (depth > MAX_DEPTH) return obj;
   if (typeof obj === "string") {
@@ -18703,12 +18933,12 @@ async function handlePreToolUse(input) {
       }
     };
   }
-  const config2 = await loadEffectiveConfig({ homeDir: homedir5(), cwd: input.cwd });
+  const config2 = await loadEffectiveConfig({ homeDir: homedir6(), cwd: input.cwd });
   let state = getCachedSessionState(input.session_id);
   if (!state) {
     state = await initSessionState({
       sessionId: input.session_id,
-      homeDir: homedir5(),
+      homeDir: homedir6(),
       cwd: input.cwd,
       config: config2
     });
@@ -18779,17 +19009,17 @@ var init_pre_tool_use = __esm({
 });
 
 // src/hook/handlers/post-tool-use.ts
-import { homedir as homedir6 } from "os";
+import { homedir as homedir7 } from "os";
 async function handlePostToolUse(input) {
   if (MRCLEAN_TOOL_RE2.test(input.tool_name)) {
     return null;
   }
-  const config2 = await loadEffectiveConfig({ homeDir: homedir6(), cwd: input.cwd });
+  const config2 = await loadEffectiveConfig({ homeDir: homedir7(), cwd: input.cwd });
   let state = getCachedSessionState(input.session_id);
   if (!state) {
     state = await initSessionState({
       sessionId: input.session_id,
-      homeDir: homedir6(),
+      homeDir: homedir7(),
       cwd: input.cwd,
       config: config2
     });
@@ -18920,12 +19150,12 @@ __export(ignore_exports, {
   runIgnore: () => runIgnore
 });
 import { mkdir as mkdir2, readFile as readFile6, writeFile as writeFile5 } from "fs/promises";
-import { dirname as dirname5, join as join11 } from "path";
+import { dirname as dirname5, join as join13 } from "path";
 function isValidFingerprint(fingerprint2) {
   return FINGERPRINT_REGEX.test(fingerprint2);
 }
 async function appendFingerprintToConfig(cwd, fingerprint2) {
-  const configPath = join11(cwd, ".mrclean", "config.toml");
+  const configPath = join13(cwd, ".mrclean", "config.toml");
   let rawContent;
   try {
     rawContent = await readFile6(configPath, "utf8");
@@ -18980,18 +19210,6 @@ var init_ignore = __esm({
     "use strict";
     init_dist();
     FINGERPRINT_REGEX = /^[a-z0-9:_.-]+:[0-9a-f]{16}$/i;
-  }
-});
-
-// src/model/constants.ts
-import { join as join12 } from "path";
-var MODEL_DOWNLOAD_URL, PINNED_MODEL_SHA256, MODEL_CACHE_PATH;
-var init_constants = __esm({
-  "src/model/constants.ts"() {
-    "use strict";
-    MODEL_DOWNLOAD_URL = "https://huggingface.co/Xenova/bert-base-NER/resolve/main/onnx/model_int8.onnx";
-    PINNED_MODEL_SHA256 = "7de0a4606c65b60da275a72f37b76a102c41e2b79c6463096a9d0cb800bf3f2c";
-    MODEL_CACHE_PATH = (homeDir) => join12(homeDir, ".mrclean", "models", "Xenova", "bert-base-NER", "onnx", "model_int8.onnx");
   }
 });
 
@@ -36326,10 +36544,10 @@ async function checkModelCache(homeDir) {
   };
 }
 async function checkConfigLoad(homeDir, cwd) {
-  const { join: join14 } = await import("path");
+  const { join: join15 } = await import("path");
   const { access: fsAccess, constants: fsConstants2 } = await import("fs/promises");
-  const userConfigPath = join14(homeDir, ".mrclean", "config.toml");
-  const projectConfigPath = join14(cwd, ".mrclean", "config.toml");
+  const userConfigPath = join15(homeDir, ".mrclean", "config.toml");
+  const projectConfigPath = join15(cwd, ".mrclean", "config.toml");
   let userExists = false;
   let projectExists = false;
   try {
@@ -36552,12 +36770,12 @@ __export(doctor_exports, {
   computeDoctorReport: () => computeDoctorReport,
   runDoctor: () => runDoctor
 });
-import { homedir as homedir7 } from "os";
-import { join as join13 } from "path";
+import { homedir as homedir8 } from "os";
+import { join as join14 } from "path";
 async function computeDoctorReport(opts) {
   const { homeDir, cwd } = opts;
-  const settingsPath = join13(homeDir, ".claude", "settings.json");
-  const claudeJsonPath = join13(homeDir, ".claude.json");
+  const settingsPath = join14(homeDir, ".claude", "settings.json");
+  const claudeJsonPath = join14(homeDir, ".claude.json");
   const results = [];
   results.push(await checkHooksRegistered(settingsPath));
   results.push(await checkMcpRegistered(claudeJsonPath, cwd));
@@ -36608,7 +36826,7 @@ async function runDoctor(opts) {
     );
     process.exit(0);
   }
-  const homeDir = opts?.homeDir ?? homedir7();
+  const homeDir = opts?.homeDir ?? homedir8();
   const cwd = opts?.cwd ?? process.cwd();
   const report = await computeDoctorReport({ homeDir, cwd });
   renderReport(report.results, report.versionResult);
@@ -36671,8 +36889,8 @@ piiCmd.command("fetch-model").description(
   "Download or side-load the NER model (Xenova/bert-base-NER) into ~/.mrclean/models/"
 ).option("--from <path>", "Side-load from a local file instead of downloading from HuggingFace").action(async (opts) => {
   const { downloadModel: downloadModel2, sideLoadModel: sideLoadModel2 } = await Promise.resolve().then(() => (init_model_cache(), model_cache_exports));
-  const { homedir: homedir8 } = await import("os");
-  const homeDir = homedir8();
+  const { homedir: homedir9 } = await import("os");
+  const homeDir = homedir9();
   if (opts.from) {
     process.stderr.write(`[mrclean] Side-loading model from ${opts.from}
 `);
