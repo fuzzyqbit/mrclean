@@ -76,6 +76,10 @@ export default defineConfig({
             'tests/hook/integration-detection.test.ts',
             'tests/fixtures-corpus.test.ts',
             'tests/fixtures-corpus-bundle.test.ts',
+            // Plan 07-01: the audit.jsonl leak proof belongs to the integration
+            // project (full NER-on pipeline + tsup-built artifact). A file cannot
+            // belong to both projects, so exclude it from the unit glob.
+            'tests/audit/pii-canary-leak.test.ts',
             'tests/perf/**',
           ],
           // No globalSetup — unit tests must NOT trigger tsup --clean
@@ -101,6 +105,11 @@ export default defineConfig({
             'tests/hook/integration-detection.test.ts',
             'tests/fixtures-corpus.test.ts',
             'tests/fixtures-corpus-bundle.test.ts',
+            // Plan 07-01: explicit allow-list entry so --project=integration matches
+            // the audit.jsonl PII leak proof (non-vacuity gate — without this entry
+            // the run reports zero files). The stderr-spy unit test rides the unit
+            // glob and is NOT listed here.
+            'tests/audit/pii-canary-leak.test.ts',
             'tests/perf/**/*.test.ts',
           ],
         },
