@@ -47,6 +47,8 @@ const NO_FINDINGS_RESULT: DetectionResult = {
   substitutedText: 'some text',
   budgetExhausted: false,
   rawTimeoutCount: 0,
+  // Hook path never opts into NER, so the orchestrator always reports 'disabled' (06-02).
+  nerStatus: 'disabled',
 }
 
 const BUDGET_EXHAUSTED_RESULT: DetectionResult = {
@@ -54,6 +56,7 @@ const BUDGET_EXHAUSTED_RESULT: DetectionResult = {
   substitutedText: '',
   budgetExhausted: true,
   rawTimeoutCount: 5,
+  nerStatus: 'disabled',
 }
 
 // ---------------------------------------------------------------------------

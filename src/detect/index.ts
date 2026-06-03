@@ -43,14 +43,22 @@ import { runLayer2Entropy } from './layer2-entropy.js'
 import { runLayer3Env } from './layer3-env.js'
 import { runLayer4Words } from './layer4-words.js'
 import { runLayer6aPii } from './layer6a-pii.js'
+import { dropNerOverlaps } from './ner-overlap.js'
 import { WorkerPool } from './layer1-regex/worker-pool.js'
 import { PlaceholderManager } from '../placeholder/manager.js'
 import { substituteFindings } from '../placeholder/substitute.js'
 import { writeAuditRecord, findingToAuditRecord } from '../audit/log.js'
+import type { FindingProvenance } from '../audit/log.js'
 import { getTypeForRuleId } from './type-map.js'
 import { applyDryRun } from './dry-run.js'
+import { getNerBackend, resetNerSingleton } from '../model/pipeline-singleton.js'
+import { PINNED_MODEL_SHA256 } from '../model/constants.js'
 import type { MrcleanConfig } from '../shared/types.js'
 import type { SessionState } from './session-state.js'
+// TYPE-ONLY import of the NER status union. The NER engine module (layer6b-ner.ts) and its
+// `@huggingface/transformers` dynamic import are reached ONLY via a dynamic import inside the
+// MCP-gated L6b branch below — never as a runtime static import (cold-path safety, T-06-02-01).
+import type { NerStatus } from './layer6b-ner.js'
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -102,6 +110,26 @@ export interface DetectionResult {
   budgetExhausted: boolean
   /** Raw timeout count from Layer 1 — 0 when no gitleaks timeouts occurred. */
   rawTimeoutCount: number
+  /**
+   * Lifecycle status of the Layer 6b NER pass (D-03/D-05). 'disabled' when the L6b branch
+   * was not entered (the cold/hook path always yields 'disabled'); 'ready'/'unavailable'
+   * reflect the engine outcome when opts.ner && config.pii.ner.enabled. 06-03 surfaces this
+   * in the check/redact structuredContent.
+   */
+  nerStatus: NerStatus
+}
+
+/**
+ * Per-call detection options. The `ner` flag is the MCP-only opt-in gate for Layer 6b.
+ *
+ * Hook handlers (src/hook/handlers/*.ts) call runDetection WITHOUT opts, so `opts.ner` is
+ * `undefined` and the L6b branch — the ONLY place layer6b-ner.js (and its dynamic
+ * `@huggingface/transformers` import) is reached — is structurally unreachable from the cold
+ * path (NER-01, D-04, T-06-02-01). Only the MCP check/redact tools pass `{ ner: true }`.
+ */
+export interface DetectionOptions {
+  /** Enable the Layer 6b NER pass for this call. MCP-only — never set by hook handlers. */
+  ner?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +179,11 @@ export async function shutdownDetection(): Promise<void> {
     pool = null
   }
   cachedManagers.clear()
+  // Clear the warm NER pipeline singleton so the next process/MCP boot rebuilds cleanly.
+  // supervisor.ts re-exports shutdownDetection as shutdownMcpSupervisor, so the MCP shutdown
+  // chain clears the singleton here. resetNerSingleton() touches NO transformers runtime — it
+  // only nulls a module-level cached promise — so it is cold-path-safe to import statically.
+  resetNerSingleton()
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +235,7 @@ export async function runDetectionReadOnly(
   config: MrcleanConfig,
   sessionState: SessionState,
   ctx: DetectionContext,
+  opts: DetectionOptions = {},
 ): Promise<DetectionResult> {
   const workerPool = getOrCreatePool()
   const manager = getOrCreateManager(ctx.sessionId)
@@ -227,7 +261,21 @@ export async function runDetectionReadOnly(
     findings.push(...l6a)
   }
 
-  const deduped = dedupBySpan(findings)
+  // Layer 6b — NER lane (Plan 06-02, MCP-only). Entered ONLY when the caller opts in AND the
+  // config enables NER. layer6b-ner.js (and its `@huggingface/transformers` dynamic import) is
+  // reached EXCLUSIVELY through this `await import` — never a static import (NER-01, T-06-02-01).
+  let nerStatus: NerStatus = 'disabled'
+  if (opts.ner && config.pii.ner.enabled) {
+    const { runLayer6bNer } = await import('./layer6b-ner.js')
+    const out = await runLayer6bNer(text, config.pii.ner, config, findings.map((f) => f.span))
+    findings.push(...out.findings)
+    nerStatus = out.status
+  }
+
+  // D-11 cross-source NER overlap drop — runs IMMEDIATELY before dedupBySpan so the generic
+  // dedup stays pure. A no-op when no pii-ner findings are present (cold/hook path).
+  const filtered = dropNerOverlaps(findings)
+  const deduped = dedupBySpan(filtered)
 
   const resolvedFindings: ResolvedFinding[] = deduped.map((f) => {
     // Step 8a — warn→audit normalization, done immutably (never mutate the shared
@@ -258,6 +306,7 @@ export async function runDetectionReadOnly(
     substitutedText,
     budgetExhausted: timeoutCount >= 5,
     rawTimeoutCount: timeoutCount,
+    nerStatus,
   }
 }
 
@@ -280,6 +329,7 @@ export async function runDetection(
   config: MrcleanConfig,
   sessionState: SessionState,
   ctx: DetectionContext,
+  opts: DetectionOptions = {},
 ): Promise<DetectionResult> {
   // Step 1: Get or create the module-level WorkerPool
   const workerPool = getOrCreatePool()
@@ -317,8 +367,25 @@ export async function runDetection(
     findings.push(...l6a)
   }
 
+  // Step 6b: Layer 6b — NER lane (Plan 06-02, MCP-only).
+  // Entered ONLY when the caller opts in (opts.ner) AND config.pii.ner.enabled. Hook handlers
+  // never pass opts, so opts.ner is undefined here on the cold path and this branch is dead code.
+  // layer6b-ner.js (and its `@huggingface/transformers` dynamic import) is reached EXCLUSIVELY
+  // through this `await import` — never via a static import (NER-01, D-04, T-06-02-01).
+  let nerStatus: NerStatus = 'disabled'
+  if (opts.ner && config.pii.ner.enabled) {
+    const { runLayer6bNer } = await import('./layer6b-ner.js')
+    const out = await runLayer6bNer(text, config.pii.ner, config, findings.map((f) => f.span))
+    findings.push(...out.findings)
+    nerStatus = out.status
+  }
+
+  // Step 6c: D-11 cross-source NER overlap drop — runs IMMEDIATELY before dedupBySpan so the
+  // generic dedup stays pure. A no-op when no pii-ner findings are present (cold/hook path).
+  const filtered = dropNerOverlaps(findings)
+
   // Step 7: Defense-in-depth dedup — removes any residual cross-layer overlaps
-  const deduped = dedupBySpan(findings)
+  const deduped = dedupBySpan(filtered)
 
   // ---------------------------------------------------------------------------
   // Step 8a: warn → audit normalization (SINGLE normalization point)
@@ -369,9 +436,29 @@ export async function runDetection(
   // Step 12: Write audit records in parallel (fire-and-collect)
   // Failures are logged to stderr as single-line JSON warnings — never thrown.
   // ---------------------------------------------------------------------------
+  // Provenance is populated ONLY for pii-ner findings (MODEL-04 / D-12). The four fields carry
+  // model-identity metadata derived from constants + config + the backend label — NEVER finding.value
+  // (findingToAuditRecord destructure-picks only these keys, so no raw PII can leak). Non-NER
+  // findings pass `undefined`, keeping their audit records byte-identical to v1.
+  const nerProvenance: FindingProvenance = {
+    engine: `pii-ner@${PINNED_MODEL_SHA256.slice(0, 12)}`,
+    model_rev: PINNED_MODEL_SHA256,
+    quant: config.pii.ner.dtype,
+    backend: getNerBackend(),
+  }
+
   const auditResults = await Promise.allSettled(
     finalFindings.map((f) =>
-      writeAuditRecord(ctx.cwd, findingToAuditRecord(f, ctx.sessionId, ctx.hookEvent, f.effectiveAction)),
+      writeAuditRecord(
+        ctx.cwd,
+        findingToAuditRecord(
+          f,
+          ctx.sessionId,
+          ctx.hookEvent,
+          f.effectiveAction,
+          f.source === 'pii-ner' ? nerProvenance : undefined,
+        ),
+      ),
     ),
   )
 
@@ -391,5 +478,6 @@ export async function runDetection(
     substitutedText,
     budgetExhausted: timeoutCount >= 5,
     rawTimeoutCount: timeoutCount,
+    nerStatus,
   }
 }
