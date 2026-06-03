@@ -129,7 +129,7 @@
 **Plans**: 3 plans
   - [x] 06-01-PLAN.md — pipeline singleton + L6b NER engine + label-map + D-11 overlap filter + confidence-default reconcile (NER-01/02/03)
   - [x] 06-02-PLAN.md — orchestrator opts.ner wiring + D-11 pre-dedup + audit provenance + structural-unreachability + perf gate (NER-01, MODEL-04)
-  - [ ] 06-03-PLAN.md — MCP eager preload + nerStatus in check/redact + piiranha tier behind license checkpoint (NER-01, NER-04)
+  - [x] 06-03-PLAN.md — MCP eager preload + nerStatus in check/redact + piiranha tier behind license checkpoint (NER-01, NER-04)
 
 ### Phase 7: PII Security Hardening & Honest Framing
 **Goal**: Close the security and trust surface a security tool is held to, auditing the fully-integrated PII surface end-to-end. A leak-grep regression test proves no raw PII value ever reaches `.mrclean/audit.jsonl` or any error/diagnostic/exception path, and all user-facing copy is ruthlessly framed as a best-effort ML recall aid (NER false negatives can leak) — explicitly NOT a guarantee, with secrets remaining the deterministic guarantee.
