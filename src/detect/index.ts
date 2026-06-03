@@ -42,6 +42,7 @@ import { runLayer1 } from './layer1-regex/index.js'
 import { runLayer2Entropy } from './layer2-entropy.js'
 import { runLayer3Env } from './layer3-env.js'
 import { runLayer4Words } from './layer4-words.js'
+import { runLayer6aPii } from './layer6a-pii.js'
 import { WorkerPool } from './layer1-regex/worker-pool.js'
 import { PlaceholderManager } from '../placeholder/manager.js'
 import { substituteFindings } from '../placeholder/substitute.js'
@@ -218,6 +219,14 @@ export async function runDetectionReadOnly(
   const l4 = runLayer4Words(text, sessionState.wordEntries, findings.map((f) => f.span))
   findings.push(...l4)
 
+  // Layer 6a — regex-PII hot-path lane (Plan 05-01)
+  // Guarded by pii.enabled && pii.regex.enabled; skipped entirely on default config (pii off).
+  // The 3rd argument `config` threads the 5-axis allowlist into L6a (PII-02).
+  if (config.pii.enabled && config.pii.regex.enabled) {
+    const l6a = runLayer6aPii(text, config.pii.regex, config, findings.map((f) => f.span))
+    findings.push(...l6a)
+  }
+
   const deduped = dedupBySpan(findings)
 
   for (const f of deduped) {
@@ -300,6 +309,15 @@ export async function runDetection(
   // Step 6: Layer 4 — dirty-word list matching (sync)
   const l4 = runLayer4Words(text, sessionState.wordEntries, findings.map((f) => f.span))
   findings.push(...l4)
+
+  // Step 6a: Layer 6a — regex-PII hot-path lane (Plan 05-01)
+  // Guarded by pii.enabled && pii.regex.enabled; skipped entirely on default config (pii off).
+  // The 3rd argument `config` threads the 5-axis allowlist into L6a (PII-02).
+  // INSERT after L4, before dedupBySpan — per orchestrator wiring spec.
+  if (config.pii.enabled && config.pii.regex.enabled) {
+    const l6a = runLayer6aPii(text, config.pii.regex, config, findings.map((f) => f.span))
+    findings.push(...l6a)
+  }
 
   // Step 7: Defense-in-depth dedup — removes any residual cross-layer overlaps
   const deduped = dedupBySpan(findings)
