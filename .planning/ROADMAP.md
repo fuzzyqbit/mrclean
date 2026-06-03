@@ -142,8 +142,8 @@
   2. Operator reads the README/PII section and finds it frames the NER layer as "best-effort ML PII hint, not a guarantee," explicitly states that NER false negatives can leak, and points to `words.txt` + deterministic layers as the real must-not-leak mechanism — no language drifting toward "redacts all PII" or compliance claims
   3. Operator confirms the framing is consistent across CLI output, `mrclean doctor`, and docs — the probabilistic asterisk on NER findings is visible wherever PII results surface
 **Plans**: 3 plans
-  - [ ] 07-01-PLAN.md — Central sanitizeForOutput() error chokepoint + route supervisor/failclosed leak vectors + PII leak-grep regression test (audit.jsonl + stderr + 3 forced-failure paths) (PIISEC-01) [Wave 1]
-  - [ ] 07-02-PLAN.md — Machine-readable bestEffort flag on MCP check/redact finding DTOs, true only for the NER lane (PIISEC-02, D-06) [Wave 1]
+  - [x] 07-01-PLAN.md — Central sanitizeForOutput() error chokepoint + route supervisor/failclosed leak vectors + PII leak-grep regression test (audit.jsonl + stderr + 3 forced-failure paths) (PIISEC-01) [Wave 1]
+  - [x] 07-02-PLAN.md — Machine-readable bestEffort flag on MCP check/redact finding DTOs, true only for the NER lane (PIISEC-02, D-06) [Wave 1]
   - [ ] 07-03-PLAN.md — Centralized best-effort disclaimer surfaced once-per-output (README PII section + doctor note + SessionStart banner + MCP descriptions) + MCP isError text routed through sanitizeForOutput (D-03) + banned-phrase copy-drift test + canary-leak.yml PII CI job; human copy-review checkpoint (PIISEC-02 D-05/D-07/D-08, PIISEC-01 CI gate) [Wave 2]
 
 ## Progress
