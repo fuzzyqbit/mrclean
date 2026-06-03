@@ -31,7 +31,8 @@ import { join } from 'node:path'
 import { resolve } from 'node:path'
 import { dirname } from 'node:path'
 
-import { MODEL_CACHE_PATH, MODEL_DOWNLOAD_URL, PINNED_MODEL_SHA256 } from './constants.js'
+import { BERT_DESCRIPTOR } from './constants.js'
+import type { ModelDescriptor } from './constants.js'
 
 // ---------------------------------------------------------------------------
 // Error types
@@ -69,9 +70,12 @@ export class InvalidSideLoadPathError extends Error {
  * Does NOT verify the hash — call verifyModelIntegrity for that.
  * Uses fs.access(F_OK) which is non-destructive and atomic.
  */
-export async function isModelCached(homeDir: string): Promise<boolean> {
+export async function isModelCached(
+  homeDir: string,
+  descriptor: ModelDescriptor = BERT_DESCRIPTOR,
+): Promise<boolean> {
   try {
-    await access(MODEL_CACHE_PATH(homeDir), fsConstants.F_OK)
+    await access(descriptor.cachePath(homeDir), fsConstants.F_OK)
     return true
   } catch {
     return false
@@ -87,14 +91,18 @@ export async function isModelCached(homeDir: string): Promise<boolean> {
  *
  * @param homeDir      - Absolute path to the user's home directory.
  * @param expectedHash - Optional override for testing with fixture files.
- *                       Defaults to PINNED_MODEL_SHA256 from constants.ts.
+ *                       Defaults to the descriptor's pinnedSha256.
+ * @param descriptor   - Per-model descriptor (defaults to the bert descriptor for back-compat).
+ *                       Selects WHICH cache path is streamed and WHICH pinned hash is the default.
  * @returns true if the digest matches, false otherwise.
  */
 export async function verifyModelIntegrity(
   homeDir: string,
-  expectedHash: string = PINNED_MODEL_SHA256,
+  expectedHash?: string,
+  descriptor: ModelDescriptor = BERT_DESCRIPTOR,
 ): Promise<boolean> {
-  const filePath = MODEL_CACHE_PATH(homeDir)
+  const expected = expectedHash ?? descriptor.pinnedSha256
+  const filePath = descriptor.cachePath(homeDir)
   const hash = createHash('sha256')
 
   const fh = await open(filePath, 'r')
@@ -107,7 +115,7 @@ export async function verifyModelIntegrity(
     await fh.close()
   }
 
-  return hash.digest('hex') === expectedHash
+  return hash.digest('hex') === expected
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +144,7 @@ async function computeFileSha256(filePath: string): Promise<string> {
 export interface DownloadModelOptions {
   /** Injectable fetch implementation — defaults to global fetch (Node 20+). */
   fetchImpl?: typeof fetch
-  /** Injectable expected hash — defaults to PINNED_MODEL_SHA256. */
+  /** Injectable expected hash — defaults to the descriptor's pinnedSha256. */
   expectedHash?: string
   /** Called with progress percentage (0-100) as download progresses. */
   onProgress?: (pct: number) => void
@@ -152,27 +160,31 @@ export interface DownloadModelOptions {
  *   4. On hash match: atomically rename temp → dest.
  *   5. On hash mismatch: unlink temp file and throw ModelIntegrityError.
  *
- * The partial file is NEVER moved into MODEL_CACHE_PATH unless the hash passes.
+ * The partial file is NEVER moved into the descriptor cache path unless the hash passes.
  * Inject fetchImpl to avoid real network calls in unit tests.
+ *
+ * @param descriptor - Per-model descriptor (defaults to the bert descriptor for back-compat).
+ *                     Selects the download URL, default pinned hash, and cache path.
  */
 export async function downloadModel(
   homeDir: string,
   opts: DownloadModelOptions = {},
+  descriptor: ModelDescriptor = BERT_DESCRIPTOR,
 ): Promise<void> {
   const {
     fetchImpl = fetch,
-    expectedHash = PINNED_MODEL_SHA256,
+    expectedHash = descriptor.pinnedSha256,
     onProgress,
   } = opts
 
-  const dest = MODEL_CACHE_PATH(homeDir)
+  const dest = descriptor.cachePath(homeDir)
   const destDir = dirname(dest)
   const tempPath = dest + '.partial'
 
   // Ensure cache directory exists
   await mkdir(destDir, { recursive: true })
 
-  const response = await fetchImpl(MODEL_DOWNLOAD_URL)
+  const response = await fetchImpl(descriptor.downloadUrl)
   if (!response.ok) {
     throw new Error(`Model download failed: HTTP ${response.status}`)
   }
@@ -238,12 +250,16 @@ export async function downloadModel(
  * @param homeDir      - Absolute path to the user's home directory.
  * @param fromPath     - Path to the operator-supplied model file (resolved to absolute).
  * @param expectedHash - Optional override for testing with fixture files.
+ *                       Defaults to the descriptor's pinnedSha256.
+ * @param descriptor   - Per-model descriptor (defaults to the bert descriptor for back-compat).
  */
 export async function sideLoadModel(
   homeDir: string,
   fromPath: string,
-  expectedHash: string = PINNED_MODEL_SHA256,
+  expectedHash?: string,
+  descriptor: ModelDescriptor = BERT_DESCRIPTOR,
 ): Promise<void> {
+  const expected = expectedHash ?? descriptor.pinnedSha256
   // 1. Resolve to absolute path
   const absFromPath = resolve(fromPath)
 
@@ -263,7 +279,7 @@ export async function sideLoadModel(
     )
   }
 
-  const dest = MODEL_CACHE_PATH(homeDir)
+  const dest = descriptor.cachePath(homeDir)
   const destDir = dirname(dest)
   const tempPath = dest + '.partial'
 
@@ -282,9 +298,9 @@ export async function sideLoadModel(
     throw err
   }
 
-  if (actual !== expectedHash) {
+  if (actual !== expected) {
     await unlink(tempPath).catch(() => {/* ignore */})
-    throw new ModelIntegrityError('sideload', expectedHash, actual)
+    throw new ModelIntegrityError('sideload', expected, actual)
   }
 
   // 5. Atomic rename
