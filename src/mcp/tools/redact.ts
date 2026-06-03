@@ -42,6 +42,12 @@ const findingSchema = z.object({
   placeholder: z.string(),
   redactedHash: z.string(),
   fingerprint: z.string(),
+  // D-06 (PIISEC-02): stable machine-readable best-effort flag. A typed boolean (like the
+  // nerStatus enum, NOT free text) so it can never carry matched PII (T-07-02-01). True ONLY
+  // for the probabilistic NER lane; false for every deterministic finding. Derived from
+  // `source` at map time — `source` itself is NEVER added to this schema (Pitfall 4).
+  // Exact mirror of src/mcp/tools/check.ts findingSchema.
+  bestEffort: z.boolean(),
 })
 
 const redactOutputSchema = z.object({
@@ -63,6 +69,10 @@ function toFindingDTO(f: ResolvedFinding): z.infer<typeof findingSchema> {
     placeholder: f.placeholder,
     redactedHash: f.redactedHash,
     fingerprint: f.fingerprint,
+    // D-06: bestEffort is true ONLY for the probabilistic NER lane. `source` is read here at
+    // map time but is never serialized into the DTO. Deterministic sources → false.
+    // Exact mirror of src/mcp/tools/check.ts toFindingDTO.
+    bestEffort: f.source === 'pii-ner',
   }
 }
 
