@@ -126,10 +126,11 @@
   2. A NER-only finding (no deterministic signal) defaults to warn/audit and does NOT hard-block; only the deterministic secret layers (and checksum'd PII) block by default, and a tunable `min_score` threshold drops low-confidence entities
   3. Operator simulates a model load/inference failure (corrupt/missing model, offline) and the MCP tools return a structured `nerStatus: "unavailable"`, fall back to Layers 1-4 + regex-PII, and never crash the secret-detection gate
   4. Operator switches `[pii.ner].model` to the higher-recall piiranha (~317 MB) tier via config and it loads in place of the default ~108 MB model; every PII audit entry records `model_rev` + `quant` + `backend` so the same input + pinned model reproduces identical entries across machines
-**Plans**: 3 plans
+**Plans**: 4 plans (06-04 = gap closure for SC-4 model integrity/provenance)
   - [x] 06-01-PLAN.md — pipeline singleton + L6b NER engine + label-map + D-11 overlap filter + confidence-default reconcile (NER-01/02/03)
   - [x] 06-02-PLAN.md — orchestrator opts.ner wiring + D-11 pre-dedup + audit provenance + structural-unreachability + perf gate (NER-01, MODEL-04)
   - [x] 06-03-PLAN.md — MCP eager preload + nerStatus in check/redact + piiranha tier behind license checkpoint (NER-01, NER-04)
+  - [ ] 06-04-PLAN.md — GAP CLOSURE (SC-4): SHA-verified per-model inference load (allowRemoteModels=false, fail-closed) + truthful per-model provenance + piiranha integrity wiring (MODEL-04, NER-04)
 
 ### Phase 7: PII Security Hardening & Honest Framing
 **Goal**: Close the security and trust surface a security tool is held to, auditing the fully-integrated PII surface end-to-end. A leak-grep regression test proves no raw PII value ever reaches `.mrclean/audit.jsonl` or any error/diagnostic/exception path, and all user-facing copy is ruthlessly framed as a best-effort ML recall aid (NER false negatives can leak) — explicitly NOT a guarantee, with secrets remaining the deterministic guarantee.
