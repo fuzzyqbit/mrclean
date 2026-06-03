@@ -127,7 +127,7 @@
   3. Operator simulates a model load/inference failure (corrupt/missing model, offline) and the MCP tools return a structured `nerStatus: "unavailable"`, fall back to Layers 1-4 + regex-PII, and never crash the secret-detection gate
   4. Operator switches `[pii.ner].model` to the higher-recall piiranha (~317 MB) tier via config and it loads in place of the default ~108 MB model; every PII audit entry records `model_rev` + `quant` + `backend` so the same input + pinned model reproduces identical entries across machines
 **Plans**: 3 plans
-  - [ ] 06-01-PLAN.md — pipeline singleton + L6b NER engine + label-map + D-11 overlap filter + confidence-default reconcile (NER-01/02/03)
+  - [x] 06-01-PLAN.md — pipeline singleton + L6b NER engine + label-map + D-11 overlap filter + confidence-default reconcile (NER-01/02/03)
   - [ ] 06-02-PLAN.md — orchestrator opts.ner wiring + D-11 pre-dedup + audit provenance + structural-unreachability + perf gate (NER-01, MODEL-04)
   - [ ] 06-03-PLAN.md — MCP eager preload + nerStatus in check/redact + piiranha tier behind license checkpoint (NER-01, NER-04)
 
