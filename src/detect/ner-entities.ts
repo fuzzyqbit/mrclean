@@ -16,8 +16,15 @@
  * bert-base-NER id2label (VERIFIED, HF Hub config.json):
  *   O, B-MISC, I-MISC, B-PER, I-PER, B-ORG, I-ORG, B-LOC, I-LOC
  *
- * Plan 06-01 — implements NER-01 (label map) / D-09.
+ * piiranha id2label (VERIFIED, RESEARCH Pitfall 6) is a DIFFERENT label space — 17 PII labels,
+ * NO PERSON/ORG/LOC tokens and NO ORG concept. Plan 06-03 (NER-04) adds it as a SECOND keyed
+ * branch that collapses its labels into mrclean's canonical set: {GIVENNAME,SURNAME}→PERSON,
+ * {CITY,STREET,ZIPCODE,BUILDINGNUM}→LOC, everything else→null. The bert branch is untouched.
+ *
+ * Plan 06-01 — implements NER-01 (label map) / D-09. Plan 06-03 — adds the piiranha branch (NER-04).
  */
+
+import { PIIRANHA_MODEL_ID } from '../model/constants.js'
 
 /** Canonical entity classes mrclean substitutes (matches pii.ner.entities + type-map keys). */
 export type CanonicalEntity = 'PERSON' | 'ORG' | 'LOC'
@@ -36,7 +43,18 @@ const MODEL_LABEL_MAPS: Readonly<Record<string, Readonly<Record<string, Canonica
     ORG: 'ORG',
     LOC: 'LOC',
   }),
-  // piiranha (a DIFFERENT label space, no ORG concept) is added in Plan 06-03 (NER-04).
+  // piiranha (NER-04, Plan 06-03): a DIFFERENT label space with NO ORG concept. Personal-name
+  // tokens collapse to PERSON; address components collapse to LOC. Every other piiranha label
+  // (EMAIL, TELEPHONENUM, SOCIALNUM, …) is intentionally absent → null (not substituted by the
+  // NER lane; some are covered by the L6a regex lane instead). NO entry ever maps to 'ORG'.
+  [PIIRANHA_MODEL_ID]: Object.freeze({
+    GIVENNAME: 'PERSON',
+    SURNAME: 'PERSON',
+    CITY: 'LOC',
+    STREET: 'LOC',
+    ZIPCODE: 'LOC',
+    BUILDINGNUM: 'LOC',
+  }),
 })
 
 /**
