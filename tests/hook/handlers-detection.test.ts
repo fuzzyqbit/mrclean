@@ -83,10 +83,14 @@ describe('handleSessionStart — Phase 2 wired', () => {
       source: 'startup',
     })
 
-    // Long-form banner with rule/allowlist counts (HOOK-07)
-    expect(output.hookSpecificOutput?.additionalContext).toMatch(
+    // Long-form banner with rule/allowlist counts (HOOK-07).
+    // Plan 07-03 (D-05): additionalContext is now `banner + '\n' + disclaimer`, so the anchored
+    // ^...$ banner pattern matches the FIRST line, and the disclaimer line follows.
+    const ctx = output.hookSpecificOutput?.additionalContext ?? ''
+    expect(ctx.split('\n')[0]).toMatch(
       /^mrclean active v\d+\.\d+\.\d+[^ ]* \(rules: \d+, allowlist: \d+, mode: (active|dry-run)\)$/,
     )
+    expect(ctx).toContain('not a guarantee')
     expect(mockInitState).toHaveBeenCalled()
     expect(mockSetState).toHaveBeenCalled()
 

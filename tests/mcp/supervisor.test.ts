@@ -24,7 +24,12 @@ describe('supervisedToolCall', () => {
     // Assert
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.error).toBe('boom sync')
+      // D-04 (Plan 07-01): the supervisor has no detection spans at the catch
+      // boundary, so the raw throw text is routed through the context-free chokepoint
+      // and MUST NOT appear in the returned error (it flows into MCP tool text).
+      expect(result.error).not.toContain('boom sync')
+      expect(typeof result.error).toBe('string')
+      expect(result.error.length).toBeGreaterThan(0)
     }
   })
 
@@ -40,7 +45,10 @@ describe('supervisedToolCall', () => {
     // Assert
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.error).toBe('boom async')
+      // D-04: raw async-throw text is scrubbed via the context-free chokepoint.
+      expect(result.error).not.toContain('boom async')
+      expect(typeof result.error).toBe('string')
+      expect(result.error.length).toBeGreaterThan(0)
     }
   })
 

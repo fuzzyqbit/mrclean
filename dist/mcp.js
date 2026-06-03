@@ -47354,6 +47354,44 @@ var init_detect = __esm({
   }
 });
 
+// src/shared/sanitize-output.ts
+function hasResidualValueFragment(scrubbed, value) {
+  if (value.length < MIN_PARTIAL_LEAK_FRAGMENT_LENGTH) return false;
+  const lastStart = value.length - MIN_PARTIAL_LEAK_FRAGMENT_LENGTH;
+  for (let start = 0; start <= lastStart; start += 1) {
+    const fragment = value.slice(start, start + MIN_PARTIAL_LEAK_FRAGMENT_LENGTH);
+    if (scrubbed.includes(fragment)) return true;
+  }
+  return false;
+}
+function scrubSpan(message, span) {
+  if (span.value.length === 0) return message;
+  return message.split(span.value).join(span.redactedHash);
+}
+function sanitizeForOutput(message, spans) {
+  if (spans === void 0 || spans.length === 0) {
+    return STATIC_CONTEXT_FREE_MESSAGE;
+  }
+  let scrubbed = message;
+  for (const span of spans) {
+    scrubbed = scrubSpan(scrubbed, span);
+  }
+  for (const span of spans) {
+    if (hasResidualValueFragment(scrubbed, span.value)) {
+      return STATIC_CONTEXT_FREE_MESSAGE;
+    }
+  }
+  return scrubbed;
+}
+var STATIC_CONTEXT_FREE_MESSAGE, MIN_PARTIAL_LEAK_FRAGMENT_LENGTH;
+var init_sanitize_output = __esm({
+  "src/shared/sanitize-output.ts"() {
+    "use strict";
+    STATIC_CONTEXT_FREE_MESSAGE = "mrclean: an internal error occurred; details withheld to avoid leaking sensitive input";
+    MIN_PARTIAL_LEAK_FRAGMENT_LENGTH = 8;
+  }
+});
+
 // src/mcp/supervisor.ts
 var supervisor_exports = {};
 __export(supervisor_exports, {
@@ -47365,14 +47403,24 @@ async function supervisedToolCall(fn) {
     const result = await fn();
     return { ok: true, result };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: message };
+    const error51 = sanitizeForOutput(err instanceof Error ? err.message : String(err));
+    return { ok: false, error: error51 };
   }
 }
 var init_supervisor = __esm({
   "src/mcp/supervisor.ts"() {
     "use strict";
     init_detect();
+    init_sanitize_output();
+  }
+});
+
+// src/shared/strings.ts
+var PII_BEST_EFFORT_DISCLAIMER;
+var init_strings = __esm({
+  "src/shared/strings.ts"() {
+    "use strict";
+    PII_BEST_EFFORT_DISCLAIMER = "PII/NER detection is a best-effort ML hint, not a guarantee \u2014 NER false negatives can leak; for data that must not leak, rely on words.txt and the deterministic layers (secrets + checksummed PII).";
   }
 });
 
@@ -47388,7 +47436,11 @@ function toFindingDTO(f) {
     severity: f.severity,
     placeholder: f.placeholder,
     redactedHash: f.redactedHash,
-    fingerprint: f.fingerprint
+    fingerprint: f.fingerprint,
+    // D-06: bestEffort is true ONLY for the probabilistic NER lane. `source` is read here at
+    // map time but is never serialized into the DTO (mirrors the nerStatus enum-not-free-text
+    // discipline). Deterministic sources (secretlint/gitleaks/entropy/env/words/pii-regex) → false.
+    bestEffort: f.source === "pii-ner"
   };
 }
 function registerCheckTool(server, getConfig, getSessionState, getCwd, getNerStatus) {
@@ -47396,7 +47448,8 @@ function registerCheckTool(server, getConfig, getSessionState, getCwd, getNerSta
     "mrclean_check",
     {
       title: "Check text for sensitive data (read-only)",
-      description: "Scan text through all mrclean detection layers and return findings. Does NOT redact the text or write any audit log entry. Use mrclean_redact to redact and audit-log findings.",
+      description: "Scan text through all mrclean detection layers and return findings. Does NOT redact the text or write any audit log entry. Use mrclean_redact to redact and audit-log findings. " + // D-05/D-07: once-per-output honest-framing disclaimer (single source of truth).
+      PII_BEST_EFFORT_DISCLAIMER,
       inputSchema: checkInputSchema,
       outputSchema: checkOutputSchema,
       annotations: { readOnlyHint: true, idempotentHint: true }
@@ -47413,8 +47466,9 @@ function registerCheckTool(server, getConfig, getSessionState, getCwd, getNerSta
         () => runDetectionReadOnly(text, getConfig(), getSessionState(), ctx, { ner: true })
       );
       if (!outcome.ok) {
+        const safe = `mrclean_check: ${outcome.error}`;
         return {
-          content: [{ type: "text", text: `mrclean_check error: ${outcome.error}` }],
+          content: [{ type: "text", text: safe }],
           isError: true
         };
       }
@@ -47438,6 +47492,7 @@ var init_check = __esm({
     init_v4();
     init_detect();
     init_supervisor();
+    init_strings();
     checkInputSchema = external_exports.object({
       text: external_exports.string(),
       sessionId: external_exports.string().optional()
@@ -47447,7 +47502,12 @@ var init_check = __esm({
       severity: external_exports.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]),
       placeholder: external_exports.string(),
       redactedHash: external_exports.string(),
-      fingerprint: external_exports.string()
+      fingerprint: external_exports.string(),
+      // D-06 (PIISEC-02): stable machine-readable best-effort flag. A typed boolean (like the
+      // nerStatus enum, NOT free text) so it can never carry matched PII (T-07-02-01). True ONLY
+      // for the probabilistic NER lane; false for every deterministic finding. Derived from
+      // `source` at map time — `source` itself is NEVER added to this schema (Pitfall 4).
+      bestEffort: external_exports.boolean()
     });
     checkOutputSchema = external_exports.object({
       findings: external_exports.array(findingSchema),
@@ -47471,7 +47531,11 @@ function toFindingDTO2(f) {
     severity: f.severity,
     placeholder: f.placeholder,
     redactedHash: f.redactedHash,
-    fingerprint: f.fingerprint
+    fingerprint: f.fingerprint,
+    // D-06: bestEffort is true ONLY for the probabilistic NER lane. `source` is read here at
+    // map time but is never serialized into the DTO. Deterministic sources → false.
+    // Exact mirror of src/mcp/tools/check.ts toFindingDTO.
+    bestEffort: f.source === "pii-ner"
   };
 }
 function registerRedactTool(server, getConfig, getSessionState, getCwd, getNerStatus) {
@@ -47479,7 +47543,8 @@ function registerRedactTool(server, getConfig, getSessionState, getCwd, getNerSt
     "mrclean_redact",
     {
       title: "Redact sensitive data from text",
-      description: "Scan text through all mrclean detection layers, replace detected secrets with stable placeholders, and write one audit log record per finding. Returns the redacted text and a list of findings (without raw values). Use mrclean_check for a read-only scan with no audit log writes.",
+      description: "Scan text through all mrclean detection layers, replace detected secrets with stable placeholders, and write one audit log record per finding. Returns the redacted text and a list of findings (without raw values). Use mrclean_check for a read-only scan with no audit log writes. " + // D-05/D-07: once-per-output honest-framing disclaimer (single source of truth).
+      PII_BEST_EFFORT_DISCLAIMER,
       inputSchema: redactInputSchema,
       outputSchema: redactOutputSchema
     },
@@ -47495,8 +47560,9 @@ function registerRedactTool(server, getConfig, getSessionState, getCwd, getNerSt
         () => runDetection(text, getConfig(), getSessionState(), ctx, { ner: true })
       );
       if (!outcome.ok) {
+        const safe = `mrclean_redact: ${outcome.error}`;
         return {
-          content: [{ type: "text", text: `mrclean_redact error: ${outcome.error}` }],
+          content: [{ type: "text", text: safe }],
           isError: true
         };
       }
@@ -47528,6 +47594,7 @@ var init_redact = __esm({
     init_v4();
     init_detect();
     init_supervisor();
+    init_strings();
     redactInputSchema = external_exports.object({
       text: external_exports.string(),
       sessionId: external_exports.string().optional()
@@ -47537,7 +47604,13 @@ var init_redact = __esm({
       severity: external_exports.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]),
       placeholder: external_exports.string(),
       redactedHash: external_exports.string(),
-      fingerprint: external_exports.string()
+      fingerprint: external_exports.string(),
+      // D-06 (PIISEC-02): stable machine-readable best-effort flag. A typed boolean (like the
+      // nerStatus enum, NOT free text) so it can never carry matched PII (T-07-02-01). True ONLY
+      // for the probabilistic NER lane; false for every deterministic finding. Derived from
+      // `source` at map time — `source` itself is NEVER added to this schema (Pitfall 4).
+      // Exact mirror of src/mcp/tools/check.ts findingSchema.
+      bestEffort: external_exports.boolean()
     });
     redactOutputSchema = external_exports.object({
       redacted: external_exports.string(),

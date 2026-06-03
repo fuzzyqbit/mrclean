@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { runDetection } from '../../detect/index.js'
 import { supervisedToolCall } from '../supervisor.js'
+import { PII_BEST_EFFORT_DISCLAIMER } from '../../shared/strings.js'
 import type { MrcleanConfig } from '../../shared/types.js'
 import type { SessionState } from '../../detect/session-state.js'
 import type { ResolvedFinding } from '../../detect/index.js'
@@ -42,6 +43,12 @@ const findingSchema = z.object({
   placeholder: z.string(),
   redactedHash: z.string(),
   fingerprint: z.string(),
+  // D-06 (PIISEC-02): stable machine-readable best-effort flag. A typed boolean (like the
+  // nerStatus enum, NOT free text) so it can never carry matched PII (T-07-02-01). True ONLY
+  // for the probabilistic NER lane; false for every deterministic finding. Derived from
+  // `source` at map time — `source` itself is NEVER added to this schema (Pitfall 4).
+  // Exact mirror of src/mcp/tools/check.ts findingSchema.
+  bestEffort: z.boolean(),
 })
 
 const redactOutputSchema = z.object({
@@ -63,6 +70,10 @@ function toFindingDTO(f: ResolvedFinding): z.infer<typeof findingSchema> {
     placeholder: f.placeholder,
     redactedHash: f.redactedHash,
     fingerprint: f.fingerprint,
+    // D-06: bestEffort is true ONLY for the probabilistic NER lane. `source` is read here at
+    // map time but is never serialized into the DTO. Deterministic sources → false.
+    // Exact mirror of src/mcp/tools/check.ts toFindingDTO.
+    bestEffort: f.source === 'pii-ner',
   }
 }
 
@@ -94,7 +105,9 @@ export function registerRedactTool(
         'Scan text through all mrclean detection layers, replace detected secrets ' +
         'with stable placeholders, and write one audit log record per finding. ' +
         'Returns the redacted text and a list of findings (without raw values). ' +
-        'Use mrclean_check for a read-only scan with no audit log writes.',
+        'Use mrclean_check for a read-only scan with no audit log writes. ' +
+        // D-05/D-07: once-per-output honest-framing disclaimer (single source of truth).
+        PII_BEST_EFFORT_DISCLAIMER,
       inputSchema: redactInputSchema,
       outputSchema: redactOutputSchema,
     },
@@ -116,8 +129,17 @@ export function registerRedactTool(
       )
 
       if (!outcome.ok) {
+        // WR-02 (07-03): outcome.error is ALREADY context-free-safe — supervisedToolCall
+        // routed it through the sanitizeForOutput chokepoint at the supervisor catch (07-01).
+        // Re-running it through sanitizeForOutput(..., []) here would force the context-free
+        // branch and DISCARD both the tool-identifying prefix and the supervisor's message.
+        // Instead, prepend a STATIC tool marker (a literal, never derived from input) so the
+        // MCP caller can tell which tool failed, and emit the supervisor's safe message as-is.
+        // No raw input is echoed: outcome.error is the supervisor's sanitized value only.
+        // Exact mirror of src/mcp/tools/check.ts.
+        const safe = `mrclean_redact: ${outcome.error}`
         return {
-          content: [{ type: 'text' as const, text: `mrclean_redact error: ${outcome.error}` }],
+          content: [{ type: 'text' as const, text: safe }],
           isError: true,
         }
       }

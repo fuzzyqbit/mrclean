@@ -15,6 +15,7 @@
 import pc from 'picocolors'
 import type { CheckResult } from './checks.js'
 import type { ClaudeVersionResult } from './version-check.js'
+import { PII_BEST_EFFORT_DISCLAIMER } from '../shared/strings.js'
 
 /**
  * Pretty-print one line per check result, then the version line.
@@ -53,6 +54,12 @@ export function renderReport(
   process.stdout.write(
     `${vLabel} claude --version: ${versionResult.version} — ${versionResult.detail}\n`,
   )
+
+  // D-05/D-07 (SC-3): the GUARANTEED doctor/CLI honest-framing surface. renderReport runs
+  // on EVERY `mrclean doctor` invocation, so this trailing line is always printed — unlike a
+  // conditional check detail (e.g. checkModelCache, which SKIPs when no NER model is cached and
+  // would make the note vanish for the common no-model user). Single source of truth: src/shared/strings.ts.
+  process.stdout.write(pc.dim(PII_BEST_EFFORT_DISCLAIMER) + '\n')
 }
 
 /**

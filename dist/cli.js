@@ -4023,15 +4023,56 @@ var init_init_project = __esm({
   }
 });
 
+// src/shared/sanitize-output.ts
+function hasResidualValueFragment(scrubbed, value) {
+  if (value.length < MIN_PARTIAL_LEAK_FRAGMENT_LENGTH) return false;
+  const lastStart = value.length - MIN_PARTIAL_LEAK_FRAGMENT_LENGTH;
+  for (let start = 0; start <= lastStart; start += 1) {
+    const fragment = value.slice(start, start + MIN_PARTIAL_LEAK_FRAGMENT_LENGTH);
+    if (scrubbed.includes(fragment)) return true;
+  }
+  return false;
+}
+function scrubSpan(message, span) {
+  if (span.value.length === 0) return message;
+  return message.split(span.value).join(span.redactedHash);
+}
+function sanitizeForOutput(message, spans) {
+  if (spans === void 0 || spans.length === 0) {
+    return STATIC_CONTEXT_FREE_MESSAGE;
+  }
+  let scrubbed = message;
+  for (const span of spans) {
+    scrubbed = scrubSpan(scrubbed, span);
+  }
+  for (const span of spans) {
+    if (hasResidualValueFragment(scrubbed, span.value)) {
+      return STATIC_CONTEXT_FREE_MESSAGE;
+    }
+  }
+  return scrubbed;
+}
+var STATIC_CONTEXT_FREE_MESSAGE, MIN_PARTIAL_LEAK_FRAGMENT_LENGTH;
+var init_sanitize_output = __esm({
+  "src/shared/sanitize-output.ts"() {
+    "use strict";
+    STATIC_CONTEXT_FREE_MESSAGE = "mrclean: an internal error occurred; details withheld to avoid leaking sensitive input";
+    MIN_PARTIAL_LEAK_FRAGMENT_LENGTH = 8;
+  }
+});
+
 // src/hook/failclosed.ts
 function writeFailClosedError(err, context) {
-  const message = err instanceof Error ? err.message : String(err);
-  const stack = err instanceof Error && err.stack ? err.stack : void 0;
+  const rawMessage = err instanceof Error ? err.message : String(err);
+  const message = sanitizeForOutput(rawMessage);
+  const { reason: _rawReason, ...safeContext } = context;
   const payload = {
     error: "mrclean hook crashed",
     message,
-    ...context,
-    ...stack !== void 0 ? { stack } : {}
+    ...safeContext,
+    ..._rawReason !== void 0 ? { reason: "redacted" } : {},
+    // Raw err.stack is intentionally NOT written (D-04). A static marker preserves shape.
+    stack: "redacted"
   };
   process.stderr.write(JSON.stringify(payload) + "\n");
 }
@@ -4051,6 +4092,7 @@ function installCrashGuards(version2) {
 var init_failclosed = __esm({
   "src/hook/failclosed.ts"() {
     "use strict";
+    init_sanitize_output();
   }
 });
 
@@ -17994,6 +18036,15 @@ var init_banner = __esm({
   }
 });
 
+// src/shared/strings.ts
+var PII_BEST_EFFORT_DISCLAIMER;
+var init_strings = __esm({
+  "src/shared/strings.ts"() {
+    "use strict";
+    PII_BEST_EFFORT_DISCLAIMER = "PII/NER detection is a best-effort ML hint, not a guarantee \u2014 NER false negatives can leak; for data that must not leak, rely on words.txt and the deterministic layers (secrets + checksummed PII).";
+  }
+});
+
 // src/hook/handlers/session-start.ts
 import { homedir as homedir3 } from "os";
 async function handleSessionStart(input) {
@@ -18011,7 +18062,7 @@ async function handleSessionStart(input) {
   return {
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: banner
+      additionalContext: banner + "\n" + PII_BEST_EFFORT_DISCLAIMER
     }
   };
 }
@@ -18022,6 +18073,7 @@ var init_session_start = __esm({
     init_session_state();
     init_layer1_regex();
     init_banner();
+    init_strings();
   }
 });
 
@@ -36775,6 +36827,7 @@ function renderReport(results, versionResult) {
     `${vLabel} claude --version: ${versionResult.version} \u2014 ${versionResult.detail}
 `
   );
+  process.stdout.write(import_picocolors3.default.dim(PII_BEST_EFFORT_DISCLAIMER) + "\n");
 }
 function computeExitCode(results) {
   for (const r of results) {
@@ -36789,6 +36842,7 @@ var init_report = __esm({
   "src/doctor/report.ts"() {
     "use strict";
     import_picocolors3 = __toESM(require_picocolors(), 1);
+    init_strings();
   }
 });
 

@@ -105,22 +105,26 @@ const postToolInput: PostToolUseInput = {
 }
 
 describe('handleSessionStart', () => {
-  it('Test 7: returns hookSpecificOutput with Phase 2 long-form banner in additionalContext', async () => {
+  it('Test 7: returns hookSpecificOutput with Phase 2 long-form banner + PII disclaimer in additionalContext', async () => {
     // Act
     const output = await handleSessionStart(sessionStartInput)
 
-    // Assert structure — Phase 2 long-form banner (HOOK-07)
-    expect(output).toMatchObject({
-      hookSpecificOutput: {
-        hookEventName: 'SessionStart',
-        additionalContext: expect.stringMatching(BANNER_PATTERN),
-      },
-    })
+    // Assert event name
+    expect(output.hookSpecificOutput?.hookEventName).toBe('SessionStart')
+
+    // Plan 07-03 (D-05): the SessionStart additionalContext is now `banner + '\n' + disclaimer`.
+    // The anchored BANNER_PATTERN (^...$, no /m) no longer matches the WHOLE string, so assert the
+    // FIRST line matches the banner pattern instead, then assert the disclaimer line is present.
+    const ctx = output.hookSpecificOutput?.additionalContext ?? ''
+    expect(ctx.split('\n')[0]).toMatch(BANNER_PATTERN)
 
     // Assert Phase 2 long form (has rule/allowlist counts — NOT "no-op mode")
-    expect(output.hookSpecificOutput?.additionalContext).toContain('rules:')
-    expect(output.hookSpecificOutput?.additionalContext).toContain('allowlist:')
-    expect(output.hookSpecificOutput?.additionalContext).not.toContain('no-op mode')
+    expect(ctx).toContain('rules:')
+    expect(ctx).toContain('allowlist:')
+    expect(ctx).not.toContain('no-op mode')
+
+    // Plan 07-03 (D-05): the honest-framing disclaimer is appended once per SessionStart.
+    expect(ctx).toContain('not a guarantee')
   })
 })
 

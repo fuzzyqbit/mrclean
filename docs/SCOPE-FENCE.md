@@ -170,6 +170,7 @@ Signed off by: __________________  Date: __________
 
 | Reference | Location | Why |
 |-----------|----------|-----|
+| README PII/NER framing | README.md §9 "PII and NER detection — best-effort, not a guarantee" | User-facing honest framing (D-07): secrets = deterministic guarantee, NER = best-effort recall aid; consistent with this fence |
 | MODEL-01 requirement | REQUIREMENTS.md | ML deps declared optional; core install ML-dep-absent |
 | PIISEC-03 requirement | REQUIREMENTS.md | No cloud PII API, no model-facing unredact tool |
 | Hard scope fence decision | STATE.md §Decisions Made | Authoritative decision record |

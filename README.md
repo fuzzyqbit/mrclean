@@ -222,7 +222,36 @@ the MCP server process.
 
 ---
 
-## 9. Compatibility
+## 9. PII and NER detection — best-effort, not a guarantee
+
+mrclean has two very different kinds of detection, and it is important not to confuse
+them:
+
+- **Secrets are the deterministic guarantee.** The Layer 1 regex rules (secretlint +
+  gitleaks), Layer 3 `.env` value extraction, and the checksummed structured-PII
+  patterns (US SSN, credit-card + Luhn) are exact, rule-based matches. If a pattern
+  fires, it fires every time — these are the layers you can rely on for data that must
+  not leak.
+- **NER (named-entity recognition) is a best-effort recall aid, not a guarantee.** The
+  optional, opt-in NER lane (PERSON / ORG / LOC) runs a probabilistic ML model. It will
+  catch many names, organizations, and locations — but it is statistical, so its
+  **false negatives can leak**. A name the model does not recognize as a name will pass
+  straight through to the model context. Do not treat NER output as complete coverage.
+
+**What this means in practice:** if a specific name, codename, hostname, or other term
+absolutely must not leave your machine, do **not** rely on the NER lane to catch it. Put
+it in your [`words.txt`](#5-dirty-word-list) dirty-word list, where it becomes a
+deterministic, always-on match — or rely on the deterministic layers above. NER is there
+to raise the floor on recall, not to be a compliance boundary.
+
+mrclean does not promise complete PII coverage, and it makes no regulatory-compliance
+claims. It is an in-session leak-reduction aid: secrets are caught deterministically, and
+PII gets a best-effort ML hint on top. For the framing that governs what is and is not in
+scope, see [docs/SCOPE-FENCE.md](./docs/SCOPE-FENCE.md).
+
+---
+
+## 10. Compatibility
 
 | Runtime | Minimum |
 |---------|---------|
@@ -239,7 +268,7 @@ is deprecated as of the November 2025 MCP spec and not supported.
 
 ---
 
-## 10. What this does NOT defend against
+## 11. What this does NOT defend against
 
 See [THREAT_MODEL.md](./THREAT_MODEL.md) for the full enumeration with mitigations.
 Short list:
@@ -260,7 +289,7 @@ Short list:
 
 ---
 
-## 11. License
+## 12. License
 
 [MIT](./LICENSE). No telemetry, no phone-home, no analytics — by design and by
 architecture (no network calls other than the Anthropic API that Claude Code itself
