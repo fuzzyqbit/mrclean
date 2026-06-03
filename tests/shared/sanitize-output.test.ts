@@ -87,6 +87,26 @@ describe('sanitizeForOutput', () => {
     expect(out).toBe(message)
   })
 
+  // (e) WR-01 boundary: with-context scrub only removes WHOLE-value occurrences.
+  // If a truncated FRAGMENT of a real value survives (the whole value never appears
+  // verbatim, so split/join cannot remove it), the chokepoint must refuse to emit a
+  // partially-scrubbed payload and fall back to the static context-free message —
+  // never leak a residual secret fragment.
+  it('falls back to the static message when a partial value fragment survives the scrub (WR-01)', () => {
+    // Arrange — message contains only a truncated fragment of the SSN ("457-55-54"),
+    // not the whole value, so scrubSpan's whole-value split/join leaves it intact.
+    const fragment = SSN.slice(0, 9) // '457-55-54' — 9 chars, >= the 8-char threshold
+    const message = `parse failed near token '${fragment}' while scanning`
+    const spans = [{ value: SSN, redactedHash: redactedHash(SSN) }]
+
+    // Act
+    const out = sanitizeForOutput(message, spans)
+
+    // Assert — refused: no fragment leaks, and the static message is returned
+    expect(out).not.toContain(fragment)
+    expect(out).toBe(sanitizeForOutput('anything', []))
+  })
+
   it('is idempotent: scrubbing an already-scrubbed message yields no raw values', () => {
     // Arrange
     const message = `first ${SSN}`

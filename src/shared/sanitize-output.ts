@@ -44,6 +44,37 @@ const STATIC_CONTEXT_FREE_MESSAGE =
   'mrclean: an internal error occurred; details withheld to avoid leaking sensitive input'
 
 /**
+ * Minimum fragment length (in chars) of a raw `value` that, if it survives the
+ * scrub as a contiguous substring of the output, triggers the partial-leak
+ * fallback (WR-01). Below this length a fragment is too short/common to treat as
+ * a meaningful secret leak (e.g. a 2–3 char run of digits from an SSN that
+ * collides with ordinary text), and refusing on it would trade away all
+ * diagnostic value for no real confidentiality gain. Only values of at least
+ * this length are checked at all.
+ */
+const MIN_PARTIAL_LEAK_FRAGMENT_LENGTH = 8
+
+/**
+ * Defense-in-depth check (WR-01): does any contiguous fragment of `value` with
+ * length >= MIN_PARTIAL_LEAK_FRAGMENT_LENGTH still appear in `scrubbed`?
+ *
+ * `scrubSpan` removes only WHOLE-value occurrences, so a truncated fragment (a
+ * tokenizer printing `near token '457-55-54'`, or a value split across a line
+ * wrap) can survive. If any such fragment remains we must refuse to emit the
+ * partially-scrubbed payload. We slide a window of the threshold length across
+ * the value — if the value is shorter than the threshold it is not checked.
+ */
+function hasResidualValueFragment(scrubbed: string, value: string): boolean {
+  if (value.length < MIN_PARTIAL_LEAK_FRAGMENT_LENGTH) return false
+  const lastStart = value.length - MIN_PARTIAL_LEAK_FRAGMENT_LENGTH
+  for (let start = 0; start <= lastStart; start += 1) {
+    const fragment = value.slice(start, start + MIN_PARTIAL_LEAK_FRAGMENT_LENGTH)
+    if (scrubbed.includes(fragment)) return true
+  }
+  return false
+}
+
+/**
  * Scrub a single span's raw `value` out of `message`, replacing every literal
  * occurrence with its `redactedHash`. Literal split/join keeps it ReDoS-free.
  */
@@ -77,5 +108,18 @@ export function sanitizeForOutput(message: string, spans?: readonly ScrubSpan[])
   for (const span of spans) {
     scrubbed = scrubSpan(scrubbed, span)
   }
+
+  // Defense-in-depth (WR-01): scrubSpan only removes WHOLE-value occurrences. If a
+  // raw value of meaningful length still appears as a PARTIAL substring after
+  // scrubbing (a tokenizer printing a truncated fragment, or a value split across a
+  // line wrap), refuse to emit the partially-scrubbed payload and fall back to the
+  // static context-free message. We NEVER emit a partially-scrubbed string — for a
+  // security tool, a lost diagnostic is strictly preferable to a residual-secret leak.
+  for (const span of spans) {
+    if (hasResidualValueFragment(scrubbed, span.value)) {
+      return STATIC_CONTEXT_FREE_MESSAGE
+    }
+  }
+
   return scrubbed
 }
