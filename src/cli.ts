@@ -72,6 +72,40 @@ program
     await runIgnore({ fingerprint })
   })
 
+// pii parent command + fetch-model subcommand
+//
+// The dynamic import keeps model/ML code OFF the cold path — users who never
+// opt in to PII NER never load model-cache.ts (MODEL-02 cold-path invariant).
+const piiCmd = program
+  .command('pii')
+  .description('PII NER model management (opt-in — off by default)')
+
+piiCmd
+  .command('fetch-model')
+  .description(
+    'Download or side-load the NER model (Xenova/bert-base-NER) into ~/.mrclean/models/',
+  )
+  .option('--from <path>', 'Side-load from a local file instead of downloading from HuggingFace')
+  .action(async (opts: { from?: string }) => {
+    const { downloadModel, sideLoadModel } = await import('./model/model-cache.js')
+    const { homedir } = await import('node:os')
+    const homeDir = homedir()
+
+    if (opts.from) {
+      process.stderr.write(`[mrclean] Side-loading model from ${opts.from}\n`)
+      await sideLoadModel(homeDir, opts.from)
+      process.stderr.write('[mrclean] Model side-loaded and verified successfully.\n')
+    } else {
+      process.stderr.write('[mrclean] Downloading NER model (~108 MB, one-time)...\n')
+      await downloadModel(homeDir, {
+        onProgress: (pct) => {
+          process.stderr.write(`\r[mrclean] Download progress: ${pct}%`)
+        },
+      })
+      process.stderr.write('\n[mrclean] Model downloaded and verified successfully.\n')
+    }
+  })
+
 // doctor subcommand
 program
   .command('doctor')
