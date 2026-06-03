@@ -19,6 +19,7 @@ import { randomUUID } from 'node:crypto'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { runDetectionReadOnly } from '../../detect/index.js'
 import { supervisedToolCall } from '../supervisor.js'
+import { sanitizeForOutput } from '../../shared/sanitize-output.js'
 import { PII_BEST_EFFORT_DISCLAIMER } from '../../shared/strings.js'
 import type { MrcleanConfig } from '../../shared/types.js'
 import type { SessionState } from '../../detect/session-state.js'
@@ -134,8 +135,13 @@ export function registerCheckTool(
       )
 
       if (!outcome.ok) {
+        // D-03 (PATTERNS.md:228-229): route the surfaced tool-error text through the
+        // sanitizeForOutput chokepoint. Belt-and-suspenders over 07-01's supervisor-level
+        // scrubbing (outcome.error is already sanitized at the supervisor catch). The tool
+        // boundary holds no detection spans → pass [] (context-free → static safe message).
+        const safe = sanitizeForOutput(`mrclean_check error: ${outcome.error}`, [])
         return {
-          content: [{ type: 'text' as const, text: `mrclean_check error: ${outcome.error}` }],
+          content: [{ type: 'text' as const, text: safe }],
           isError: true,
         }
       }

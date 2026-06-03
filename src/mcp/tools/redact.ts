@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { runDetection } from '../../detect/index.js'
 import { supervisedToolCall } from '../supervisor.js'
+import { sanitizeForOutput } from '../../shared/sanitize-output.js'
 import { PII_BEST_EFFORT_DISCLAIMER } from '../../shared/strings.js'
 import type { MrcleanConfig } from '../../shared/types.js'
 import type { SessionState } from '../../detect/session-state.js'
@@ -129,8 +130,12 @@ export function registerRedactTool(
       )
 
       if (!outcome.ok) {
+        // D-03 (PATTERNS.md:228-229): route the surfaced tool-error text through the
+        // sanitizeForOutput chokepoint (mirror of check.ts). Belt-and-suspenders over
+        // 07-01's supervisor-level scrubbing. No spans at the tool boundary → pass [].
+        const safe = sanitizeForOutput(`mrclean_redact error: ${outcome.error}`, [])
         return {
-          content: [{ type: 'text' as const, text: `mrclean_redact error: ${outcome.error}` }],
+          content: [{ type: 'text' as const, text: safe }],
           isError: true,
         }
       }
