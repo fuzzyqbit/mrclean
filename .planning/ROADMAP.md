@@ -141,7 +141,9 @@
   1. Operator runs the leak-grep regression test, which feeds known PII (test SSN/email/name) through the full pipeline and asserts none of those raw values appear anywhere in `.mrclean/audit.jsonl` OR in stderr/error output — including deliberately-triggered exception paths
   2. Operator reads the README/PII section and finds it frames the NER layer as "best-effort ML PII hint, not a guarantee," explicitly states that NER false negatives can leak, and points to `words.txt` + deterministic layers as the real must-not-leak mechanism — no language drifting toward "redacts all PII" or compliance claims
   3. Operator confirms the framing is consistent across CLI output, `mrclean doctor`, and docs — the probabilistic asterisk on NER findings is visible wherever PII results surface
-**Plans**: TBD
+**Plans**: 2 plans
+  - [ ] 07-01-PLAN.md — Leak-grep regression test + central sanitizeForOutput() error chokepoint + route supervisor/failclosed leak vectors (PIISEC-01) [Wave 1]
+  - [ ] 07-02-PLAN.md — Honest best-effort framing (README PII section + doctor note + CLI/banner) + bestEffort flag on MCP check/redact + banned-phrase CI grep test (PIISEC-02) [Wave 1]
 
 ## Progress
 
@@ -153,7 +155,7 @@
 | 4. PII Contracts & Architecture Foundations | 0/3 | Planned, not started | - |
 | 5. Regex PII Hot-Path Lane (L6a) + Model Acquisition | 0/2 | Planned, not started | - |
 | 6. NER Inference (L6b) + MCP Wiring | 0/3 | Planned, not started | - |
-| 7. PII Security Hardening & Honest Framing | 0/? | Not started | - |
+| 7. PII Security Hardening & Honest Framing | 0/2 | Planned, not started | - |
 
 ## Coverage Validation
 
@@ -192,4 +194,4 @@ All 14 v2.0 requirements mapped to exactly one phase. No orphans. No duplicates.
 | **Total** | **14** | **3** | **4** | **5** | **2** |
 
 ---
-*Last updated: 2026-06-02 after v2.0 roadmap (Phases 4-7 appended; v1 Phases 1-3 history preserved)*
+*Last updated: 2026-06-03 after Phase 7 planning (07-01, 07-02 created; Wave 1 parallel)*
