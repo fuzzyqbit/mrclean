@@ -38,6 +38,7 @@ import type {
   PiiAction,
 } from '../shared/types.js'
 import { DEFAULT_CONFIG } from './defaults.js'
+import { MODEL_DESCRIPTORS } from '../model/constants.js'
 
 // ---------------------------------------------------------------------------
 // ConfigReadError
@@ -241,6 +242,17 @@ function validatePiiNerConfig(raw: unknown, filePath: string): MrcleanPiiNerConf
   }
   if ('model' in raw && typeof raw['model'] !== 'string') {
     throw new ConfigReadError(filePath, '[pii.ner].model must be a string')
+  }
+  // T-06-04-03 (fail-closed): only models with a pinned SHA-256 descriptor may be selected.
+  // An unknown/unpinned model id is rejected here rather than silently downloaded + loaded
+  // without integrity verification. Both the default bert tier and the opt-in piiranha tier
+  // are descriptor keys, so the legitimate swap still works.
+  if ('model' in raw && !((raw['model'] as string) in MODEL_DESCRIPTORS)) {
+    throw new ConfigReadError(
+      filePath,
+      `[pii.ner].model "${String(raw['model'])}" is not a known/pinned model — ` +
+        `must be one of: ${Object.keys(MODEL_DESCRIPTORS).join(', ')}`,
+    )
   }
   if ('dtype' in raw && typeof raw['dtype'] !== 'string') {
     throw new ConfigReadError(filePath, '[pii.ner].dtype must be a string')

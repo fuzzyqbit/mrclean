@@ -220,6 +220,61 @@ describe('readConfigLayer [pii] sub-table — Task 2: parse + validate', () => {
       expect(e.reason).toMatch(/block|warn|audit/)
     }
   })
+
+  // -------------------------------------------------------------------------
+  // Plan 06-04 / T-06-04-03: reject an unknown/unpinned pii.ner.model fail-closed.
+  // -------------------------------------------------------------------------
+  it('rejects an unknown pii.ner.model (not a pinned descriptor) with ConfigReadError', async () => {
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(
+      configPath,
+      [
+        '[pii]',
+        'enabled = true',
+        '[pii.ner]',
+        'enabled = true',
+        'model = "evil/unpinned-model"',
+        'dtype = "int8"',
+      ].join('\n'),
+    )
+
+    await expect(readConfigLayer(configPath)).rejects.toBeInstanceOf(ConfigReadError)
+
+    try {
+      await readConfigLayer(configPath)
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigReadError)
+      const e = err as ConfigReadError
+      expect(e.reason).toMatch(/model/)
+    }
+  })
+
+  it('accepts the pinned bert model id', async () => {
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(
+      configPath,
+      ['[pii]', 'enabled = true', '[pii.ner]', 'model = "Xenova/bert-base-NER"'].join('\n'),
+    )
+    const result = await readConfigLayer(configPath)
+    expect((result as Partial<MrcleanConfig>).pii!.ner.model).toBe('Xenova/bert-base-NER')
+  })
+
+  it('accepts the pinned piiranha model id', async () => {
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(
+      configPath,
+      [
+        '[pii]',
+        'enabled = true',
+        '[pii.ner]',
+        'model = "onnx-community/piiranha-v1-detect-personal-information-ONNX"',
+      ].join('\n'),
+    )
+    const result = await readConfigLayer(configPath)
+    expect((result as Partial<MrcleanConfig>).pii!.ner.model).toBe(
+      'onnx-community/piiranha-v1-detect-personal-information-ONNX',
+    )
+  })
 })
 
 describe('mergeConfigs pii merge — Task 2: last-wins semantics', () => {
