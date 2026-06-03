@@ -8,15 +8,35 @@
 
 import { describe, it, expect } from 'vitest'
 import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import { writeFailClosedError } from '../../src/hook/failclosed.js'
+
+const require = createRequire(import.meta.url)
+
+/**
+ * Resolve the tsx CLI bin robustly across the real repo AND git worktrees.
+ *
+ * The worktree node_modules is sparse (no .bin/), so the old worktree-relative
+ * `../../node_modules/.bin/tsx` path 404s and spawn returns status:null. Node's
+ * module resolution walks up to the parent repo's node_modules, so resolve tsx
+ * from its package.json and derive the bin path from there.
+ */
+function resolveTsxBin(): string {
+  const pkgPath = require.resolve('tsx/package.json')
+  return join(dirname(pkgPath), 'dist', 'cli.mjs')
+}
 
 // Helper: run a TS script in a child process using tsx (required for ESM + TypeScript imports)
 function runInChildProcess(script: string): { status: number | null; stderrLine: string } {
   // tsx is the dev-time TS runner; it handles .ts imports via the .js extension aliases
-  const tsxBin = new URL('../../node_modules/.bin/tsx', import.meta.url).pathname
+  const tsxBin = resolveTsxBin()
+  // Spawn via the current node binary so the .mjs CLI runs regardless of the +x bit
+  // (worktree node_modules has no executable .bin shims).
   const result = spawnSync(
-    tsxBin,
+    process.execPath,
     [
+      tsxBin,
       '--input-type=module',
       '-e',
       script,
@@ -48,9 +68,16 @@ setTimeout(() => { throw new Error('boom'); }, 0);
     const parsed = JSON.parse(stderrLine)
     expect(parsed).toMatchObject({
       error: expect.stringContaining('mrclean'),
-      message: 'boom',
       version: '0.1.0',
     })
+    // D-04 (Plan 07-01): the raw throw text MUST NOT be echoed to stderr — the
+    // message is routed through the context-free chokepoint to a static safe string,
+    // and the raw stack/reason are dropped.
+    expect(JSON.stringify(parsed)).not.toContain('boom')
+    expect(parsed.message).not.toBe('boom')
+    expect(typeof parsed.message).toBe('string')
+    expect(parsed.message.length).toBeGreaterThan(0)
+    expect(parsed.stack).toBe('redacted')
   })
 
   it('Test 5: unhandledRejection → exit 2 with structured stderr referencing reason', () => {
@@ -70,8 +97,10 @@ setTimeout(() => { Promise.reject('async-boom'); }, 0);
     expect(parsed).toMatchObject({
       version: '0.1.0',
     })
-    // Reason should appear somewhere in the output
-    expect(JSON.stringify(parsed)).toContain('async-boom')
+    // D-04: the stringified rejection reason MUST NOT leak to stderr. The `reason`
+    // field is replaced with a static marker; the raw 'async-boom' never appears.
+    expect(JSON.stringify(parsed)).not.toContain('async-boom')
+    expect(parsed.reason).toBe('redacted')
   })
 })
 
@@ -100,9 +129,13 @@ describe('writeFailClosedError', () => {
     const parsed = JSON.parse(firstLine ?? '')
     expect(parsed).toMatchObject({
       error: expect.any(String),
-      message: 'x',
       event: 'PreToolUse',
     })
+    // D-04: raw message text ('x') is scrubbed to the static safe string; context
+    // fields (event) still pass through unchanged.
+    expect(parsed.message).not.toBe('x')
+    expect(typeof parsed.message).toBe('string')
+    expect(parsed.message.length).toBeGreaterThan(0)
     // Must be on a single line (no embedded newlines in the JSON object itself)
     const jsonPart = captured.trimEnd()
     expect(jsonPart).not.toContain('\n')

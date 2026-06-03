@@ -8,28 +8,46 @@
  * RESEARCH.md §5.4: Only the FIRST LINE of stderr is surfaced in the Claude
  * Code transcript. The entire error object must serialize to a SINGLE LINE of
  * JSON followed by \n so the operator sees machine-readable context.
+ *
+ * D-04 (Plan 07-01): this is the PRIME context-free leak vector — it fires before
+ * any PII parse, so there are NO detection spans to scrub against. The raw
+ * `err.message`, `err.stack`, and any echoed `reason` must NOT reach stderr. We
+ * route the message through the `sanitizeForOutput()` context-free chokepoint
+ * (static safe string), drop the raw stack echo entirely, and replace any context
+ * `reason` (the stringified throw) with a static phase marker.
  */
+
+import { sanitizeForOutput } from '../shared/sanitize-output.js'
 
 /**
  * Writes a single line of structured JSON to stderr describing a fatal error.
  *
  * Critical constraint: the entire error object must be on ONE LINE.
- * JSON.stringify() produces a single line by default (no indentation).
- * If `err.stack` is included, it's embedded as a JSON string value — no
- * embedded newlines appear because JSON strings escape \n to the literal `\n`.
+ * JSON.stringify() produces a single line by default (no indentation). The raw
+ * `err.stack` is NEVER embedded (D-04) — a static `stack: 'redacted'` marker
+ * preserves the payload shape without echoing source paths or input text.
  */
 export function writeFailClosedError(
   err: unknown,
   context: Record<string, unknown> & { version?: string },
 ): void {
-  const message = err instanceof Error ? err.message : String(err)
-  const stack = err instanceof Error && err.stack ? err.stack : undefined
+  // D-04: context-free path (pre-parse, no spans). Scrub the message to a static safe
+  // string and NEVER echo the raw err.stack.
+  const rawMessage = err instanceof Error ? err.message : String(err)
+  const message = sanitizeForOutput(rawMessage)
+
+  // The crash guards pass `reason: String(reason)` (the stringified throw) in context —
+  // that is the same raw error text and must not be echoed. Strip it from the spread and
+  // replace with a static marker so the operator still knows the field was present.
+  const { reason: _rawReason, ...safeContext } = context as Record<string, unknown>
 
   const payload: Record<string, unknown> = {
     error: 'mrclean hook crashed',
     message,
-    ...context,
-    ...(stack !== undefined ? { stack } : {}),
+    ...safeContext,
+    ...(_rawReason !== undefined ? { reason: 'redacted' } : {}),
+    // Raw err.stack is intentionally NOT written (D-04). A static marker preserves shape.
+    stack: 'redacted',
   }
 
   // Single-line JSON + newline — JSON.stringify with no indent args produces one line
