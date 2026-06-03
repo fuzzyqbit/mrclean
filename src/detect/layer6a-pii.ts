@@ -169,11 +169,13 @@ export function runLayer6aPii(
     const patternSource = PII_PATTERN_SOURCES.get(entity)
     if (!patternSource) continue // unknown entity — skip gracefully
 
-    // Create a fresh RegExp per scan call to avoid lastIndex bleed (Pitfall 2)
-    // 'g' flag required for matchAll; 'i' for case-insensitive email local-parts
+    // Create a fresh RegExp per scan call to avoid lastIndex bleed (RESEARCH Pitfall 2).
+    // Reusing a module-level /g RegExp causes .exec() to resume from non-zero lastIndex
+    // on the next invocation — producing intermittent missed detections across calls.
+    // PERF-03: fresh RegExp per entity per scan — required for correctness (lastIndex bleed safety); patterns compile in <1ms each; 5 entities × 1ms << 100ms budget.
     const re = entity === 'email'
-      ? new RegExp(patternSource, 'gi')
-      : new RegExp(patternSource, 'g')
+      ? new RegExp(patternSource, 'gi') // PERF-03: see above
+      : new RegExp(patternSource, 'g') // PERF-03: see above
 
     for (const match of text.matchAll(re)) {
       const value = match[0]
