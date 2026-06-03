@@ -1,5 +1,5 @@
 /**
- * Six individual check functions for mrclean doctor.
+ * Seven check functions for mrclean doctor.
  *
  * Each check returns a CheckResult with:
  *   name         — short identifier for the check
@@ -12,10 +12,11 @@
  *   2 — MCP server not registered
  *   3 — registered binary path not executable
  *   4 — canary round-trip failed
+ *   6 — NER model present but integrity (SHA-256) check failed
  *
  * No check function terminates the process — only runDoctor (index.ts) may do so.
  *
- * Plan 01-05.
+ * Plan 01-05 / 05-02.
  */
 
 import { access, constants } from 'node:fs/promises'
@@ -349,6 +350,59 @@ export async function checkMcpCanary(
  * The detail message distinguishes between "bundled defaults" and "loaded override".
  * This makes CFG-01/CFG-03 operator-observable via doctor output.
  */
+// ---------------------------------------------------------------------------
+// checkModelCache
+// ---------------------------------------------------------------------------
+
+/**
+ * Check whether the NER model is downloaded and its integrity verified.
+ *
+ * Status mapping:
+ *   SKIP (exitCodeOnFail 0) — model not present; PII NER opt-in not active.
+ *                              Stays green for non-NER users.
+ *   PASS (exitCodeOnFail 6) — model present and SHA-256 matches.
+ *   FAIL (exitCodeOnFail 6) — model present but SHA-256 mismatch; re-fetch required.
+ *
+ * Phase 5-02 (MODEL-03 doctor integrity report).
+ */
+export async function checkModelCache(homeDir: string): Promise<CheckResult> {
+  const { isModelCached, verifyModelIntegrity } = await import('../model/model-cache.js')
+
+  const cached = await isModelCached(homeDir)
+
+  if (!cached) {
+    return {
+      name: 'model-cache',
+      status: 'SKIP',
+      detail: 'NER model not downloaded (PII NER opt-in required — run `mrclean pii fetch-model`)',
+      exitCodeOnFail: 0,
+    }
+  }
+
+  const valid = await verifyModelIntegrity(homeDir)
+
+  if (!valid) {
+    return {
+      name: 'model-cache',
+      status: 'FAIL',
+      detail:
+        'NER model SHA-256 mismatch — re-fetch with `mrclean pii fetch-model`',
+      exitCodeOnFail: 6,
+    }
+  }
+
+  return {
+    name: 'model-cache',
+    status: 'PASS',
+    detail: 'NER model present and SHA-256 verified',
+    exitCodeOnFail: 6,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// checkConfigLoad
+// ---------------------------------------------------------------------------
+
 export async function checkConfigLoad(homeDir: string, cwd: string): Promise<CheckResult> {
   const { join } = await import('node:path')
   const { access: fsAccess, constants: fsConstants } = await import('node:fs/promises')

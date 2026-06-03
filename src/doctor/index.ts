@@ -16,6 +16,7 @@
  *   3 — registered binary path not executable
  *   4 — canary round-trip failed (hook OR MCP)
  *   5 — Claude Code not found or incompatible version
+ *   6 — NER model present but integrity (SHA-256) check failed
  *
  * Plan 01-05 (replaces Plan 01 stub).
  */
@@ -30,6 +31,7 @@ import {
   checkHookCanary,
   checkMcpCanary,
   checkConfigLoad,
+  checkModelCache,
   extractRegisteredPaths,
   type CheckResult,
 } from './checks.js'
@@ -78,6 +80,7 @@ export interface DoctorReport {
  *   4. checkHookCanary       — exitCode 4 on fail (SKIP if bins failed)
  *   5. checkMcpCanary        — exitCode 4 on fail (SKIP if bins failed)
  *   6. checkConfigLoad       — exitCode 1 on fail
+ *   7. checkModelCache       — exitCode 6 on fail (SKIP if model not downloaded)
  *   + version check          — exitCode 5 if red/not-found AND no other failures
  */
 export async function computeDoctorReport(opts: {
@@ -133,6 +136,10 @@ export async function computeDoctorReport(opts: {
 
   // 6. Config-load check — exercises loadEffectiveConfig; makes CFG-01/CFG-03 operator-visible
   results.push(await checkConfigLoad(homeDir, cwd))
+
+  // 7. Model-cache check — SKIP when model not downloaded (stays green for non-NER users);
+  //    PASS when present + SHA-256 verified; FAIL (exit 6) on integrity mismatch.
+  results.push(await checkModelCache(homeDir))
 
   // Version check.
   // TEST-ONLY escape hatch: if MRCLEAN_TEST_FAKE_CLAUDE_VERSION is set, inject
