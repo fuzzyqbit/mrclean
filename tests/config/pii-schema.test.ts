@@ -40,11 +40,11 @@ describe('DEFAULT_CONFIG.pii — Task 1: shape and frozen invariant', () => {
     ])
   })
 
-  it('ner sub-table: enabled=false, model=Xenova/bert-base-NER, dtype=int8, confidence=0.9, allowDownload=true, warmOnBoot=false', () => {
+  it('ner sub-table: enabled=false, model=Xenova/bert-base-NER, dtype=int8, confidence=0.7, allowDownload=true, warmOnBoot=false', () => {
     expect(DEFAULT_CONFIG.pii.ner.enabled).toBe(false)
     expect(DEFAULT_CONFIG.pii.ner.model).toBe('Xenova/bert-base-NER')
     expect(DEFAULT_CONFIG.pii.ner.dtype).toBe('int8')
-    expect(DEFAULT_CONFIG.pii.ner.confidence).toBe(0.9)
+    expect(DEFAULT_CONFIG.pii.ner.confidence).toBe(0.7) // D-07: default floor reconciled 0.9 -> 0.7 (Plan 06-01)
     expect(DEFAULT_CONFIG.pii.ner.allowDownload).toBe(true)
     expect(DEFAULT_CONFIG.pii.ner.warmOnBoot).toBe(false)
     expect(DEFAULT_CONFIG.pii.ner.entities).toEqual(['PERSON', 'ORG', 'LOC'])

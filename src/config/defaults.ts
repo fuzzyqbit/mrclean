@@ -54,7 +54,7 @@ export const DEFAULT_CONFIG: MrcleanConfig = Object.freeze({
       model: 'Xenova/bert-base-NER',
       dtype: 'int8',
       entities: Object.freeze(['PERSON', 'ORG', 'LOC']) as unknown as string[],
-      confidence: 0.9,
+      confidence: 0.7,
       allowDownload: true,
       warmOnBoot: false,
       actions: Object.freeze({

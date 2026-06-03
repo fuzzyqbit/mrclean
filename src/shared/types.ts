@@ -236,7 +236,7 @@ export interface MrcleanPiiNerConfig {
    * Merge semantics: LAST-WINS (NOT concat). See MrcleanPiiRegexConfig.entities note.
    */
   entities: string[]
-  /** Confidence threshold below which entity spans are dropped. Default: 0.9 */
+  /** Confidence threshold below which entity spans are dropped. Default: 0.7 (D-07 — this is the CONTEXT `min_score` floor) */
   confidence: number
   /** Allow lazy first-run model download to ~/.mrclean/models/. Default: true */
   allowDownload: boolean
