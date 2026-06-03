@@ -28,7 +28,7 @@ import type { EnvBlocklist } from '../../src/detect/layer3-env.js'
 import type { Finding } from '../../src/detect/findings.js'
 import { redactedHash, fingerprint } from '../../src/detect/findings.js'
 import { DEFAULT_CONFIG } from '../../src/config/defaults.js'
-import { PINNED_MODEL_SHA256 } from '../../src/model/constants.js'
+import { PINNED_MODEL_SHA256, PIIRANHA_PINNED_SHA256 } from '../../src/model/constants.js'
 
 // ---------------------------------------------------------------------------
 // Module mocks — keep the heavy ML dep + model download entirely out of CI.
@@ -42,10 +42,17 @@ vi.mock('../../src/detect/layer6b-ner.js', () => ({
   runLayer6bNer: mockRunLayer6bNer,
 }))
 
-// pipeline-singleton.js is statically imported by index.ts only for getNerBackend()/resetNerSingleton().
-// Mock it so getNerBackend() returns a deterministic backend label and no transformers import occurs.
+// pipeline-singleton.js is statically imported by index.ts for getNerBackend()/resetNerSingleton()
+// and (Plan 06-04) the resolved-provenance accessors. Mock it so getNerBackend() returns a
+// deterministic backend label, the resolved sha/dtype are controllable per-test (to simulate
+// bert vs piiranha), and no transformers import occurs.
+const mockResolvedSha = vi.fn<() => string | undefined>().mockReturnValue(PINNED_MODEL_SHA256)
+const mockResolvedDtype = vi.fn<() => string | undefined>().mockReturnValue('int8')
+
 vi.mock('../../src/model/pipeline-singleton.js', () => ({
   getNerBackend: () => 'onnxruntime-node',
+  getNerResolvedSha256: () => mockResolvedSha(),
+  getNerResolvedDtype: () => mockResolvedDtype(),
   resetNerSingleton: vi.fn(),
 }))
 
@@ -115,6 +122,8 @@ function nerFinding(text: string, start: number, end: number, canonical: string)
 describe('runDetection — Layer 6b NER wiring (orchestrator-ner)', () => {
   afterEach(async () => {
     mockRunLayer6bNer.mockReset()
+    mockResolvedSha.mockReset().mockReturnValue(PINNED_MODEL_SHA256)
+    mockResolvedDtype.mockReset().mockReturnValue('int8')
     const { shutdownDetection } = await import('../../src/detect/index.js')
     await shutdownDetection()
   })
@@ -298,6 +307,97 @@ describe('runDetection — Layer 6b NER wiring (orchestrator-ner)', () => {
     expect(secretRecord!['backend']).toBeUndefined()
     expect('value' in secretRecord!).toBe(false)
     expect(JSON.stringify(secretRecord)).not.toContain('AKIAIOSFODNN7EXAMPLX')
+  })
+
+  // -------------------------------------------------------------------------
+  // Test 6b (Plan 06-04 / D-12 / MODEL-04): provenance reflects the RESOLVED model.
+  // When piiranha is the loaded model, the stamped model_rev is the piiranha hash.
+  // -------------------------------------------------------------------------
+  it('Test 6b: provenance stamps the RESOLVED per-model sha + resolved dtype (piiranha swap)', async () => {
+    const { runDetection } = await import('../../src/detect/index.js')
+
+    // Simulate the piiranha tier being the actually-loaded model.
+    mockResolvedSha.mockReturnValue(PIIRANHA_PINNED_SHA256)
+    mockResolvedDtype.mockReturnValue('q8')
+
+    const cwd = await makeTmpDir()
+    const sessionId = 'ner-test-6b'
+    const name = 'Eve Adams'
+    const text = `${name} signed in.`
+    // config dtype intentionally differs from the resolved dtype to prove resolved wins (WR-04).
+    const config = makeNerEnabledConfig({
+      pii: {
+        ...DEFAULT_CONFIG.pii,
+        enabled: true,
+        ner: { ...DEFAULT_CONFIG.pii.ner, enabled: true, dtype: 'int8' },
+      },
+    })
+    const sessionState = makeSessionState(sessionId)
+    const ctx = { sessionId, hookEvent: 'UserPromptSubmit' as const, cwd }
+
+    const nameStart = text.indexOf(name)
+    mockRunLayer6bNer.mockResolvedValue({
+      findings: [nerFinding(text, nameStart, nameStart + name.length, 'PERSON')],
+      status: 'ready',
+    })
+
+    await runDetection(text, config, sessionState, ctx, { ner: true })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const auditContent = await readFile(join(cwd, '.mrclean', 'audit.jsonl'), 'utf8')
+    const records = auditContent
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+
+    const nerRecord = records.find((r) => r['ruleId'] === 'pii:PERSON')!
+    expect(nerRecord['model_rev']).toBe(PIIRANHA_PINNED_SHA256)
+    expect(nerRecord['model_rev']).not.toBe(PINNED_MODEL_SHA256)
+    expect((nerRecord['engine'] as string)).toBe(`pii-ner@${PIIRANHA_PINNED_SHA256.slice(0, 12)}`)
+    // Resolved dtype wins over config.pii.ner.dtype ('int8').
+    expect(nerRecord['quant']).toBe('q8')
+    expect(JSON.stringify(nerRecord)).not.toContain(name)
+  })
+
+  // -------------------------------------------------------------------------
+  // Test 6c: when resolved sha is unavailable, omit model_rev/engine (do not stamp a wrong hash).
+  // -------------------------------------------------------------------------
+  it('Test 6c: omits model_rev/engine when the resolved sha is undefined', async () => {
+    const { runDetection } = await import('../../src/detect/index.js')
+
+    mockResolvedSha.mockReturnValue(undefined)
+    mockResolvedDtype.mockReturnValue(undefined)
+
+    const cwd = await makeTmpDir()
+    const sessionId = 'ner-test-6c'
+    const name = 'Frank Castle'
+    const text = `${name} was present.`
+    const config = makeNerEnabledConfig()
+    const sessionState = makeSessionState(sessionId)
+    const ctx = { sessionId, hookEvent: 'UserPromptSubmit' as const, cwd }
+
+    const nameStart = text.indexOf(name)
+    mockRunLayer6bNer.mockResolvedValue({
+      findings: [nerFinding(text, nameStart, nameStart + name.length, 'PERSON')],
+      status: 'ready',
+    })
+
+    await runDetection(text, config, sessionState, ctx, { ner: true })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const auditContent = await readFile(join(cwd, '.mrclean', 'audit.jsonl'), 'utf8')
+    const records = auditContent
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+
+    const nerRecord = records.find((r) => r['ruleId'] === 'pii:PERSON')!
+    expect(nerRecord['model_rev']).toBeUndefined()
+    expect(nerRecord['engine']).toBeUndefined()
+    // dtype falls back to config when resolved is unavailable.
+    expect(nerRecord['quant']).toBe('int8')
   })
 
   // -------------------------------------------------------------------------
