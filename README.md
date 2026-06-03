@@ -244,9 +244,9 @@ it in your [`words.txt`](#5-dirty-word-list) dirty-word list, where it becomes a
 deterministic, always-on match — or rely on the deterministic layers above. NER is there
 to raise the floor on recall, not to be a compliance boundary.
 
-mrclean does not claim to redact all PII, and it makes no regulatory-compliance claims.
-It is an in-session leak-reduction aid: secrets are caught deterministically, and PII
-gets a best-effort ML hint on top. For the framing that governs what is and is not in
+mrclean does not promise complete PII coverage, and it makes no regulatory-compliance
+claims. It is an in-session leak-reduction aid: secrets are caught deterministically, and
+PII gets a best-effort ML hint on top. For the framing that governs what is and is not in
 scope, see [docs/SCOPE-FENCE.md](./docs/SCOPE-FENCE.md).
 
 ---

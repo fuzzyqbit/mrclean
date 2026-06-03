@@ -60,3 +60,34 @@ jobs:
             done
           fi
           echo "Defense-in-depth canary-leak grep passed."
+
+      - name: Run PII canary-leak proof (full NER-on pipeline → audit.jsonl)
+        # Plan 07-03 (PIISEC-01 CI gate): runs 07-01's PII leak test, which feeds a
+        # synthetic PII canary corpus (SSN/email/name/card) through the full detection
+        # pipeline with NER on and asserts assertNoCanaryLeak over the audit log. Runs
+        # in the integration project so the tsup dist/ build is present.
+        run: npx vitest run --project=integration tests/audit/pii-canary-leak.test.ts
+
+      - name: Defense-in-depth grep — no synthetic PII canary appears in any audit log
+        # Belt-and-suspenders second pass mirroring the secret grep above: for each
+        # synthetic PII canary value (the 07-01 PII_CANARIES set), grep against every
+        # .mrclean/audit*.jsonl in the repo. The vitest test asserts this via
+        # assertNoCanaryLeak; this step catches any future test-bug where that
+        # assertion is silenced or skipped.
+        run: |
+          set -e
+          PII_CANARIES=(
+            "457-55-5462"
+            "zzcanary.person@example.invalid"
+            "Zebediah Quux-Canary"
+            "4000-0000-0000-0002"
+          )
+          if [ -d .mrclean ]; then
+            for val in "${PII_CANARIES[@]}"; do
+              if grep -F "$val" .mrclean/audit*.jsonl 2>/dev/null; then
+                echo "::error::PII canary leak: '$val' found in audit log"
+                exit 1
+              fi
+            done
+          fi
+          echo "Defense-in-depth PII canary-leak grep passed."
