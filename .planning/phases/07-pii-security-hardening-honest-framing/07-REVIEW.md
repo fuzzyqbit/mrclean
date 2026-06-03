@@ -20,10 +20,14 @@ files_reviewed_list:
 findings:
   critical: 0
   warning: 2
+  warning_resolved: 2
   info: 3
   note: 2
   total: 7
-status: issues
+status: warnings_resolved
+resolved:
+  - WR-01
+  - WR-02
 ---
 
 # Phase 7: Code Review Report
@@ -68,6 +72,11 @@ maintainability/coverage notes.
 
 ### WR-01: With-context scrub only removes *whole-value* occurrences — partial secret substrings pass through
 
+**Status:** RESOLVED (commit a617d03) — added a post-scrub defense-in-depth pass in
+`sanitizeForOutput`: if any contiguous fragment (length ≥ 8) of a span value still
+appears after whole-value scrubbing, it falls back to the static context-free message
+instead of emitting a partially-scrubbed payload. Boundary unit test added.
+
 **File:** `src/shared/sanitize-output.ts:50-53`
 **Issue:** `scrubSpan` replaces only exact literal occurrences of `span.value`
 (`message.split(span.value).join(span.redactedHash)`). If an error/diagnostic string
@@ -95,6 +104,12 @@ return scrubbed
 At minimum, add a unit test asserting a partial-substring case to document the boundary.
 
 ### WR-02: MCP error branch interpolates `outcome.error` then discards it — dead interpolation, lost context
+
+**Status:** RESOLVED (commit 3852eba) — removed the dead `sanitizeForOutput(..., [])`
+pass; the error branches now prepend a static tool marker (`mrclean_check:` /
+`mrclean_redact:`) to the supervisor's already-sanitized `outcome.error`. No raw input
+is echoed (supervisedToolCall already routes the throw through the context-free
+chokepoint). The two tools remain exact mirrors; dist rebuilt.
 
 **File:** `src/mcp/tools/check.ts:142`, `src/mcp/tools/redact.ts:136`
 **Issue:** `sanitizeForOutput(`mrclean_check error: ${outcome.error}`, [])` passes an
