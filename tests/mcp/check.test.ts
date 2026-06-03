@@ -76,6 +76,7 @@ function makeConnectedPair(cwd: string) {
     () => config,
     () => sessionState,
     () => cwd,
+    () => 'disabled',
   )
   const client = new Client({ name: 'test-client', version: '0.0.0' }, { capabilities: {} })
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()

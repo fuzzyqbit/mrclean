@@ -22,6 +22,55 @@
 
 import { VERSION } from '../shared/version.js'
 import { installShutdownHandlers } from './lifecycle.js'
+import type { MrcleanConfig } from '../shared/types.js'
+// TYPE-ONLY import of the NER status union — never pulls the engine runtime onto the cold
+// path. The engine (and its @huggingface/transformers dynamic import) is reached EXCLUSIVELY
+// through the dynamic import inside startNerPreload, never as a static import (T-06-03-01).
+import type { NerStatus } from '../detect/layer6b-ner.js'
+
+/**
+ * Start the eager, fire-and-forget NER preload (D-04/D-05) and return a `getNerStatus`
+ * closure the check/redact tools read to surface `nerStatus` in their structuredContent.
+ *
+ * Behavior:
+ *   - config.pii.ner.enabled === false → status is 'disabled'; NO transformers import is
+ *     attempted, so the cold ML dep never loads on a server that isn't using NER.
+ *   - config.pii.ner.enabled === true  → status starts 'loading'; a `void (async () => …)()`
+ *     task dynamically imports the pipeline singleton and warms it, flipping status to 'ready'
+ *     on success or 'unavailable' on throw. This task is NEVER awaited — the caller (the MCP
+ *     server boot) registers and connects the secret tools immediately (D-04, T-06-03-01).
+ *   - On a preload throw the server STILL serves secret detection; only NER is degraded
+ *     (fail-closed for NER, D-05, T-06-03-02). A single stderr line announces model state
+ *     ONLY — it carries no error detail and no input text (Pitfall 5, T-06-03-03).
+ *
+ * Exported so it can be unit-tested without booting the full stdio transport (whose readline
+ * loop keeps the event loop alive).
+ *
+ * @param config - The effective mrclean configuration.
+ * @returns A `getNerStatus()` closure returning the live NER lifecycle status.
+ */
+export function startNerPreload(config: MrcleanConfig): () => NerStatus {
+  let nerStatus: NerStatus = config.pii.ner.enabled ? 'loading' : 'disabled'
+  const getNerStatus = (): NerStatus => nerStatus
+
+  if (config.pii.ner.enabled) {
+    // Fire-and-forget: NEVER awaited. The secret tools register/connect immediately (D-04).
+    void (async () => {
+      try {
+        const { getNerPipeline } = await import('../model/pipeline-singleton.js')
+        await getNerPipeline(config.pii.ner)
+        nerStatus = 'ready'
+      } catch {
+        // Fail-closed for NER only (D-05): the secret gate is unaffected. The stderr line
+        // carries model state ONLY — no error object, no matched text (Pitfall 5).
+        nerStatus = 'unavailable'
+        process.stderr.write('mrclean-mcp: NER unavailable; serving secrets only\n')
+      }
+    })()
+  }
+
+  return getNerStatus
+}
 
 export async function runMcpServer(): Promise<void> {
   // Lazy-import SDK per RESEARCH §6.2 — cold-start stays cheap for CLI users.
@@ -46,6 +95,12 @@ export async function runMcpServer(): Promise<void> {
   const getSessionState = () => sessionState
   const getCwd = () => cwd
 
+  // Eager fail-closed NER preload (D-04/D-05). This is fire-and-forget — it MUST run before
+  // (and independent of) server.connect() and is NEVER awaited, so the secret tools register
+  // and connect immediately even while the ~317 MB / 108 MB model is still loading. On a load
+  // failure nerStatus flips to 'unavailable' and the server still serves secret detection.
+  const getNerStatus = startNerPreload(config)
+
   const server = new McpServer({ name: 'mrclean', version: VERSION })
 
   // Lazy-import tool registrations — avoids loading zod/v4 on the CLI cold path.
@@ -54,8 +109,8 @@ export async function runMcpServer(): Promise<void> {
   const { registerRedactTool } = await import('./tools/redact.js')
   const { registerStatusTool } = await import('./tools/status.js')
 
-  registerCheckTool(server, getConfig, getSessionState, getCwd)
-  registerRedactTool(server, getConfig, getSessionState, getCwd)
+  registerCheckTool(server, getConfig, getSessionState, getCwd, getNerStatus)
+  registerRedactTool(server, getConfig, getSessionState, getCwd, getNerStatus)
   registerStatusTool(server, getConfig, getSessionState, getCwd)
 
   const transport = new StdioServerTransport()

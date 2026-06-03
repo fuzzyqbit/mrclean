@@ -21,6 +21,7 @@ import { supervisedToolCall } from '../supervisor.js'
 import type { MrcleanConfig } from '../../shared/types.js'
 import type { SessionState } from '../../detect/session-state.js'
 import type { ResolvedFinding } from '../../detect/index.js'
+import type { NerStatus } from '../../detect/layer6b-ner.js'
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -46,6 +47,9 @@ const findingSchema = z.object({
 const redactOutputSchema = z.object({
   redacted: z.string(),
   findings: z.array(findingSchema),
+  // D-03: surface the Layer 6b NER lifecycle status to the MCP caller. An enum (not free-form
+  // text) so it can never carry matched PII (T-06-03-03). 'disabled' on the no-NER path.
+  nerStatus: z.enum(['ready', 'unavailable', 'loading', 'disabled']),
 })
 
 // ---------------------------------------------------------------------------
@@ -73,12 +77,14 @@ function toFindingDTO(f: ResolvedFinding): z.infer<typeof findingSchema> {
  * @param getConfig       - Closure returning the current effective MrcleanConfig.
  * @param getSessionState - Closure returning the current SessionState.
  * @param getCwd          - Closure returning the project root directory.
+ * @param getNerStatus    - Closure returning the live NER lifecycle status (boot preload, D-03/D-05).
  */
 export function registerRedactTool(
   server: McpServer,
   getConfig: () => MrcleanConfig,
   getSessionState: () => SessionState,
   getCwd: () => string,
+  getNerStatus: () => NerStatus,
 ): void {
   server.registerTool(
     'mrclean_redact',
@@ -101,8 +107,12 @@ export function registerRedactTool(
         cwd: getCwd(),
       }
 
+      // Pass { ner: true } so the MCP path opts into the Layer 6b NER lane (the hook path never
+      // does — opts.ner is the sole structural gate, NER-01/D-04). NER errors are NOT caught here:
+      // runLayer6bNer already fails closed internally; a tool-level catch would wrongly fail the
+      // secret gate.
       const outcome = await supervisedToolCall(() =>
-        runDetection(text, getConfig(), getSessionState(), ctx),
+        runDetection(text, getConfig(), getSessionState(), ctx, { ner: true }),
       )
 
       if (!outcome.ok) {
@@ -112,7 +122,7 @@ export function registerRedactTool(
         }
       }
 
-      const { substitutedText, findings: rawFindings, budgetExhausted } = outcome.result
+      const { substitutedText, findings: rawFindings, budgetExhausted, nerStatus } = outcome.result
 
       if (budgetExhausted) {
         return {
@@ -127,7 +137,9 @@ export function registerRedactTool(
       }
 
       const findings = rawFindings.map(toFindingDTO)
-      const structured = { redacted: substitutedText, findings }
+      // D-03: surface nerStatus. Prefer the per-run status from the DetectionResult; fall back to
+      // the boot-preload closure when the run did not enter the L6b branch (e.g. NER config off).
+      const structured = { redacted: substitutedText, findings, nerStatus: nerStatus ?? getNerStatus() }
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(structured) }],
