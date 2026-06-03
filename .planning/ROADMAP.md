@@ -144,7 +144,7 @@
 **Plans**: 3 plans
   - [x] 07-01-PLAN.md — Central sanitizeForOutput() error chokepoint + route supervisor/failclosed leak vectors + PII leak-grep regression test (audit.jsonl + stderr + 3 forced-failure paths) (PIISEC-01) [Wave 1]
   - [x] 07-02-PLAN.md — Machine-readable bestEffort flag on MCP check/redact finding DTOs, true only for the NER lane (PIISEC-02, D-06) [Wave 1]
-  - [ ] 07-03-PLAN.md — Centralized best-effort disclaimer surfaced once-per-output (README PII section + doctor note + SessionStart banner + MCP descriptions) + MCP isError text routed through sanitizeForOutput (D-03) + banned-phrase copy-drift test + canary-leak.yml PII CI job; human copy-review checkpoint (PIISEC-02 D-05/D-07/D-08, PIISEC-01 CI gate) [Wave 2]
+  - [x] 07-03-PLAN.md — Centralized best-effort disclaimer surfaced once-per-output (README PII section + doctor note + SessionStart banner + MCP descriptions) + MCP isError text routed through sanitizeForOutput (D-03) + banned-phrase copy-drift test + canary-leak.yml PII CI job; human copy-review checkpoint (PIISEC-02 D-05/D-07/D-08, PIISEC-01 CI gate) [Wave 2]
 
 ## Progress
 
