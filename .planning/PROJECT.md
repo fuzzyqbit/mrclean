@@ -8,44 +8,52 @@ mrclean is an in-session sanitizer that prevents sensitive data from leaking out
 
 Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
 
-## Current Milestone: v2.0 Native-Node PII/NER Layer
+## Current State
 
-**Goal:** Add an opt-in, native-Node PII/NER detection layer — no Python, no data egress, no break to the < 100 ms hot path or zero-config `npx`.
+**Shipped:** v2.0 Native-Node PII/NER Layer (2026-06-03) — atop v1.0 MVP (2026-05-14).
 
-**Target features:**
-- In-process NER (names / orgs / locations) via transformers.js ONNX (`Xenova/bert-base-NER` int8, ~108 MB)
-- Regex structured-PII: email, US SSN, credit card, phone, IP address
-- Opt-in + perf-exempt integration (Layer-5 style); existing secretlint/gitleaks + entropy layers remain the **hard deterministic gate** for secrets
-- PII findings flow through the existing pipeline → `<MRCLEAN:PII:NNN>` placeholders, audit log, 5-axis allowlist, per-rule action + config toggle
-- Zero-config model UX: lazy-fetch + cache the ONNX model on first opt-in (no multi-hundred-MB bundle)
+mrclean now ships an opt-in, native-Node PII/NER detection layer with **zero data egress and no Python**:
+- Regex structured-PII (email / US SSN / credit card / phone / IP) in the existing `<100ms` hot-path budget, no model required.
+- Opt-in in-process NER (PERSON/LOC, advisory) as a warm singleton in the long-lived MCP server **only** — never the hook; fail-closed-for-NER; model provenance stamped in every PII audit entry.
+- PII findings flow through the existing placeholder / audit / allowlist pipeline; `[pii]` config sub-table off by default; ML deps are `optionalDependencies` (zero-config `npx` preserved).
+- Honest framing everywhere: secrets = deterministic guarantee, NER = best-effort recall aid (false negatives can leak); enforced by a copy-drift CI gate + a leak-grep regression proving no raw PII reaches `audit.jsonl` or any error path.
 
-**Key context / guardrails:**
-- No Python runtime; cloud PII APIs ruled out (sending text off-box to detect leakage defeats the purpose).
-- Microsoft Presidio (Python sidecar) is **deferred** as a compliance-tier alternative — not the default (footprint breaks zero-config `npx`).
-- PII layer **off by default**; secrets remain mrclean's core. Grounded in spike 001 (`vs-presidio`) + exploration research.
+**Guardrails held:** no Python runtime; cloud PII APIs ruled out; Microsoft Presidio (Python sidecar) remains deferred (PIISEC-03 scope fence). Secrets remain mrclean's deterministic core.
+
+### Next Milestone Goals (candidates)
+
+Deferred open items surfaced at v2.0 close (tracked in STATE.md → Deferred Items): `mrclean init` command, surgical `uninstall`, install-stub dead-keys fix. Plus: reversible redact mode and Layer-5 `--deep` LLM classifier remain unshipped from the original vision.
 
 ## Requirements
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ In-session interception via Claude Code hook (UserPromptSubmit + tool-result paths) — v1.0
+- ✓ MCP server entry point (`mrclean_check / mrclean_redact / mrclean_status`) — v1.0
+- ✓ Layer 1 — bundled regex pack (secretlint preset + gitleaks rules) — v1.0
+- ✓ Layer 2 — Shannon-entropy heuristic + allowlist (hashes/UUIDs/SHAs/base64) — v1.0
+- ✓ Layer 3 — `.env*` value auto-extract into in-memory blocklist — v1.0
+- ✓ Layer 4 — `.mrclean/words.txt` project dirty-word list — v1.0
+- ✓ Stable collision-free placeholders (`<MRCLEAN:TYPE:NNN>`) — v1.0
+- ✓ One-way redact mode (default, highest safety) — v1.0
+- ✓ Block-on-detect with structured reason payload — v1.0
+- ✓ Per-rule action override (block / warn / audit) via config — v1.0
+- ✓ Hash-only session audit log at `.mrclean/audit.jsonl` (never raw values) — v1.0
+- ✓ npm package + `npx mrclean install` wiring — v1.0
+- ✓ `<100ms / <200ms` perf gate enforced in CI — v1.0
+- ✓ Layer 6a regex structured-PII (email/SSN/card/phone/IP), hot-path-safe — v2.0
+- ✓ Layer 6b opt-in NER (PERSON/LOC), MCP-only, advisory, fail-closed — v2.0
+- ✓ Model acquisition/cache/integrity infra + `optionalDependencies` — v2.0
+- ✓ PII leak-grep regression + `sanitizeForOutput()` error chokepoint — v2.0
+- ✓ Honest best-effort framing + copy-drift CI gate + scope fence (no Python/cloud/unredact) — v2.0
 
-### Active
+### Active (next milestone candidates)
 
-- [ ] In-session interception via Claude Code hook (settings.json) covering UserPromptSubmit and tool-result paths so any text on its way to the model is scanned
-- [ ] MCP server entry point so Claude can also call mrclean as a tool when wired explicitly into a session
-- [ ] Layer 1 detection — bundled regex pack for common secret formats (AWS, GitHub, OpenAI, Anthropic, JWTs, PEM blocks, Slack, Stripe, generic high-confidence token shapes)
-- [ ] Layer 2 detection — Shannon-entropy heuristic above a tunable threshold and length, with built-in allowlist for hashes, UUIDs, git SHAs, common base64 image data
-- [ ] Layer 3 detection — auto-extract values from `.env*` files at session start and add those values (not the keys) to the in-memory blocklist
-- [ ] Layer 4 detection — optional user dirty-word file under `.mrclean/words.txt` for project-specific terms (codenames, customer names, internal hostnames)
-- [ ] Layer 5 detection — optional `--deep` LLM classifier pass for semantic PII / proprietary content; off by default for cost
-- [ ] Placeholder substitution with stable, collision-free tokens (e.g., `<MRCLEAN:SECRET:001>`) that survive code edits and remain unique across a session
-- [ ] One-way redact mode — sanitize outbound payloads, no restore (highest safety, default)
-- [ ] Reversible mode — sanitize outbound, persist a session-scoped placeholder→original map, restore placeholders on inbound tool results before they re-enter the model context, so paths/names round-trip
-- [ ] Block-on-detect default action with structured reason payload returned to Claude Code so the agent knows why a tool call was rewritten or denied
-- [ ] Per-rule action override (block / warn / audit) via config file
-- [ ] Session-local audit log of every match (rule, severity, redacted token hash) at `.mrclean/audit.jsonl` — never logs the original secret
-- [ ] Distributed as an npm package with a CLI bin (`npx mrclean install` to wire hook + MCP into the user's `~/.claude/settings.json`)
+- [ ] `mrclean init` command (deferred from v1)
+- [ ] Surgical `mrclean uninstall` (deferred from v1)
+- [ ] Install-stub dead-keys fix (deferred from v1)
+- [ ] Reversible redact mode — session-scoped placeholder→original map for path/name round-trip (unshipped from original vision)
+- [ ] Layer 5 — optional `--deep` LLM classifier for semantic PII (unshipped, off by default)
 
 ### Out of Scope
 
@@ -75,12 +83,14 @@ Real secrets and proprietary terms never reach the wire — the user keeps Claud
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Surface = Claude Code hook + MCP server, in-memory only | Pure runtime interception covers the actual leak path; file-output / batch CLI adds surface area without preventing the runtime leaks the user actually fears | — Pending |
-| Layered detection (regex → entropy → env-extract → user words → optional LLM) | Dirty-word lists alone are brittle and high-maintenance; layering pushes the maintenance burden onto detectors that need none and keeps the user list small | — Pending |
-| Both one-way and reversible redact modes, default one-way | Reversible mode is a power feature for path/name round-trip but increases blast radius if the map leaks; safe default is one-way | — Pending |
-| Node.js + TypeScript implementation | Official MCP TypeScript SDK is the most mature; Claude Code itself is Node, so users already have a runtime; npm distribution matches existing hook integration patterns | — Pending |
-| Adopt gitleaks rule pack rather than author regex from scratch | Years of community-maintained patterns; reinventing wastes effort and produces lower coverage | — Pending |
-| Reversible-mode map is session-scoped, in-memory by default | Limits blast radius if the artifact ever leaks; encrypted disk persistence is opt-in for crash recovery | — Pending |
+| Surface = Claude Code hook + MCP server, in-memory only | Pure runtime interception covers the actual leak path; file-output / batch CLI adds surface area without preventing the runtime leaks the user actually fears | ✓ Good — shipped v1.0, held through v2.0 |
+| Layered detection (regex → entropy → env-extract → user words → optional LLM) | Dirty-word lists alone are brittle; layering pushes maintenance onto detectors that need none | ✓ Good — L1–4 v1.0, L6a/L6b PII added v2.0; L5 still deferred |
+| Both one-way and reversible redact modes, default one-way | Reversible is a power feature but increases blast radius if the map leaks; safe default is one-way | — Pending — one-way shipped v1.0; reversible mode unshipped (next-milestone candidate) |
+| Node.js + TypeScript implementation | Official MCP TypeScript SDK is most mature; Claude Code is Node; npm distribution matches hook integration | ✓ Good — held; native-Node NER (transformers.js) avoided a Python sidecar in v2.0 |
+| Adopt gitleaks rule pack rather than author regex from scratch | Community-maintained patterns; reinventing wastes effort, lower coverage | ✓ Good — shipped v1.0 |
+| Reversible-mode map is session-scoped, in-memory by default | Limits blast radius if the artifact leaks; encrypted disk persistence opt-in | — Pending — reversible mode not yet built |
+| PII/NER off by default; secrets = deterministic guarantee, NER = best-effort recall aid | A security tool must not blur a probabilistic recall aid into a guarantee; false negatives can leak | ✓ Good — v2.0; enforced by copy-drift CI gate + leak-grep regression |
+| NER in long-lived MCP server only, never the hook | Keeps the `<100ms` hook hot path model-free; ML import boundary isolated | ✓ Good — v2.0; import-graph test + cold-start perf gate prove it |
 
 ## Evolution
 
@@ -100,4 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-01 — milestone v2.0 (Native-Node PII/NER Layer) started*
+*Last updated: 2026-06-03 — after v2.0 (Native-Node PII/NER Layer) milestone shipped*

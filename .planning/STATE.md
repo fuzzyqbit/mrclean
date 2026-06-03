@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Native-Node PII/NER Layer
-status: milestone_complete
+status: Awaiting next milestone
 stopped_at: Phase 7 context gathered
-last_updated: "2026-06-03T20:00:42.417Z"
-last_activity: 2026-06-03 -- Phase 07 planning complete
+last_updated: "2026-06-03T23:35:20.300Z"
+last_activity: 2026-06-03 — Milestone v2.0 completed and archived
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 12
-  completed_plans: 9
+  completed_plans: 12
   percent: 100
 ---
 
@@ -28,13 +28,10 @@ progress:
 
 ## Current Position
 
-Phase: 07
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-03
-
-> v1 milestone (Phases 1-3) shipped 2026-05-14. v2.0 adds the opt-in Native-Node PII/NER layer
-> as Phases 4-7. Phase numbering CONTINUES from v1 — it does not reset to 1.
+Phase: Milestone v2.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-03 — Milestone v2.0 completed and archived
 
 ## Performance Metrics
 
@@ -203,3 +200,21 @@ Last activity: 2026-06-03
 
 ---
 *Last updated: 2026-06-02 - v2.0 roadmap created (Phases 4-7 appended; phase numbering continued from v1)*
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
+
+## Deferred Items
+
+Items acknowledged and deferred at v2.0 milestone close on 2026-06-03 (pre-close artifact audit found 5 open):
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | stub-dead-keys-issue | unknown |
+| quick_task | 260601-0e1-fix-install-stub-dead-keys | missing |
+| quick_task | 260601-1sw-mrclean-init-command | missing |
+| quick_task | 260601-2fj-uninstall-surgical | missing |
+| verification_gap | (1 open verification/UAT item) | human_needed |
+
+These are v1-era (2026-06-01) install/init/uninstall tasks, not v2.0 PII work. Carried into the next milestone as Active candidates (see PROJECT.md). Surfaced in `/gsd:progress` and `/gsd:audit-uat`.
