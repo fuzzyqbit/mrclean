@@ -48,9 +48,21 @@ import {
   verifyModelIntegrity,
   downloadModel,
   sideLoadModel,
+  ModelIntegrityError,
 } from '../../src/model/model-cache.js'
 
-import { MODEL_CACHE_PATH } from '../../src/model/constants.js'
+import {
+  MODEL_CACHE_PATH,
+  MODEL_DOWNLOAD_URL,
+  PINNED_MODEL_SHA256,
+  MODEL_ID,
+  MODEL_DESCRIPTORS,
+  BERT_DESCRIPTOR,
+  PIIRANHA_MODEL_ID,
+  PIIRANHA_DOWNLOAD_URL,
+  PIIRANHA_PINNED_SHA256,
+  PIIRANHA_CACHE_PATH,
+} from '../../src/model/constants.js'
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -268,5 +280,122 @@ describe('model-cache', () => {
     // File should not be at cache path
     const result = await isModelCached(tmpHome)
     expect(result).toBe(false)
+  })
+
+  // -------------------------------------------------------------------------
+  // Task 1 (gap 06-04): per-model descriptor wiring + piiranha integrity
+  // -------------------------------------------------------------------------
+
+  describe('MODEL_DESCRIPTORS (per-model descriptor map)', () => {
+    it('exposes a frozen map keyed by MODEL_ID and PIIRANHA_MODEL_ID', () => {
+      expect(Object.isFrozen(MODEL_DESCRIPTORS)).toBe(true)
+      expect(Object.keys(MODEL_DESCRIPTORS).sort()).toEqual(
+        [MODEL_ID, PIIRANHA_MODEL_ID].sort(),
+      )
+    })
+
+    it('bert descriptor resolves to the bert url/hash/path', () => {
+      const d = MODEL_DESCRIPTORS[MODEL_ID]!
+      expect(d.id).toBe(MODEL_ID)
+      expect(d.downloadUrl).toBe(MODEL_DOWNLOAD_URL)
+      expect(d.pinnedSha256).toBe(PINNED_MODEL_SHA256)
+      expect(d.cachePath('/home/u')).toBe(MODEL_CACHE_PATH('/home/u'))
+      expect(BERT_DESCRIPTOR).toBe(d)
+    })
+
+    it('piiranha descriptor wires the previously-dead PIIRANHA_* constants', () => {
+      const d = MODEL_DESCRIPTORS[PIIRANHA_MODEL_ID]!
+      expect(d.id).toBe(PIIRANHA_MODEL_ID)
+      expect(d.downloadUrl).toBe(PIIRANHA_DOWNLOAD_URL)
+      expect(d.pinnedSha256).toBe(PIIRANHA_PINNED_SHA256)
+      expect(d.cachePath('/home/u')).toBe(PIIRANHA_CACHE_PATH('/home/u'))
+    })
+  })
+
+  describe('descriptor-parameterized model-cache (piiranha tier)', () => {
+    it('isModelCached(home, piiranhaDescriptor) checks the piiranha path, not the bert path', async () => {
+      const piiranha = MODEL_DESCRIPTORS[PIIRANHA_MODEL_ID]!
+      // Write only at the BERT path — piiranha lookup must still be false.
+      await writeAt(MODEL_CACHE_PATH(tmpHome), Buffer.from('bert'))
+      expect(await isModelCached(tmpHome, piiranha)).toBe(false)
+
+      // Now write at the piiranha path — lookup becomes true.
+      await writeAt(PIIRANHA_CACHE_PATH(tmpHome), Buffer.from('piiranha'))
+      expect(await isModelCached(tmpHome, piiranha)).toBe(true)
+    })
+
+    it('verifyModelIntegrity streams the piiranha path and compares to the piiranha hash', async () => {
+      const piiranha = MODEL_DESCRIPTORS[PIIRANHA_MODEL_ID]!
+      const [buf, sha256] = makeFixtureFile()
+      await writeAt(PIIRANHA_CACHE_PATH(tmpHome), buf)
+
+      // expectedHash override (fixture hash) + descriptor selects the piiranha PATH.
+      expect(await verifyModelIntegrity(tmpHome, sha256, piiranha)).toBe(true)
+      expect(await verifyModelIntegrity(tmpHome, 'a'.repeat(64), piiranha)).toBe(false)
+    })
+
+    it('verifyModelIntegrity defaults expectedHash to the descriptor pinnedSha256', async () => {
+      // A fixture file whose bytes are arbitrary will not match the real piiranha pin,
+      // so the default-hash path must return false (proves it used the piiranha pin, not bert).
+      const piiranha = MODEL_DESCRIPTORS[PIIRANHA_MODEL_ID]!
+      await writeAt(PIIRANHA_CACHE_PATH(tmpHome), Buffer.from('not-the-real-piiranha-bytes'))
+      expect(await verifyModelIntegrity(tmpHome, undefined, piiranha)).toBe(false)
+    })
+
+    it('downloadModel(home, { ...descriptor }) fetches the piiranha URL and verifies the piiranha hash', async () => {
+      const piiranha = MODEL_DESCRIPTORS[PIIRANHA_MODEL_ID]!
+      const [buf, sha256] = makeFixtureFile()
+      let fetchedUrl = ''
+      const mockFetch = vi.fn().mockImplementation((url: string) => {
+        fetchedUrl = url
+        return Promise.resolve({
+          ok: true,
+          body: {
+            [Symbol.asyncIterator]: async function* () {
+              yield buf
+            },
+          },
+          headers: { get: () => String(buf.length) },
+        } as unknown as Response)
+      })
+
+      await downloadModel(tmpHome, { fetchImpl: mockFetch, expectedHash: sha256 }, piiranha)
+
+      expect(fetchedUrl).toBe(PIIRANHA_DOWNLOAD_URL)
+      const fileStat = await stat(PIIRANHA_CACHE_PATH(tmpHome))
+      expect(fileStat.isFile()).toBe(true)
+      // bert path untouched
+      expect(await isModelCached(tmpHome)).toBe(false)
+    })
+
+    it('downloadModel throws ModelIntegrityError and unlinks the temp file on piiranha hash mismatch', async () => {
+      const piiranha = MODEL_DESCRIPTORS[PIIRANHA_MODEL_ID]!
+      const [buf] = makeFixtureFile()
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        body: {
+          [Symbol.asyncIterator]: async function* () {
+            yield buf
+          },
+        },
+        headers: { get: () => String(buf.length) },
+      } as unknown as Response)
+
+      await expect(
+        downloadModel(tmpHome, { fetchImpl: mockFetch, expectedHash: 'd'.repeat(64) }, piiranha),
+      ).rejects.toBeInstanceOf(ModelIntegrityError)
+
+      // No file at piiranha cache path, no leftover .partial temp.
+      expect(await isModelCached(tmpHome, piiranha)).toBe(false)
+      const tempPath = PIIRANHA_CACHE_PATH(tmpHome) + '.partial'
+      await expect(stat(tempPath)).rejects.toThrow()
+    })
+
+    it('back-compat: no-descriptor calls default to the bert descriptor (byte-identical)', async () => {
+      const [buf, sha256] = makeFixtureFile()
+      await writeAt(MODEL_CACHE_PATH(tmpHome), buf)
+      expect(await isModelCached(tmpHome)).toBe(true)
+      expect(await verifyModelIntegrity(tmpHome, sha256)).toBe(true)
+    })
   })
 })
