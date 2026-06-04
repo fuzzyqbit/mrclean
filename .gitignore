@@ -12,8 +12,6 @@ dist/detect-layer1.*
 .DS_Store
 .env*
 *.tsbuildinfo
-# mrclean project-local config (user-specific, not committed)
-.mrclean/
 
 # >>> mrclean managed entries — do not edit manually >>>
 .mrclean/

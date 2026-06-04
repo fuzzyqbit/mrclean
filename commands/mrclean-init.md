@@ -1,7 +1,7 @@
 ---
 description: Initialize mrclean in this project — create .mrclean/ with a config.toml stub and a words.txt seed
 argument-hint: (no arguments)
-allowed-tools: Bash(npx mrclean init), Bash(mrclean init)
+allowed-tools: Bash(npx mrclean-claude init), Bash(mrclean init)
 disable-model-invocation: true
 ---
 
@@ -10,11 +10,15 @@ disable-model-invocation: true
 Scaffold the project-local mrclean environment by running the CLI in the project root:
 
 ```
-npx mrclean init
+npx mrclean-claude init
 ```
 
+(The published npm package is `mrclean-claude`; its bin is `mrclean`. Use
+`npx mrclean-claude init` — a bare `npx mrclean` resolves to an unrelated package.
+If installed globally via `npm i -g mrclean-claude`, `mrclean init` also works.)
+
 This is project-only — it does **not** touch global `~/.claude` wiring (that is what
-`npx mrclean install` does). It creates, without clobbering anything that already exists:
+`npx mrclean-claude install` does). It creates, without clobbering anything that already exists:
 
 - `.mrclean/config.toml` — allowlist / entropy / per-rule overrides (commented stub)
 - `.mrclean/words.txt` — your dirty-word list (commented seed)
