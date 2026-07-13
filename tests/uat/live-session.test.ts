@@ -36,6 +36,8 @@ import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { buildHookCommand } from '../../src/install/settings.js'
+
 const UAT_ENABLED = process.env.MRCLEAN_UAT === '1'
 
 const REPO_ROOT = process.cwd()
@@ -99,12 +101,11 @@ let mcpConfigPath: string
 
 /** Build a settings JSON with the four hook entries exactly as install writes them. */
 function buildHookSettings(binPath: string): object {
-  const hookCommand = {
-    type: 'command',
-    command: process.execPath,
-    args: [binPath, 'hook'],
-    timeout: 10,
-  }
+  // Single source of truth for the hook command shape — the shipped
+  // fail-closed wrapper (buildHookCommand). The settingsBrokenPath variant
+  // (missing bin) therefore exercises the exact spawn-failure path: on POSIX
+  // the wrapper exits 2, so UAT-2b's canary-absent assertions are achievable.
+  const hookCommand = buildHookCommand(process.execPath, binPath)
   return {
     hooks: {
       SessionStart: [{ matcher: 'startup', hooks: [hookCommand] }],

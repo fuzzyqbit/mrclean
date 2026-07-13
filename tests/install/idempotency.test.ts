@@ -103,9 +103,13 @@ describe('runInstall idempotency', () => {
     const data = JSON.parse(await readFile(settingsPath, 'utf8'))
 
     const preToolEntry = data.hooks.PreToolUse.find((e: Record<string, unknown>) => e._mrclean)
-    const firstArg = (preToolEntry.hooks as Array<{ args: string[] }>)[0].args[0]
+    // Under the fail-closed wrapper, args[0] is '-c'; the mrclean bin is the
+    // last positional param (args tail). Legacy/win32 plain-exec would put it
+    // at args[0] — reading the tail is correct for the wrapper shape.
+    const args = (preToolEntry.hooks as Array<{ args: string[] }>)[0].args
+    const binArg = args[args.length - 1]
 
-    expect(firstArg.startsWith('/')).toBe(true)
-    expect(firstArg.endsWith('dist/cli.js')).toBe(true)
+    expect(binArg.startsWith('/')).toBe(true)
+    expect(binArg.endsWith('dist/cli.js')).toBe(true)
   })
 })

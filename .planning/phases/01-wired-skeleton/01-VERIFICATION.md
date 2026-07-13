@@ -6,11 +6,11 @@ score: 5/5 must-haves verified
 overrides_applied: 0
 human_verification:
   - test: "Start a real claude session after mrclean install and observe banner"
-    expected: "First prompt response context includes 'mrclean active v0.1.0 (no-op mode — detection not yet enabled)' injected via additionalContext. '/mcp' lists 'mrclean' as connected."
-    why_human: "Cannot automate without a live Claude Code session. Hook fires against real Claude Code runtime. UserPromptSubmit additionalContext injection is session-context, not stdout — only visible inside a real claude session."
-  - test: "chmod -x the installed mrclean hook bin, then attempt a tool call in a live claude session"
-    expected: "Claude Code blocks the tool call with a visible error referencing the hook failure. No silent pass-through."
-    why_human: "SC4 requires live Claude Code to exercise the hook enforcement path. The mrclean side (exit 2 + structured stderr) is verified programmatically — but whether Claude Code actually blocks on the event requires a live session."
+    expected: "First prompt response context includes the long-form 'mrclean active vN.N.N (rules: N, allowlist: N, mode: active)' banner injected via additionalContext (the Phase 1 short-form v0.1.0 no-op string was replaced by the long form in Phase 2 / HOOK-07). '/mcp' lists 'mrclean' as connected. NOW AUTOMATED by tests/uat/live-session.test.ts UAT-1."
+    why_human: "Cannot automate without a live Claude Code session. Hook fires against real Claude Code runtime. UserPromptSubmit additionalContext injection is session-context, not stdout — only visible inside a real claude session. Automated headlessly via `claude -p` in UAT-1 (opt-in, MRCLEAN_UAT=1)."
+  - test: "Delete or rename the installed mrclean hook bin, then attempt a tool call in a live claude session"
+    expected: "Claude Code blocks the tool call — no silent pass-through. Post-fix (plan 01-06) the fail-closed POSIX /bin/sh wrapper converts the spawn failure (missing bin) into exit 2, which Claude Code blocks on. NOW AUTOMATED by tests/uat/live-session.test.ts UAT-2b."
+    why_human: "SC4 requires live Claude Code to exercise the hook enforcement path. The mrclean side (fail-closed wrapper → exit 2 on spawn failure) is verified deterministically via spawnSync in tests/install/settings.test.ts; whether Claude Code actually blocks on the event requires a live session. Automated headlessly via UAT-2b. (The original 'chmod -x the bin' wording was untestable — node and /bin/sh ignore the cli.js exec bit; delete/rename is the honest equivalent.)"
 ---
 
 # Phase 1: Wired Skeleton Verification Report
@@ -155,17 +155,21 @@ No hardcoded MCP protocolVersion strings found. No `console.log` in `src/hook/`.
 
 **Test:** After running `npx mrclean install` from a project directory, start a new Claude Code session (`claude`). Submit any prompt. Observe the session context.
 
-**Expected:** The session context (visible to Claude as system context or the operator via `additionalContext`) includes the string `mrclean active v0.1.0 (no-op mode — detection not yet enabled)`. In the `/mcp` command output, `mrclean` appears as a connected server.
+**Expected:** The session context (visible to Claude as system context or the operator via `additionalContext`) includes the long-form banner `mrclean active vN.N.N (rules: N, allowlist: N, mode: active)`. (The Phase 1 short-form string `mrclean active v0.1.0 (no-op mode — detection not yet enabled)` was superseded by the long form in Phase 2 / HOOK-07.) In the `/mcp` command output, `mrclean` appears as a connected server.
 
-**Why human:** Cannot automate without a live Claude Code session. The `additionalContext` field in the hook output is injected by Claude Code into the session context — this injection only happens in the real runtime, not in programmatic binary tests.
+**Now automated:** `tests/uat/live-session.test.ts` UAT-1 drives a real `claude -p` headless session (opt-in, `MRCLEAN_UAT=1`), injects the banner via `hookSpecificOutput.additionalContext`, asserts the model quotes the long-form banner back, and asserts `mrclean` appears as `connected` in the init `mcp_servers` list.
 
-#### 2. Live Claude Code session — SC4 fail-closed when hook bin corrupted
+**Why human:** Cannot automate without a live Claude Code session. The `additionalContext` field in the hook output is injected by Claude Code into the session context — this injection only happens in the real runtime, not in programmatic binary tests. UAT-1 covers this headlessly when the operator opts in.
 
-**Test:** After `npx mrclean install`, run `chmod -x $(which mrclean)` (or `chmod -x` the path recorded in `~/.claude/settings.json`). Start a Claude Code session and issue any tool call (e.g., ask Claude to run `ls`).
+#### 2. Live Claude Code session — SC4 fail-closed when hook bin is missing
 
-**Expected:** Claude Code blocks the tool call. The transcript shows a hook error message referencing mrclean. The tool call does NOT silently pass through.
+**Test:** After `npx mrclean install`, delete or rename the mrclean bin recorded in `~/.claude/settings.json` (e.g., `mv "$(...dist/cli.js path...)" /tmp`). Start a Claude Code session and issue any tool call (e.g., ask Claude to run `ls`).
 
-**Why human:** SC4 relies on Claude Code's enforcement that a hook failure blocks the tool call. The mrclean side is verified programmatically (hook exits 2 with structured stderr on crash). Whether Claude Code actually blocks — vs. degrading gracefully — requires live session verification.
+**Expected:** Claude Code blocks the tool call — the tool call does NOT silently pass through. Post-fix (plan 01-06), the installed POSIX hook is a fail-closed `/bin/sh` wrapper (`"$1" "$2" hook || exit 2`); when the bin is gone, `node <missing> hook` fails and `|| exit 2` remaps it to exit 2, which Claude Code blocks on. (The original wording `chmod -x` the bin is untestable — both `node` and `/bin/sh` ignore the cli.js exec bit, so exec-bit removal does not break the hook; deleting/renaming the bin is the honest spawn-failure equivalent.)
+
+**Now automated:** `tests/uat/live-session.test.ts` UAT-2b points the hook settings at a nonexistent bin (via the shared `buildHookCommand`) and asserts the canary file name never reaches the model. The exit-code remap itself is proven deterministically (no live session needed) by the `spawnSync` remap test in `tests/install/settings.test.ts` (missing bin → 2, pass → 0, crash → 2, plus stdout passthrough).
+
+**Why human:** SC4 relies on Claude Code's enforcement that a hook exit 2 blocks the tool call. The mrclean side (fail-closed wrapper → exit 2 on spawn failure) is now verified deterministically; whether Claude Code actually blocks — vs. degrading gracefully — requires live session verification, covered headlessly by UAT-2b when the operator opts in.
 
 ---
 
