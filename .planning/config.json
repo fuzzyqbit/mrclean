@@ -1,5 +1,5 @@
 {
-  "model_profile": "balanced",
+  "model_profile": "inherit",
   "commit_docs": true,
   "parallelization": true,
   "search_gitignored": false,
@@ -49,5 +49,15 @@
   },
   "graphify": {
     "enabled": true
+  },
+  "model_overrides": {
+    "gsd-executor": "fable",
+    "gsd-verifier": "fable",
+    "gsd-planner": "fable",
+    "gsd-phase-researcher": "fable",
+    "gsd-plan-checker": "fable",
+    "gsd-code-reviewer": "fable",
+    "gsd-code-fixer": "fable",
+    "gsd-debugger": "fable"
   }
 }
