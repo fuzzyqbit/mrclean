@@ -81,6 +81,9 @@ export default defineConfig({
             // belong to both projects, so exclude it from the unit glob.
             'tests/audit/pii-canary-leak.test.ts',
             'tests/perf/**',
+            // Live-session UAT tests spawn a real `claude` CLI (authed, token
+            // cost) — they belong to the opt-in uat project only.
+            'tests/uat/**',
           ],
           // No globalSetup — unit tests must NOT trigger tsup --clean
         },
@@ -112,6 +115,22 @@ export default defineConfig({
             'tests/audit/pii-canary-leak.test.ts',
             'tests/perf/**/*.test.ts',
           ],
+        },
+      },
+
+      // -------------------------------------------------------------------------
+      // uat — live-session tests that drive a real `claude` CLI headlessly.
+      //       Opt-in only: every test self-skips unless MRCLEAN_UAT=1 because a
+      //       run requires an authenticated `claude` binary and spends API
+      //       tokens. Run via `npm run test:uat`. Never part of CI.
+      // -------------------------------------------------------------------------
+      {
+        test: {
+          name: 'uat',
+          environment: 'node',
+          testTimeout: 180_000,
+          fileParallelism: false,
+          include: ['tests/uat/**/*.test.ts'],
         },
       },
     ],
