@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Native-Node PII/NER Layer
-status: executing
+status: milestone_complete
 stopped_at: Phase 01 gap-closure complete (01-07 — SC4/HOOK-05 UAT resolved)
 last_updated: "2026-07-13T23:25:08.608Z"
 last_activity: 2026-07-13
@@ -22,15 +22,15 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** Phase 01 — wired-skeleton
+**Current Focus:** All phases complete — Phase 01 gap-closure (SC4/HOOK-05) resolved 2026-07-13
 **Project Mode:** mvp (vertical slices)
 **Granularity:** coarse (3-5 phases)
 
 ## Current Position
 
-Phase: 01 (wired-skeleton) — gap-closure COMPLETE
-Plan: 8 of 8 (01-07 done — SC4/HOOK-05 UAT gap resolved via live confirmation)
-Status: Phase 01 UAT fully green (3/3); HOOK-05 marked complete
+Phase: All 7 phases complete (v1.0 + v2.0; v2.0 milestone archived)
+Plan: Phase 01 gap-closure 01-06/01-07 complete
+Status: No phase pending
 Last activity: 2026-07-13
 
 ## Performance Metrics

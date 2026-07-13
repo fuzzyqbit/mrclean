@@ -12,6 +12,8 @@ Real secrets and proprietary terms never reach the wire — the user keeps Claud
 
 **Shipped:** v2.0 Native-Node PII/NER Layer (2026-06-03) — atop v1.0 MVP (2026-05-14).
 
+**Hardened (2026-07-13):** Phase 01 gap-closure — SC4/HOOK-05 fail-open hole closed. The installer now writes a fail-closed POSIX `/bin/sh` wrapper (`"$1" "$2" hook || exit 2`), so a missing/renamed mrclean bin blocks tool calls instead of silently disabling protection. Confirmed in a live headless Claude session (UAT-2b: canary never leaked). win32 remains a documented fail-open known-gap.
+
 mrclean now ships an opt-in, native-Node PII/NER detection layer with **zero data egress and no Python**:
 - Regex structured-PII (email / US SSN / credit card / phone / IP) in the existing `<100ms` hot-path budget, no model required.
 - Opt-in in-process NER (PERSON/LOC, advisory) as a warm singleton in the long-lived MCP server **only** — never the hook; fail-closed-for-NER; model provenance stamped in every PII audit entry.
@@ -110,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-03 — after v2.0 (Native-Node PII/NER Layer) milestone shipped*
+*Last updated: 2026-07-13 — after Phase 01 gap-closure (SC4/HOOK-05 fail-closed wrapper + live UAT)*
