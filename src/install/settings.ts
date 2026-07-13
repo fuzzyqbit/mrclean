@@ -40,6 +40,70 @@ interface HookEntry {
 }
 
 /**
+ * Build the fail-closed hook command Claude Code spawns for every event.
+ *
+ * A `type: "command"` hook runs in **exec form when `args` is present** — Claude
+ * Code resolves `command` as an executable and spawns it directly with `args`,
+ * no shell. Claude Code only BLOCKS a tool call when the hook exits 2; every
+ * other non-zero exit is treated as a non-blocking error by platform design.
+ *
+ * The old shape (`command: node, args: [bin, 'hook']`) therefore fails OPEN when
+ * the bin is deleted/renamed: `node <missing> hook` exits 1 (module-not-found)
+ * or ENOENT, so mrclean never gets to exit 2 and the tool call silently proceeds
+ * (SC4 / HOOK-05 hole). See 01-06 design_notes.
+ *
+ * POSIX (darwin/linux) — primary, deterministically tested:
+ *   command = `/bin/sh`
+ *   args    = `['-c', '"$1" "$2" hook || exit 2', 'mrclean-hook', nodePath, binPath]`
+ *   `$0` = `mrclean-hook` label, `$1` = nodePath, `$2` = binPath. sh QUOTES the
+ *   positional params — no string interpolation of paths, so no shell injection
+ *   and spaces/metacharacters are handled. `node <bin> hook` inherits sh's
+ *   stdin/stdout/stderr (the hook payload still flows in on stdin; the hook's
+ *   stdout JSON — banner / permissionDecision — flows straight back out).
+ *   `|| exit 2` fires on ANY non-zero inner status (1, 2, 127, signal death) →
+ *   sh exits 2 (BLOCK). Inner exit 0 short-circuits `||` → sh exits 0 (PASS).
+ *   The wrapper lives in the OS shell (not the deletable `dist/`), so it survives
+ *   bin deletion and fails CLOSED.
+ *
+ * win32 — KNOWN GAP (no wrapper this plan): keeps the plain exec form
+ *   (`command: nodePath, args: [binPath, 'hook']`). The cmd.exe nested-quote
+ *   wrapper is fragile/untested — a single mis-quote would false-positive BLOCK
+ *   every tool call. win32 therefore stays fail-OPEN on spawn failure until a
+ *   tested wrapper ships (documented known-gap; the constraints deprioritize
+ *   Windows). No shell wrapper → no shell-injection surface.
+ *
+ * @param nodePath       - Absolute path to the Node.js binary (process.execPath)
+ * @param mrcleanBinPath - Absolute path to dist/cli.js
+ * @param platform       - Target platform (defaults to process.platform)
+ */
+export function buildHookCommand(
+  nodePath: string,
+  mrcleanBinPath: string,
+  platform: NodeJS.Platform = process.platform,
+): HookCommand {
+  if (platform === 'win32') {
+    // KNOWN GAP: plain exec form, no shell wrapper — stays fail-OPEN on a
+    // missing bin until a tested cmd.exe wrapper ships.
+    return {
+      type: 'command',
+      command: nodePath,
+      args: [mrcleanBinPath, 'hook'],
+      timeout: 10,
+    }
+  }
+
+  // POSIX: fail-closed /bin/sh wrapper. `"$1" "$2"` are shell-quoted (no
+  // interpolation → injection-safe, space-safe); `|| exit 2` remaps ANY inner
+  // failure to a BLOCK.
+  return {
+    type: 'command',
+    command: '/bin/sh',
+    args: ['-c', '"$1" "$2" hook || exit 2', 'mrclean-hook', nodePath, mrcleanBinPath],
+    timeout: 10,
+  }
+}
+
+/**
  * Write mrclean hook entries into settings.json for all four events.
  *
  * Idempotent: any existing `_mrclean: true` entries are replaced, not duplicated.
@@ -73,13 +137,10 @@ export async function writeHookEntries(
     // Remove any existing mrclean entries (idempotency)
     hooks[event] = hooks[event].filter((entry) => !isMrcleanEntry(entry))
 
-    // Build the new mrclean entry
-    const hookCmd: HookCommand = {
-      type: 'command',
-      command: nodePath,
-      args: [mrcleanBinPath, 'hook'],
-      timeout: 10,
-    }
+    // Build the new mrclean entry via the fail-closed wrapper (HOOK-05).
+    // The `_mrclean: true` marker stays on the OUTER entry (below), so the
+    // wrapper shape change does not affect idempotent replace/remove.
+    const hookCmd: HookCommand = buildHookCommand(nodePath, mrcleanBinPath)
 
     const matcher = HOOK_MATCHERS[event]
     const entry: HookEntry = matcher !== undefined
