@@ -36,7 +36,7 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
-| 1. Wired Skeleton | v1.0 | ✓ | Complete | 2026-05-14 |
+| 1. Wired Skeleton | v1.0 | 8/8 | Complete   | 2026-07-13 |
 | 2. Live Redaction (L1–4 + One-Way) | v1.0 | ✓ | Complete | 2026-05-14 |
 | 3. MCP Tools, Perf Gate, Release | v1.0 | 6/6 | Complete | 2026-05-14 |
 | 4. PII Contracts & Architecture | v2.0 | 3/3 | Complete | 2026-06-03 |

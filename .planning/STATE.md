@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Native-Node PII/NER Layer
 status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-07-13T22:55:47.657Z"
+stopped_at: Phase 01 gap-closure complete (01-07 — SC4/HOOK-05 UAT resolved)
+last_updated: "2026-07-13T23:25:08.608Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 33
-  completed_plans: 31
-  percent: 94
+  completed_plans: 33
+  percent: 100
 ---
 
 # State: mrclean
@@ -28,9 +28,9 @@ progress:
 
 ## Current Position
 
-Phase: 01 (wired-skeleton) — EXECUTING
-Plan: 2 of 8
-Status: Ready to execute
+Phase: 01 (wired-skeleton) — gap-closure COMPLETE
+Plan: 8 of 8 (01-07 done — SC4/HOOK-05 UAT gap resolved via live confirmation)
+Status: Phase 01 UAT fully green (3/3); HOOK-05 marked complete
 Last activity: 2026-07-13
 
 ## Performance Metrics
@@ -44,6 +44,7 @@ Last activity: 2026-07-13
 | Line coverage on `src/` | ≥ 80% | 84.01% lines / 82.89% stmts / 82.12% funcs / 73.22% branches (03-00 baseline) |
 | Regex-PII hot-path latency (p95) | < 100 / < 200 ms | TBD (Phase 5 — must stay within v1 budget with L6a enabled) |
 | Phase 01 P06 | 10min | 3 tasks | 9 files |
+| Phase 01 P07 | 4min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -197,9 +198,9 @@ Last activity: 2026-07-13
 
 ## Session Continuity
 
-**Last command:** `/gsd-new-project` → roadmapper (v2.0 milestone roadmap)
-**Last action:** Created v2.0 roadmap — appended Phases 4-7 (Native-Node PII/NER Layer) to ROADMAP.md after v1 Phases 1-3; updated REQUIREMENTS.md Traceability with 14 v2.0 REQ→phase mappings; updated STATE.md totals/position.
-**Stopped at:** Phase 7 context gathered
+**Last command:** `/gsd-execute-phase 01` → executor (gap-closure plan 01-07)
+**Last action:** Executed 01-07 — live headless claude-haiku-4-5 UAT confirmed the 01-06 fail-closed hook wrapper blocks tool calls when the mrclean bin is missing (canary absent). Flipped UAT-2b green, marked 01-UAT.md gap resolved (frontmatter + Gaps entry), and marked HOOK-05 complete in v2.0-REQUIREMENTS.md traceability.
+**Stopped at:** Phase 01 gap-closure complete (01-07)
 **Next action:** `/gsd-plan-phase 4` to decompose Phase 4 (PII Contracts & Architecture Foundations) into executable plans.
 
 ---
