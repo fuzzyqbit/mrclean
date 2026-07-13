@@ -50,6 +50,51 @@ const REQUIRED_EVENTS = [
 ] as const
 
 // ---------------------------------------------------------------------------
+// Hook-command shape extraction (wrapper-aware — 01-06)
+// ---------------------------------------------------------------------------
+
+/**
+ * Pull the node + mrclean-bin paths out of a registered hook command,
+ * tolerating every shape the installer has ever written:
+ *
+ *   - POSIX fail-closed wrapper (01-06+):
+ *       command = '/bin/sh'
+ *       args    = ['-c', '"$1" "$2" hook || exit 2', 'mrclean-hook', node, bin]
+ *     → node = args[len-2], bin = args[len-1]
+ *
+ *   - legacy plain exec (pre-01-06) AND win32 known-gap (01-06):
+ *       command = node
+ *       args    = [bin, 'hook']
+ *     → node = command, bin = args[0]
+ *
+ * Discriminator: the plain-exec shapes put the mrclean `.js` bin at args[0];
+ * the wrapper puts '-c' there. So `args[0].endsWith('.js')` selects the legacy /
+ * win32 path; anything else reads the wrapper tail.
+ */
+function extractHookNodeAndBin(
+  command: string | undefined,
+  args: string[] | undefined,
+): { nodePath?: string; binPath?: string } {
+  if (!Array.isArray(args) || args.length === 0) return {}
+
+  // Legacy plain-exec shape (and the win32 known-gap): bin is args[0].
+  if (typeof args[0] === 'string' && args[0].endsWith('.js')) {
+    return { nodePath: command, binPath: args[0] }
+  }
+
+  // Fail-closed wrapper shape: node + bin are the last two positional params.
+  if (args.length >= 2) {
+    const binPath = args[args.length - 1]
+    const nodePath = args[args.length - 2]
+    if (typeof binPath === 'string' && typeof nodePath === 'string') {
+      return { nodePath, binPath }
+    }
+  }
+
+  return {}
+}
+
+// ---------------------------------------------------------------------------
 // checkHooksRegistered
 // ---------------------------------------------------------------------------
 
@@ -174,10 +219,12 @@ export async function collectRegisteredBinPaths(
         const hookCmds = (entry as Record<string, unknown>).hooks as Array<Record<string, unknown>>
         if (!Array.isArray(hookCmds)) continue
         for (const cmd of hookCmds) {
+          const command = cmd.command as string | undefined
           const args = cmd.args as string[] | undefined
-          // args[0] is the mrclean bin path (process.execPath is in `command`)
-          if (Array.isArray(args) && typeof args[0] === 'string') {
-            paths.add(args[0])
+          // Read the mrclean bin from the wrapper tail (or legacy/win32 shape).
+          const { binPath } = extractHookNodeAndBin(command, args)
+          if (typeof binPath === 'string') {
+            paths.add(binPath)
           }
         }
       }
@@ -233,8 +280,10 @@ export async function extractRegisteredPaths(
         for (const cmd of hookCmds) {
           const command = cmd.command as string | undefined
           const args = cmd.args as string[] | undefined
-          if (typeof command === 'string') nodePath = command
-          if (Array.isArray(args) && typeof args[0] === 'string') hookBinPath = args[0]
+          // Read node + bin from the wrapper tail (or legacy/win32 shape).
+          const extracted = extractHookNodeAndBin(command, args)
+          if (typeof extracted.nodePath === 'string') nodePath = extracted.nodePath
+          if (typeof extracted.binPath === 'string') hookBinPath = extracted.binPath
           if (hookBinPath) break outer
         }
       }
@@ -281,7 +330,11 @@ export async function checkBinsExecutable(
       return {
         name: 'bins',
         status: 'FAIL',
-        detail: `registered binary is not executable: ${binPath}`,
+        // Post 01-06 the POSIX hook is a fail-closed /bin/sh wrapper: a missing
+        // or non-executable mrclean bin makes the wrapper BLOCK every tool call
+        // (exit 2) until restored — not a silent fail-open. Point the operator
+        // at the repair path.
+        detail: `registered mrclean binary is missing or not executable: ${binPath} — on POSIX the fail-closed hook wrapper now BLOCKS every tool call (exit 2) until restored; run \`mrclean install\` to repair`,
         exitCodeOnFail: 3,
       }
     }

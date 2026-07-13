@@ -14,6 +14,7 @@ import {
   checkBinsExecutable,
   checkConfigLoad,
 } from '../../src/doctor/checks.js'
+import { buildHookCommand } from '../../src/install/settings.js'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile, rm, chmod } from 'node:fs/promises'
@@ -34,12 +35,9 @@ async function makeTmpDir(): Promise<string> {
 
 function buildSettings(events: string[]): Record<string, unknown> {
   const hooks: Record<string, unknown[]> = {}
-  const hookCmd = {
-    type: 'command',
-    command: process.execPath,
-    args: [DIST_CLI, 'hook'],
-    timeout: 10,
-  }
+  // Use the shipped wrapper builder so fixtures stay in lock-step with the
+  // installer's actual output (fail-closed /bin/sh wrapper on POSIX).
+  const hookCmd = buildHookCommand(process.execPath, DIST_CLI)
   for (const event of events) {
     if (event === 'UserPromptSubmit') {
       hooks[event] = [{ _mrclean: true, hooks: [hookCmd] }]
@@ -195,13 +193,9 @@ describe('checkBinsExecutable', () => {
     const settingsPath = join(tmp, 'settings.json')
     const claudeJsonPath = join(tmp, '.claude.json')
 
-    // Build settings pointing to the non-executable fake bin
-    const hookCmd = {
-      type: 'command',
-      command: process.execPath,
-      args: [fakeBin, 'hook'],
-      timeout: 10,
-    }
+    // Build settings via the shipped wrapper, pointing at the non-executable
+    // fake bin — doctor must extract the bin from the wrapper tail.
+    const hookCmd = buildHookCommand(process.execPath, fakeBin)
     const settings = {
       hooks: {
         SessionStart: [{ _mrclean: true, matcher: 'startup', hooks: [hookCmd] }],
@@ -218,6 +212,10 @@ describe('checkBinsExecutable', () => {
     expect(result.status).toBe('FAIL')
     expect(result.exitCodeOnFail).toBe(3)
     expect(result.detail).toContain(fakeBin)
+    // New fail-closed messaging: doctor must state the block-until-reinstall
+    // consequence of a missing/non-executable bin (POSIX wrapper).
+    expect(result.detail).toMatch(/block|exit 2|fail-closed/i)
+    expect(result.detail).toMatch(/mrclean install/i)
 
     await rm(tmp, { recursive: true, force: true })
   })
