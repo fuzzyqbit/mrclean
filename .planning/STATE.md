@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Native-Node PII/NER Layer
-status: Awaiting next milestone
+status: executing
 stopped_at: Phase 7 context gathered
-last_updated: "2026-06-03T23:35:20.300Z"
-last_activity: 2026-06-03 — Milestone v2.0 completed and archived
+last_updated: "2026-07-13T22:55:47.657Z"
+last_activity: 2026-07-13
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 7
+  completed_phases: 6
+  total_plans: 33
+  completed_plans: 31
+  percent: 94
 ---
 
 # State: mrclean
@@ -22,16 +22,16 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** Phase 06 — ner-inference-l6b-mcp-wiring
+**Current Focus:** Phase 01 — wired-skeleton
 **Project Mode:** mvp (vertical slices)
 **Granularity:** coarse (3-5 phases)
 
 ## Current Position
 
-Phase: Milestone v2.0 complete
-Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-03 — Milestone v2.0 completed and archived
+Phase: 01 (wired-skeleton) — EXECUTING
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-07-13
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Last activity: 2026-06-03 — Milestone v2.0 completed and archived
 | False-positive rate on negative fixture corpus | 0% | 0% (0/10 — 02-06 fixture corpus) |
 | Line coverage on `src/` | ≥ 80% | 84.01% lines / 82.89% stmts / 82.12% funcs / 73.22% branches (03-00 baseline) |
 | Regex-PII hot-path latency (p95) | < 100 / < 200 ms | TBD (Phase 5 — must stay within v1 budget with L6a enabled) |
+| Phase 01 P06 | 10min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,9 @@ Last activity: 2026-06-03 — Milestone v2.0 completed and archived
 - **Audit schema extended with `engine`/`model_rev`/`quant`/`backend`; no-raw-value rule extended to PII** — pins reproducibility (NER is non-deterministic across model rev/quant/backend) and prevents `audit.jsonl` becoming a plaintext PII DB (Phase 4 schema + Phase 7 leak-grep).
 - **Hard scope fence (Phase 4, enforced every transition)**: one default model (`Xenova/bert-base-NER` int8) + optional piiranha tier; PER/ORG/LOC + listed regex-PII only. NO cloud PII APIs, NO model-facing unredact tool, NO Presidio Python sidecar in default distribution. Don't drift into "a worse Presidio in Node."
 - **PII placeholder reversibility deferred** — one-way PII redaction only this milestone; ties to the REVMODE backlog.
+- [Phase ?]: Phase 01 gap-closure (01-06): the installer writes a fail-closed POSIX /bin/sh hook wrapper so ANY inner failure of node<bin>hook (missing bin, ENOENT, exit 1, module-not-found, signal) remaps to exit 2 — closes the SC4/HOOK-05 fail-open hole where a deleted bin silently disabled protection. Proven deterministically via spawnSync (no live Claude needed).
+- [Phase ?]: win32 hook stays plain-exec form (documented known-gap, fail-OPEN on spawn failure) — the cmd.exe nested-quote wrapper is fragile/untested; a mis-quote would false-BLOCK every tool call, so no wrapper ships for win32 this plan.
+- [Phase ?]: Doctor extracts node+bin from the wrapper arg tail (args[len-2]/args[len-1]) with a legacy/win32 fallback keyed on args[0] ending in '.js'; bins-missing FAIL now reports the fail-closed block-until-reinstall consequence (exit 2).
 
 ### Phase → Requirement Mapping (v2.0)
 
