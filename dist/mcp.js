@@ -99,6 +99,7 @@ var init_package = __esm({
         "dev:cli": "tsx src/cli.ts",
         "dev:mcp": "tsx src/mcp.ts",
         test: "vitest run",
+        "test:uat": "MRCLEAN_UAT=1 vitest run --project=uat",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
         typecheck: "tsc --noEmit",

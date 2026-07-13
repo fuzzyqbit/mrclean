@@ -3399,6 +3399,7 @@ var init_package = __esm({
         "dev:cli": "tsx src/cli.ts",
         "dev:mcp": "tsx src/mcp.ts",
         test: "vitest run",
+        "test:uat": "MRCLEAN_UAT=1 vitest run --project=uat",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
         typecheck: "tsc --noEmit",
@@ -3573,6 +3574,22 @@ var init_markers = __esm({
 
 // src/install/settings.ts
 import { access, constants } from "fs/promises";
+function buildHookCommand(nodePath, mrcleanBinPath, platform = process.platform) {
+  if (platform === "win32") {
+    return {
+      type: "command",
+      command: nodePath,
+      args: [mrcleanBinPath, "hook"],
+      timeout: 10
+    };
+  }
+  return {
+    type: "command",
+    command: "/bin/sh",
+    args: ["-c", '"$1" "$2" hook || exit 2', "mrclean-hook", nodePath, mrcleanBinPath],
+    timeout: 10
+  };
+}
 async function writeHookEntries(settingsPath, nodePath, mrcleanBinPath, _version) {
   const data = await readJsonOrEmpty(settingsPath);
   if (typeof data.hooks !== "object" || data.hooks === null || Array.isArray(data.hooks)) {
@@ -3584,12 +3601,7 @@ async function writeHookEntries(settingsPath, nodePath, mrcleanBinPath, _version
       hooks[event] = [];
     }
     hooks[event] = hooks[event].filter((entry2) => !isMrcleanEntry(entry2));
-    const hookCmd = {
-      type: "command",
-      command: nodePath,
-      args: [mrcleanBinPath, "hook"],
-      timeout: 10
-    };
+    const hookCmd = buildHookCommand(nodePath, mrcleanBinPath);
     const matcher = HOOK_MATCHERS[event];
     const entry = matcher !== void 0 ? { _mrclean: true, matcher, hooks: [hookCmd] } : { _mrclean: true, hooks: [hookCmd] };
     hooks[event] = [...hooks[event], entry];
@@ -36470,6 +36482,20 @@ var init_canary = __esm({
 
 // src/doctor/checks.ts
 import { access as access7, constants as constants6 } from "fs/promises";
+function extractHookNodeAndBin(command, args) {
+  if (!Array.isArray(args) || args.length === 0) return {};
+  if (typeof args[0] === "string" && args[0].endsWith(".js")) {
+    return { nodePath: command, binPath: args[0] };
+  }
+  if (args.length >= 2) {
+    const binPath = args[args.length - 1];
+    const nodePath = args[args.length - 2];
+    if (typeof binPath === "string" && typeof nodePath === "string") {
+      return { nodePath, binPath };
+    }
+  }
+  return {};
+}
 async function checkHooksRegistered(settingsPath) {
   const data = await readJsonOrEmpty(settingsPath);
   const hooks = data.hooks;
@@ -36545,9 +36571,11 @@ async function collectRegisteredBinPaths(settingsPath, claudeJsonPath, projectCw
         const hookCmds = entry.hooks;
         if (!Array.isArray(hookCmds)) continue;
         for (const cmd of hookCmds) {
+          const command = cmd.command;
           const args = cmd.args;
-          if (Array.isArray(args) && typeof args[0] === "string") {
-            paths.add(args[0]);
+          const { binPath } = extractHookNodeAndBin(command, args);
+          if (typeof binPath === "string") {
+            paths.add(binPath);
           }
         }
       }
@@ -36580,8 +36608,9 @@ async function extractRegisteredPaths(settingsPath, claudeJsonPath, projectCwd) 
         for (const cmd of hookCmds) {
           const command = cmd.command;
           const args = cmd.args;
-          if (typeof command === "string") nodePath = command;
-          if (Array.isArray(args) && typeof args[0] === "string") hookBinPath = args[0];
+          const extracted = extractHookNodeAndBin(command, args);
+          if (typeof extracted.nodePath === "string") nodePath = extracted.nodePath;
+          if (typeof extracted.binPath === "string") hookBinPath = extracted.binPath;
           if (hookBinPath) break outer;
         }
       }
@@ -36613,7 +36642,11 @@ async function checkBinsExecutable(settingsPath, claudeJsonPath, projectCwd) {
       return {
         name: "bins",
         status: "FAIL",
-        detail: `registered binary is not executable: ${binPath}`,
+        // Post 01-06 the POSIX hook is a fail-closed /bin/sh wrapper: a missing
+        // or non-executable mrclean bin makes the wrapper BLOCK every tool call
+        // (exit 2) until restored — not a silent fail-open. Point the operator
+        // at the repair path.
+        detail: `registered mrclean binary is missing or not executable: ${binPath} \u2014 on POSIX the fail-closed hook wrapper now BLOCKS every tool call (exit 2) until restored; run \`mrclean install\` to repair`,
         exitCodeOnFail: 3
       };
     }
