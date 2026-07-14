@@ -69,8 +69,8 @@ Plans:
 - [x] 08-06-PLAN.md — THREAT_MODEL reversible section + copy-drift gate + PROJECT/CLAUDE amendment (wave 4)
 
 **Wave 5 — gap closure** *(from 08-VERIFICATION.md, 2026-07-14)*
-- [ ] 08-07-PLAN.md — CR-01 fix: Partial-shaped config layers + merge-time default filling + cross-layer tests (TDD; wave 5)
-- [ ] 08-08-PLAN.md — Harness durability: guarded findings writer + object-shape legs wired (E1/Bash-object, E1/Read-object, object-gated E4) (wave 5)
+- [x] 08-07-PLAN.md — CR-01 fix: Partial-shaped config layers + merge-time default filling + cross-layer tests (TDD; wave 5)
+- [x] 08-08-PLAN.md — Harness durability: guarded findings writer + object-shape legs wired (E1/Bash-object, E1/Read-object, object-gated E4) (wave 5)
 
 **Wave 6 — gap closure** *(blocked on 08-08)*
 - [ ] 08-09-PLAN.md — Live E4 rerun via object-shaped Bash payload + HOOK-CONTRACT/THREAT_MODEL refresh (wave 6)
