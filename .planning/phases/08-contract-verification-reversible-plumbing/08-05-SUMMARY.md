@@ -2,19 +2,17 @@
 phase: 08-contract-verification-reversible-plumbing
 plan: 05
 subsystem: docs
-status: checkpoint-pending
-checkpoint: "Task 3 (checkpoint:human-action, gate=blocking) — operator must file the upstream issue and provide the URL"
+status: complete
 tags: [revmode-10, hook-contract, docs, upstream-issue, copy-honesty]
 requires:
   - "08-01: differential typecheck gate precedent (36-error baseline)"
   - "08-04: contract-findings.json verdicts + E1 shape-validation discovery (corrected picture)"
 provides:
-  - "docs/HOOK-CONTRACT.md: durable version-stamped E1-E5 verdict doc (upstream URL pending Task 3)"
-  - "docs/upstream/display-only-channel-request.md: review-ready reframed feature-request draft"
+  - "docs/HOOK-CONTRACT.md: durable version-stamped E1-E5 verdict doc with filed upstream issue URL (anthropics/claude-code#77587) — SC1 'filed and linked' satisfied"
+  - "docs/upstream/display-only-channel-request.md: filed feature-request body (reframed), URL mirrored in header"
   - "Honest shipped copy: types.ts updatedToolOutput JSDoc + doctor green detail carry the E1 verdict with verified-on stamps"
 affects:
   - "08-06: THREAT_MODEL wire re-entry section consumes docs/HOOK-CONTRACT.md §E1"
-  - "Task 3 continuation: record filed issue URL in HOOK-CONTRACT.md + draft header, finalize this SUMMARY"
 tech-stack:
   added: []
   patterns:
@@ -33,15 +31,16 @@ decisions:
   - "Doctor green detail: neither plan branch matched the corrected verdict — wrote capability-specific wording naming the shape-validation caveat (string form inert for built-ins; MCP honored) with verified-on stamp"
   - "types.ts updatedToolOutput stays `string`-typed: emission-shape change (object payloads for built-ins) is future work, out of this docs-honesty plan's scope"
   - "dist/ NOT rebuilt from the worktree: build embeds ../../../node_modules worktree-relative paths — orchestrator regenerates post-merge (ecc358b precedent); version-check.ts copy change needs that rebuild to reach the shipped bin"
+  - "Task 3 checkpoint resolution: operator AUTHORIZED gh CLI filing; the orchestrator executed it from the operator's account (executor agent never ran gh issue create) — filed as anthropics/claude-code#77587"
 metrics:
-  duration: "~12 min (tasks 1-2; Task 3 checkpoint pending)"
+  duration: "~15 min (tasks 1-2 ~12 min; Task 3 checkpoint resolution + finalization ~3 min)"
   completed: 2026-07-14
-  tasks-complete: 2/3
+  tasks-complete: 3/3
 ---
 
 # Phase 8 Plan 05: Hook-Contract Doc + Shipped-Copy Honesty + Upstream Draft Summary
 
-**One-liner:** E1-E5 verdicts turned into the durable version-stamped docs/HOOK-CONTRACT.md, shipped copy de-overclaimed (types JSDoc + doctor green detail now name the per-tool shape-validation caveat), and a reframed upstream feature request drafted — filing awaits the operator (Task 3 checkpoint).
+**One-liner:** E1-E5 verdicts turned into the durable version-stamped docs/HOOK-CONTRACT.md, shipped copy de-overclaimed (types JSDoc + doctor green detail now name the per-tool shape-validation caveat), and the reframed upstream feature request filed as anthropics/claude-code#77587 with the URL linked in HOOK-CONTRACT.md (SC1 "filed and linked" satisfied).
 
 ## Tasks Completed
 
@@ -49,7 +48,7 @@ metrics:
 |------|------|--------|-------|
 | 1 | docs/HOOK-CONTRACT.md + shipped-copy honesty | ff25c72 | docs/HOOK-CONTRACT.md, src/shared/types.ts, src/doctor/version-check.ts, tests/doctor/version-check.test.ts |
 | 2 | Draft the (reframed) upstream feature request | 5119abc | docs/upstream/display-only-channel-request.md |
-| 3 | Operator files the upstream issue; link recorded | **PENDING — checkpoint:human-action** | docs/HOOK-CONTRACT.md, docs/upstream/display-only-channel-request.md |
+| 3 | Upstream issue filed (#77587); link recorded | (this commit — `docs(08-05): link filed upstream issue #77587 and finalize summary`) | docs/HOOK-CONTRACT.md, docs/upstream/display-only-channel-request.md |
 
 ## What was built
 
@@ -76,6 +75,12 @@ metrics:
   evidence re-run 2026-07-14 (5 queries, no existing request), E1 evidence embedded (shape
   matrix, verbatim zod error, rendering observation), #18653/#68951 cited and distinguished,
   marker strings only (leak-grep clean, no local paths).
+- **Task 3 resolution:** the request was filed 2026-07-14 as
+  [anthropics/claude-code#77587](https://github.com/anthropics/claude-code/issues/77587)
+  (operator-authorized; orchestrator executed `gh issue create` from the operator's account;
+  body = draft minus header block + suggested-title section). URL recorded in
+  docs/HOOK-CONTRACT.md §Upstream feature request and mirrored in the draft header — SC1
+  "filed and linked" satisfied.
 
 ## Verification gates
 
@@ -128,14 +133,24 @@ metrics:
 - **Files modified:** src/doctor/version-check.ts, tests/doctor/version-check.test.ts
 - **Commit:** ff25c72
 
+**5. [Checkpoint resolution — operator-directed] Filing executed by the orchestrator via gh CLI, not manually by the operator**
+- **Found during:** Task 3 (checkpoint:human-action resolution)
+- **Deviation:** The plan specified the operator files the issue via their own gh/web session.
+  The operator instead explicitly AUTHORIZED gh CLI filing, and the orchestrator executed
+  `gh issue create` from the operator's account — a one-off, operator-directed substitution.
+  T-08-17's intent (no agent posts publicly without operator consent) was upheld: the operator
+  reviewed the draft and authorized the post; this executor agent never ran `gh issue create`.
+- **Filed:** https://github.com/anthropics/claude-code/issues/77587 (2026-07-14; body = draft
+  minus header block + suggested-title section, no other edits)
+- **Files modified:** docs/HOOK-CONTRACT.md, docs/upstream/display-only-channel-request.md
+- **Commit:** this commit
+
 No authentication gates were hit. No packages installed.
 
 ## Known Stubs
 
-- `docs/HOOK-CONTRACT.md` §Upstream feature request: status "drafted — link pending" —
-  **intentional**; Task 3 (pending checkpoint) replaces it with the filed issue URL (SC1
-  "filed and linked"). If the operator declines, record `declined: <reason>` instead and flag
-  SC1's filed-and-linked criterion as unmet here.
+None — the "drafted — link pending" stub in docs/HOOK-CONTRACT.md §Upstream feature request was
+resolved at Task 3 (filed issue URL recorded; SC1 grep gate passes).
 
 ## Threat Flags
 
@@ -152,4 +167,5 @@ mitigations shipped (E1-gated version-stamped copy, tests updated in lockstep).
 - src/doctor/version-check.ts: contains "HOOK-CONTRACT"; old unqualified claim removed
 - Commit ff25c72 (Task 1): FOUND
 - Commit 5119abc (Task 2): FOUND
-- Task 3 verify gate (`grep -qE "github.com/anthropics/claude-code/issues/[0-9]+" docs/HOOK-CONTRACT.md`): NOT YET SATISFIED — pending operator checkpoint (expected at this stage)
+- Task 3 commit: this commit (URL recording + finalized SUMMARY)
+- Task 3 / SC1 verify gate (`grep -qE "github.com/anthropics/claude-code/issues/[0-9]+" docs/HOOK-CONTRACT.md`): PASSED — issues/77587 recorded, mirrored in draft header

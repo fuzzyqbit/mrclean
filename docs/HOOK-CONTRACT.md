@@ -184,15 +184,21 @@ in the findings artifact.
 
 ## Upstream feature request
 
-**Status:** drafted — link pending
+**Status:** filed 2026-07-14 — <https://github.com/anthropics/claude-code/issues/77587>
+
+Filed as: "[FEATURE] Document per-tool updatedToolOutput shapes and make
+PostToolUse shape-rejection loud (hook-based sanitizer use case)". Body taken
+from the draft below with its header block and "Suggested title" section
+stripped (body started at "## Preflight Checklist"); no other edits.
 
 Draft: [`docs/upstream/display-only-channel-request.md`](upstream/display-only-channel-request.md).
 Reframed per the E1 shape-validation discovery: the primary asks are
 (a) document per-tool `updatedToolOutput` shapes, (b) surface shape-rejection
-warnings loudly (or accept string coercion for built-ins), and (c) a
-display-only rewrite channel for the sanitizer round-trip UX (grounded in the
-E1 rendering verdict: display follows the model-facing value). Filed by the
-operator only — never by an agent (RESEARCH Pitfall 8).
+warnings loudly (or accept string coercion for built-ins); a display-only
+rewrite channel for the sanitizer round-trip UX (grounded in the E1 rendering
+verdict: display follows the model-facing value) is retained as distinguished
+related context. Filing was operator-authorized and executed from the
+operator's account — never autonomously by an agent (RESEARCH Pitfall 8).
 
 ---
 

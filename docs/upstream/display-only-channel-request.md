@@ -1,7 +1,8 @@
 # Upstream feature request draft — anthropics/claude-code
 
-> **Status:** drafted 2026-07-14 — NOT yet filed. Filed issue URL: _link pending_
-> (after filing, mirror the URL here and in `docs/HOOK-CONTRACT.md` §Upstream feature request).
+> **Status:** filed 2026-07-14 — <https://github.com/anthropics/claude-code/issues/77587>
+> (mirrored in `docs/HOOK-CONTRACT.md` §Upstream feature request). Filed with this header block
+> and the "Suggested title" section stripped; body started at "## Preflight Checklist".
 >
 > **Filing is operator-only — never an agent** (Phase 8 RESEARCH Pitfall 8). File via the web UI
 > feature-request form (paste each section into the matching template field, pick the dropdowns),
