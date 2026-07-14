@@ -36880,7 +36880,7 @@ async function checkClaudeCodeVersion(opts) {
     return {
       status: "green",
       version: version2,
-      detail: `${version2} \u2014 fully compatible (PostToolUse updatedToolOutput supported, full Phase 2 functionality)`
+      detail: `${version2} \u2014 hook contract compatible. Note: PostToolUse updatedToolOutput is shape-validated per tool (verified on Claude Code 2.1.209, 2026-07-14): string payloads are honored for MCP tools but rejected for built-in tools (Bash/Read), so mrclean's current string-form tool-output rewrite is inert for built-in tools. See docs/HOOK-CONTRACT.md.`
     };
   }
   if (major >= 2) {
