@@ -1,5 +1,5 @@
 /**
- * Seven check functions for mrclean doctor.
+ * Eight check functions for mrclean doctor.
  *
  * Each check returns a CheckResult with:
  *   name         — short identifier for the check
@@ -14,9 +14,13 @@
  *   4 — canary round-trip failed
  *   6 — NER model present but integrity (SHA-256) check failed
  *
+ * Check 8: checkReversibleState — reporting-only in Phase 8; reserves exit 1
+ * (config domain) for Phase 10's REVMODE-12 FAIL-loud semantics. It never
+ * FAILs in Phase 8, so the LOCKED map above is unchanged.
+ *
  * No check function terminates the process — only runDoctor (index.ts) may do so.
  *
- * Plan 01-05 / 05-02.
+ * Plan 01-05 / 05-02 / 08-03.
  */
 
 import { access, constants } from 'node:fs/promises'
@@ -536,6 +540,57 @@ export async function checkConfigLoad(homeDir: string, cwd: string): Promise<Che
       name: 'config-load',
       status: 'FAIL',
       detail: `config-load unexpected error: ${msg}`,
+      exitCodeOnFail: 1,
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// checkReversibleState
+// ---------------------------------------------------------------------------
+
+/**
+ * Exact detail strings — state only, never config values, paths, or map
+ * contents (T-08-08 mitigation). tests/doctor/checks.test.ts asserts these
+ * byte-for-byte.
+ */
+const REVERSIBLE_DETAIL_DISABLED = 'reversible mode: disabled (default one-way)'
+const REVERSIBLE_DETAIL_ENABLED =
+  'reversible mode: enabled — plumbing only (session state adapter lands in Phase 9)'
+const REVERSIBLE_DETAIL_CONFIG_ERROR = 'config unreadable — see config check'
+
+/**
+ * Report the [reversible] master-switch state (REVMODE-12 first clause).
+ *
+ * REPORTING-ONLY in Phase 8 (RESEARCH Open Question 3, planner decision):
+ * this check never returns FAIL — the LOCKED exit-code map (1, 2, 3, 4, 6)
+ * is not extended. exitCodeOnFail: 1 is RESERVED (config domain) for
+ * Phase 10's FAIL-loud-on-unsupported-config semantics.
+ *
+ * Status mapping:
+ *   PASS — reversible disabled (default; absent [reversible] table)
+ *   PASS — reversible enabled (honest "plumbing only" copy until Phase 9)
+ *   SKIP — config unreadable (ConfigReadError or any loader error);
+ *          checkConfigLoad owns the FAIL for that root cause — never
+ *          double-FAIL one root cause (T-08-10)
+ */
+export async function checkReversibleState(homeDir: string, cwd: string): Promise<CheckResult> {
+  try {
+    const config = await loadEffectiveConfig({ homeDir, cwd })
+    return {
+      name: 'reversible',
+      status: 'PASS',
+      detail: config.reversible.enabled ? REVERSIBLE_DETAIL_ENABLED : REVERSIBLE_DETAIL_DISABLED,
+      exitCodeOnFail: 1,
+    }
+  } catch {
+    // ConfigReadError precedent (checkConfigLoad) — and any unexpected loader
+    // error — defers with a CONSTANT detail: error text may embed file paths,
+    // which the detail must never leak (T-08-08).
+    return {
+      name: 'reversible',
+      status: 'SKIP',
+      detail: REVERSIBLE_DETAIL_CONFIG_ERROR,
       exitCodeOnFail: 1,
     }
   }
