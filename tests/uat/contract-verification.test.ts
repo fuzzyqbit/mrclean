@@ -41,6 +41,7 @@ import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { buildHookCommand } from '../../src/install/settings.js'
+import { buildFindingsArtifact, type ExperimentRecord, type ToolVerdict } from './findings-builder.js'
 import { runClaude, assertSessionRan, type ClaudeRun } from './harness.js'
 
 const UAT_ENABLED = process.env.MRCLEAN_UAT === '1'
@@ -68,24 +69,9 @@ const E4C_HEAD = 'E4C_HEAD_MARKER'
 const E4C_TAIL = 'E4C_TAIL_MARKER'
 
 // ---------------------------------------------------------------------------
-// Findings state (module-level; assembled + written once in afterAll)
+// Findings state (module-level; assembled via buildFindingsArtifact in
+// afterAll — the pure builder owns the guard + carry-forward + merge logic)
 // ---------------------------------------------------------------------------
-
-interface ToolVerdict {
-  verdict: string
-  signals: Record<string, unknown>
-  evidence_paths: string[]
-}
-
-interface ExperimentRecord {
-  question: string
-  verdict: string
-  method: string
-  claude_version: string
-  date: string
-  signals: Record<string, unknown>
-  evidence_paths: string[]
-}
 
 let claudeVersion = 'unknown'
 let issue68951State = 'not-checked'
@@ -274,24 +260,6 @@ function buildE1Verdict(run: ClaudeRun, originalDetectable: boolean): ToolVerdic
   return { verdict, signals, evidence_paths: transcriptPath !== null ? [transcriptPath] : [] }
 }
 
-function e1Summary(): string {
-  const parts: string[] = []
-  for (const tool of ['Bash', 'Read', 'MCP']) {
-    const rec = e1Tools[tool]
-    parts.push(`${tool}: ${rec?.verdict ?? 'not-run'}`)
-  }
-  return parts.join('; ')
-}
-
-function missingRecord(name: string): ExperimentRecord {
-  return {
-    ...baseRecord(`${name} (not recorded)`, 'live headless session'),
-    verdict: 'not-recorded (test failed before a verdict was captured — see vitest output)',
-    signals: {},
-    evidence_paths: [],
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
@@ -350,58 +318,46 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
 
   afterAll(() => {
     try {
-      // Findings writer — the durable output (docs-wave input). Written even
-      // when individual experiments failed, so partial evidence is never lost.
-      const experiments = {
-        E1: {
-          ...baseRecord(
-            'Is PostToolUse hookSpecificOutput.updatedToolOutput honored, per tool? Where does the rewrite surface?',
-            'live headless -p sessions; fixture PostToolUse rewrite hook; signals: model quote, transcript jsonl tool_result, stream-json tool_result',
-          ),
-          verdict: e1Summary(),
-          tools: {
-            Bash: e1Tools['Bash'] ?? { verdict: 'not-run', signals: {}, evidence_paths: [] },
-            Read: e1Tools['Read'] ?? { verdict: 'not-run', signals: {}, evidence_paths: [] },
-            MCP: e1Tools['MCP'] ?? { verdict: 'not-run', signals: {}, evidence_paths: [] },
-          },
-          rendering: 'pending-interactive' as unknown,
-        },
-        E2: e2Record ?? missingRecord('E2'),
-        E3: e3Record ?? missingRecord('E3'),
-        E4: {
-          ...(e4Record ?? missingRecord('E4')),
-          control_additionalContext: e4ControlRecord ?? 'not-run',
-        },
-        E5: {
-          ...baseRecord(
-            'Does SessionEnd fire in headless -p mode (which reason)? Does mrclean’s real hook produce exit-2 noise on session start/end?',
-            'live headless -p sessions; log-hook side file (headless firing); mrclean real built hook + stderr scan (SC3 observable)',
-          ),
-          verdict: `headless firing: ${e5HeadlessRecord?.verdict ?? 'not-recorded'} | mrclean real-hook stderr noise: ${e5NoiseRecord?.verdict ?? 'not-recorded'}`,
-          headless: e5HeadlessRecord ?? missingRecord('E5-headless'),
-          mrclean_real_hook: e5NoiseRecord ?? missingRecord('E5-mrclean-noise'),
-        },
+      // Findings writer — the durable output (docs-wave input). All assembly
+      // lives in the pure, unit-tested buildFindingsArtifact (WR-01): guard
+      // (null on zero verdicts), carry-forward of run-absent experiments, and
+      // the E1_shape_validation verbatim_hook_error field fallback.
+      let previous: unknown
+      try {
+        if (existsSync(FINDINGS_PATH)) previous = JSON.parse(readFileSync(FINDINGS_PATH, 'utf8'))
+      } catch {
+        previous = undefined // malformed committed artifact → treat as absent
       }
 
-      const findings = {
-        claude_version: claudeVersion,
+      const findings = buildFindingsArtifact(previous, {
+        claudeVersion,
         date: todayIso(),
-        generated_by: 'tests/uat/contract-verification.test.ts (MRCLEAN_UAT=1 opt-in, record-dont-assert)',
-        issue_68951: issue68951State,
-        experiments,
+        issue68951State,
+        e1Tools,
+        e2: e2Record,
+        e3: e3Record,
+        e4: e4Record,
+        e4Control: e4ControlRecord,
+        e5Headless: e5HeadlessRecord,
+        e5Noise: e5NoiseRecord,
+      })
+
+      if (findings === null) {
+        console.warn('mrclean findings: no experiment recorded a verdict — artifact left untouched')
+        return
       }
 
       mkdirSync(ARTIFACTS_DIR, { recursive: true })
       writeFileSync(FINDINGS_PATH, `${JSON.stringify(findings, null, 2)}\n`)
 
       // Human-readable summary for the operator's terminal.
-      console.table([
-        { experiment: 'E1', verdict: experiments.E1.verdict },
-        { experiment: 'E2', verdict: experiments.E2.verdict },
-        { experiment: 'E3', verdict: experiments.E3.verdict },
-        { experiment: 'E4', verdict: experiments.E4.verdict },
-        { experiment: 'E5', verdict: experiments.E5.verdict },
-      ])
+      const experiments = findings['experiments'] as Record<string, { verdict?: unknown }>
+      console.table(
+        ['E1', 'E2', 'E3', 'E4', 'E5'].map((experiment) => ({
+          experiment,
+          verdict: String(experiments[experiment]?.verdict ?? 'not-recorded'),
+        })),
+      )
       console.log(`contract findings written: ${FINDINGS_PATH}`)
     } finally {
       if (sandbox) rmSync(sandbox, { recursive: true, force: true })
