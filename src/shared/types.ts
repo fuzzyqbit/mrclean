@@ -1,8 +1,8 @@
 /**
  * Shared TypeScript types for the mrclean hook contract.
  *
- * Input shapes: RESEARCH.md §1.1 — verified from code.claude.com/docs/en/hooks (2026-05-13)
- * Output shapes: RESEARCH.md §1.2 — verified from code.claude.com/docs/en/hooks (2026-05-13)
+ * Input shapes: RESEARCH.md §1.1 — verified from code.claude.com/docs/en/hooks (re-verified 2026-07-14, Phase 8)
+ * Output shapes: RESEARCH.md §1.2 — verified from code.claude.com/docs/en/hooks (re-verified 2026-07-14, Phase 8)
  *
  * These types are LOCKED by the Claude Code hook contract and must not be altered
  * without verifying against the upstream docs. Plans 02/03/04/05 import these
@@ -18,7 +18,7 @@ export interface HookInputBase {
   session_id: string
   transcript_path: string
   cwd: string
-  hook_event_name: 'SessionStart' | 'UserPromptSubmit' | 'PreToolUse' | 'PostToolUse'
+  hook_event_name: 'SessionStart' | 'UserPromptSubmit' | 'PreToolUse' | 'PostToolUse' | 'SessionEnd'
 }
 
 /**
@@ -67,12 +67,25 @@ export interface PostToolUseInput extends HookInputBase {
   permission_mode?: string
 }
 
+/**
+ * SessionEnd — fires when a Claude Code session terminates.
+ * Output and exit codes are ignored upstream — the handler is fire-and-forget.
+ */
+export interface SessionEndInput extends HookInputBase {
+  hook_event_name: 'SessionEnd'
+  /** Documented values as of CC 2.1.209: clear | resume | logout | prompt_input_exit
+   *  | bypass_permissions_disabled | other. Upstream may add more — treat as open string.
+   *  [CITED: code.claude.com/docs/en/hooks, fetched 2026-07-14] */
+  reason: string
+}
+
 /** Union of all possible hook input payloads. */
 export type HookInput =
   | SessionStartInput
   | UserPromptSubmitInput
   | PreToolUseInput
   | PostToolUseInput
+  | SessionEndInput
 
 // ---------------------------------------------------------------------------
 // Hook Output Types
@@ -274,6 +287,24 @@ export interface MrcleanPiiConfig {
 }
 
 /**
+ * Reversible-mode configuration ([reversible] in TOML).
+ * Phase 8-01 contract: REVMODE-02 groundwork — the config table only.
+ * The session state adapter that consumes it lands in Phase 9.
+ *
+ * Merge semantics: LAST-WINS (scalar), same as pii.enabled.
+ * YAGNI fence: `enabled` is the ONLY field this phase — Phase 9 owns
+ * store-schema fields (ttl_hours etc.); do not speculate here.
+ */
+export interface MrcleanReversibleConfig {
+  /**
+   * Master switch. Default: false.
+   * When false, behavior is byte-identical to shipped v2.0 —
+   * absent-[reversible] == shipped one-way guarantee.
+   */
+  enabled: boolean
+}
+
+/**
  * Effective configuration after merging all three layers (defaults < user < project).
  *
  * REQUIREMENTS.md CFG-01: project-local .mrclean/config.toml is optional — missing file ≡ no overrides.
@@ -308,4 +339,10 @@ export interface MrcleanConfig {
    * PII-03: opt-in; secrets remain the only default hard gate.
    */
   pii: MrcleanPiiConfig
+  /**
+   * Reversible-mode configuration ([reversible] in TOML). Phase 8-01 contract.
+   * Default: enabled=false (master off). Absent [reversible] table == shipped
+   * one-way guarantee. REVMODE-02 groundwork; Phase 9 consumes it.
+   */
+  reversible: MrcleanReversibleConfig
 }

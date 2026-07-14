@@ -35,6 +35,7 @@ import type {
   MrcleanPiiConfig,
   MrcleanPiiRegexConfig,
   MrcleanPiiNerConfig,
+  MrcleanReversibleConfig,
   PiiAction,
 } from '../shared/types.js'
 import { DEFAULT_CONFIG } from './defaults.js'
@@ -515,6 +516,9 @@ export function mergeConfigs(...layers: ReadonlyArray<Partial<MrcleanConfig>>): 
     },
   }
 
+  // reversible (Phase 8-01): copy into a new object — never alias the frozen default.
+  const reversible: MrcleanReversibleConfig = { enabled: DEFAULT_CONFIG.reversible.enabled }
+
   for (const layer of layers) {
     if (layer.dry_run !== undefined) dryRun = layer.dry_run
     if (layer.entropy !== undefined) entropy = layer.entropy
@@ -553,7 +557,7 @@ export function mergeConfigs(...layers: ReadonlyArray<Partial<MrcleanConfig>>): 
     }
   }
 
-  return { dry_run: dryRun, allowlist, entropy, secrets_files: secretsFiles, rules, pii }
+  return { dry_run: dryRun, allowlist, entropy, secrets_files: secretsFiles, rules, pii, reversible }
 }
 
 /**

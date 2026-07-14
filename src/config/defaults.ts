@@ -11,6 +11,9 @@
  *   pii.enabled = false  ← master switch OFF; absent-[pii] == v1 guarantee
  *   pii.regex.actions: ssn/credit_card → block (checksum-validated); email/phone → warn; ip → audit
  *   pii.ner.actions: PERSON/ORG → warn; LOC → audit  (NER is advisory, never a hard gate)
+ *
+ * Reversible defaults (Phase 8-01, REVMODE-02 groundwork):
+ *   reversible.enabled = false  ← master switch OFF; absent-[reversible] == shipped one-way guarantee
  */
 
 import type { MrcleanConfig } from '../shared/types.js'
@@ -64,4 +67,7 @@ export const DEFAULT_CONFIG: MrcleanConfig = Object.freeze({
       }) as unknown as Record<string, import('../shared/types.js').PiiAction>,
     }) as unknown as import('../shared/types.js').MrcleanPiiNerConfig,
   }) as unknown as import('../shared/types.js').MrcleanPiiConfig,
+  reversible: Object.freeze({
+    enabled: false, // master switch OFF; absent-[reversible] == shipped one-way guarantee
+  }) as unknown as import('../shared/types.js').MrcleanReversibleConfig,
 }) as unknown as MrcleanConfig
