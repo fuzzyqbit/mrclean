@@ -36556,7 +36556,7 @@ async function checkHooksRegistered(settingsPath) {
   return {
     name: "hooks",
     status: "PASS",
-    detail: `4 hook events registered (${REQUIRED_EVENTS.join(", ")})`,
+    detail: `${REQUIRED_EVENTS.length} hook events registered (${REQUIRED_EVENTS.join(", ")})`,
     exitCodeOnFail: 1
   };
 }
@@ -36777,7 +36777,25 @@ async function checkConfigLoad(homeDir, cwd) {
     };
   }
 }
-var REQUIRED_EVENTS, POSIX_WRAPPER_SHELL, MIN_WRAPPER_ARGS;
+async function checkReversibleState(homeDir, cwd) {
+  try {
+    const config2 = await loadEffectiveConfig({ homeDir, cwd });
+    return {
+      name: "reversible",
+      status: "PASS",
+      detail: config2.reversible.enabled ? REVERSIBLE_DETAIL_ENABLED : REVERSIBLE_DETAIL_DISABLED,
+      exitCodeOnFail: 1
+    };
+  } catch {
+    return {
+      name: "reversible",
+      status: "SKIP",
+      detail: REVERSIBLE_DETAIL_CONFIG_ERROR,
+      exitCodeOnFail: 1
+    };
+  }
+}
+var REQUIRED_EVENTS, POSIX_WRAPPER_SHELL, MIN_WRAPPER_ARGS, REVERSIBLE_DETAIL_DISABLED, REVERSIBLE_DETAIL_ENABLED, REVERSIBLE_DETAIL_CONFIG_ERROR;
 var init_checks4 = __esm({
   "src/doctor/checks.ts"() {
     "use strict";
@@ -36787,12 +36805,16 @@ var init_checks4 = __esm({
     init_canary();
     REQUIRED_EVENTS = [
       "SessionStart",
+      "SessionEnd",
       "UserPromptSubmit",
       "PreToolUse",
       "PostToolUse"
     ];
     POSIX_WRAPPER_SHELL = "/bin/sh";
     MIN_WRAPPER_ARGS = 4;
+    REVERSIBLE_DETAIL_DISABLED = "reversible mode: disabled (default one-way)";
+    REVERSIBLE_DETAIL_ENABLED = "reversible mode: enabled \u2014 plumbing only (session state adapter lands in Phase 9)";
+    REVERSIBLE_DETAIL_CONFIG_ERROR = "config unreadable \u2014 see config check";
   }
 });
 
@@ -36989,6 +37011,7 @@ async function computeDoctorReport(opts) {
   }
   results.push(await checkConfigLoad(homeDir, cwd));
   results.push(await checkModelCache(homeDir));
+  results.push(await checkReversibleState(homeDir, cwd));
   const fakeVersion = process.env["MRCLEAN_TEST_FAKE_CLAUDE_VERSION"];
   const versionResult = await checkClaudeCodeVersion(
     fakeVersion ? { runVersionCommand: async () => fakeVersion } : void 0
