@@ -73,7 +73,7 @@ Plans:
 - [x] 08-08-PLAN.md — Harness durability: guarded findings writer + object-shape legs wired (E1/Bash-object, E1/Read-object, object-gated E4) (wave 5)
 
 **Wave 6 — gap closure** *(blocked on 08-08)*
-- [ ] 08-09-PLAN.md — Live E4 rerun via object-shaped Bash payload + HOOK-CONTRACT/THREAT_MODEL refresh (wave 6)
+- [x] 08-09-PLAN.md — Live E4 rerun via object-shaped Bash payload + HOOK-CONTRACT/THREAT_MODEL refresh (wave 6)
 
 **Research flag**: `--research-phase` recommended — live headless contract experiments (UAT-2b harness precedent); the answers feed Phase 9's resume/rehydration design (T5) and Phase 10's input-restore scope fence
 **Note**: This phase lays REVMODE-07's installer/dispatcher groundwork (no-op handlers, matcher widening + migration); the janitor requirement itself completes in Phase 9. The Phase 11 canary/chaos/stress gates are named in Phases 8–10 criteria so implementations are built against them, not retrofitted.
