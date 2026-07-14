@@ -4,8 +4,8 @@ milestone: v3.0
 milestone_name: Reversible Redact Mode — Foundations + Operator Restore
 status: executing
 stopped_at: Roadmap created, awaiting phase planning
-last_updated: "2026-07-14T18:22:10.587Z"
-last_activity: 2026-07-14 -- Phase 8 planning complete
+last_updated: "2026-07-14T18:53:54.329Z"
+last_activity: 2026-07-14 -- Phase 08 execution started
 progress:
   total_phases: 4
   completed_phases: 0
@@ -22,17 +22,17 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** Milestone v3.0 Reversible Redact Mode — Foundations + Operator Restore — roadmap created (Phases 8–11), ready to plan Phase 8
+**Current Focus:** Phase 08 — contract-verification-reversible-plumbing
 **Project Mode:** mvp (vertical slices)
 **Granularity:** coarse (3-5 phases)
 
 ## Current Position
 
-Phase: 8 of 11 — Contract Verification & Reversible Plumbing (not started)
-Plan: —
-Status: Ready to execute
+Phase: 08 (contract-verification-reversible-plumbing) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 08
 Progress: [░░░░░░░░░░] 0% (0/4 v3.0 phases)
-Last activity: 2026-07-14 -- Phase 8 planning complete
+Last activity: 2026-07-14 -- Phase 08 execution started
 
 ## Performance Metrics
 

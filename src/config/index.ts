@@ -35,6 +35,7 @@ import type {
   MrcleanPiiConfig,
   MrcleanPiiRegexConfig,
   MrcleanPiiNerConfig,
+  MrcleanReversibleConfig,
   PiiAction,
 } from '../shared/types.js'
 import { DEFAULT_CONFIG } from './defaults.js'
@@ -341,6 +342,28 @@ function validatePiiConfig(raw: unknown, filePath: string): MrcleanPiiConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Reversible config validator (Phase 8-01)
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate and narrow a parsed TOML value to MrcleanReversibleConfig.
+ * Mirrors the validatePii* shape. Throws ConfigReadError on type mismatch.
+ *
+ * T-08-01: fails closed on any non-boolean `enabled` — never silently coerces.
+ * Unknown keys inside [reversible] are silently dropped (matches parseToml
+ * tolerance; FAIL-loud on unsupported keys is Phase 10 / REVMODE-12).
+ */
+function validateReversibleConfig(raw: unknown, filePath: string): MrcleanReversibleConfig {
+  if (!isRecord(raw)) {
+    throw new ConfigReadError(filePath, '[reversible] must be a TOML sub-table')
+  }
+  if (raw['enabled'] !== undefined && typeof raw['enabled'] !== 'boolean') {
+    throw new ConfigReadError(filePath, '[reversible].enabled must be a boolean')
+  }
+  return { enabled: raw['enabled'] === true }
+}
+
+// ---------------------------------------------------------------------------
 // smol-toml backed parser
 // ---------------------------------------------------------------------------
 
@@ -420,6 +443,14 @@ function parseToml(content: string, filePath: string): Partial<MrcleanConfig> {
     result.pii = validatePiiConfig(parsed['pii'], filePath)
   }
 
+  // [reversible] sub-table (Phase 8 / plan 08-01)
+  // Absent [reversible] → reversible is undefined in the Partial; mergeConfigs fills in the default.
+  // T-08-01: validateReversibleConfig throws ConfigReadError on any type mismatch so a malformed
+  //   operator file can never silently enable reversible mode.
+  if ('reversible' in parsed) {
+    result.reversible = validateReversibleConfig(parsed['reversible'], filePath)
+  }
+
   return result
 }
 
@@ -486,6 +517,8 @@ export async function readConfigLayer(filePath: string): Promise<Partial<Mrclean
  *     Deep-merge: a layer that sets only [pii.regex] does NOT wipe [pii.ner].
  *     Entity arrays themselves replace last-wins, NEVER concat.
  *     See ARCHITECTURE-v2-pii.md §"Config Surface".
+ *   - reversible (Phase 8-01): LAST-WINS flat sub-table ({ enabled } only) — same
+ *     scalar semantics as pii.enabled; default { enabled: false } when absent.
  */
 export function mergeConfigs(...layers: ReadonlyArray<Partial<MrcleanConfig>>): MrcleanConfig {
   let dryRun: boolean = DEFAULT_CONFIG.dry_run
@@ -515,11 +548,19 @@ export function mergeConfigs(...layers: ReadonlyArray<Partial<MrcleanConfig>>): 
     },
   }
 
+  // reversible (Phase 8-01): copy into a new object — never alias the frozen default.
+  let reversible: MrcleanReversibleConfig = { enabled: DEFAULT_CONFIG.reversible.enabled }
+
   for (const layer of layers) {
     if (layer.dry_run !== undefined) dryRun = layer.dry_run
     if (layer.entropy !== undefined) entropy = layer.entropy
     if (layer.secrets_files !== undefined) secretsFiles = layer.secrets_files
     if (layer.rules !== undefined) rules = layer.rules
+    // reversible (Phase 8-01): LAST-WINS scalar sub-table — replace with a NEW
+    // object (never mutate, never alias the layer object).
+    if (layer.reversible !== undefined) {
+      reversible = { enabled: layer.reversible.enabled }
+    }
     if (layer.allowlist !== undefined) {
       allowlist = mergeAllowlists(allowlist, layer.allowlist)
     }
@@ -553,7 +594,7 @@ export function mergeConfigs(...layers: ReadonlyArray<Partial<MrcleanConfig>>): 
     }
   }
 
-  return { dry_run: dryRun, allowlist, entropy, secrets_files: secretsFiles, rules, pii }
+  return { dry_run: dryRun, allowlist, entropy, secrets_files: secretsFiles, rules, pii, reversible }
 }
 
 /**

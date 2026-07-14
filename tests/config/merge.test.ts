@@ -62,6 +62,47 @@ describe('mergeConfigs', () => {
     )
     expect(result.allowlist.rules).toEqual(['USR', 'PRJ'])
   })
+
+  // Test D (Phase 8-01): reversible.enabled merges LAST-WINS across layers.
+  // Both directions asserted: false→true discriminates last-wins from "layers ignored"
+  // (fails at RED where the seed default false would vacuously satisfy true→false alone);
+  // true→false discriminates last-wins from "any-layer-true-wins" at GREEN.
+  it('applies LAST-WINS for reversible.enabled across layers', () => {
+    // Arrange + Act
+    const trueThenFalse = mergeConfigs(
+      DEFAULT_CONFIG,
+      { reversible: { enabled: true } },
+      { reversible: { enabled: false } },
+    )
+    const falseThenTrue = mergeConfigs(
+      DEFAULT_CONFIG,
+      { reversible: { enabled: false } },
+      { reversible: { enabled: true } },
+    )
+
+    // Assert
+    expect(trueThenFalse.reversible.enabled).toBe(false)
+    expect(falseThenTrue.reversible.enabled).toBe(true)
+  })
+
+  // Test E (Phase 8-01): a single layer opting in carries through the merge
+  it('carries reversible.enabled=true through the merge from a single layer', () => {
+    // Arrange + Act
+    const result = mergeConfigs(DEFAULT_CONFIG, { reversible: { enabled: true } })
+
+    // Assert
+    expect(result.reversible.enabled).toBe(true)
+  })
+
+  // Test F (Phase 8-01, regression guard): absent [reversible] in every layer means the
+  // merged config carries the frozen default — absent table == shipped one-way guarantee.
+  it('defaults reversible to { enabled: false } when no layer sets it', () => {
+    // Arrange + Act
+    const result = mergeConfigs(DEFAULT_CONFIG, {}, {})
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: false })
+  })
 })
 
 describe('loadEffectiveConfig', () => {

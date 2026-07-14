@@ -127,4 +127,51 @@ describe('readConfigLayer', () => {
       // smol-toml provides its own error text; we don't assert a specific prefix.
     }
   })
+
+  // Test A (Phase 8-01): [reversible] enabled = true parses to a typed sub-table
+  it('returns reversible { enabled: true } when file contains [reversible] with enabled = true', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nenabled = true\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: true })
+  })
+
+  // Test B (Phase 8-01): wrong-typed enabled fails closed with a structured error
+  it('throws ConfigReadError when [reversible].enabled is not a boolean', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nenabled = "yes"\n')
+
+    // Act + Assert
+    await expect(readConfigLayer(configPath)).rejects.toBeInstanceOf(ConfigReadError)
+
+    try {
+      await readConfigLayer(configPath)
+      expect.unreachable('readConfigLayer must reject on non-boolean [reversible].enabled')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigReadError)
+      const configErr = err as ConfigReadError
+      expect(configErr.reason).toBe('[reversible].enabled must be a boolean')
+      expect(configErr.path).toBe(configPath)
+    }
+  })
+
+  // Test C (Phase 8-01): unknown keys inside [reversible] are ignored (matches parseToml
+  // tolerance; FAIL-loud on unsupported keys is Phase 10 / REVMODE-12).
+  it('ignores unknown keys inside [reversible] and returns only { enabled }', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nenabled = true\nfuture_key = 1\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: true })
+  })
 })
