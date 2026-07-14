@@ -35,6 +35,9 @@ const repoRoot = path.resolve(__dirname, '..')
  */
 const SCANNED_SOURCES: ReadonlyArray<{ rel: string; isSource: boolean }> = [
   { rel: 'README.md', isSource: false },
+  // Reversible-mode section (08-06) carries guarantee-adjacent security prose —
+  // covered by the banned-CLAIM scan so overclaims cannot drift in (feeds Phase 11).
+  { rel: 'THREAT_MODEL.md', isSource: false },
   { rel: 'src/shared/strings.ts', isSource: true },
   { rel: 'src/hook/handlers/session-start.ts', isSource: true },
   { rel: 'src/doctor/report.ts', isSource: true },
@@ -113,5 +116,54 @@ describe('disclaimer-presence gate (D-05)', () => {
   it('the centralized disclaimer constant itself carries the key phrase', () => {
     // Guards against the constant drifting away from the phrase the gate above asserts.
     expect(PII_BEST_EFFORT_DISCLAIMER).toContain('not a guarantee')
+  })
+})
+
+/**
+ * Reversible-mode presence gate — Plan 08-06 Task 1 (REVMODE-03, T-08-21).
+ *
+ * Asserts THREAT_MODEL.md carries the '## Reversible Mode (v3.0)' section, its five
+ * required H3 subsections (asserted on stable heading fragments so renumbering does
+ * not break the gate), and the two honest-framing key phrases. Future edits that
+ * silently drop the section or a subsection fail the build. Phase 11 finalizes the
+ * section against the shipped implementation and extends this gate.
+ */
+const REQUIRED_REVERSIBLE_SUBSECTION_FRAGMENTS = [
+  'blast radius',
+  'secret floor',
+  'wire re-entry',
+  'key-custody',
+  'residual risks',
+] as const
+
+/** Read THREAT_MODEL.md fresh per assertion — the file is small; no caching needed. */
+function readThreatModel(): string {
+  return readFileSync(path.join(repoRoot, 'THREAT_MODEL.md'), 'utf8')
+}
+
+describe('THREAT_MODEL reversible-mode presence gate (08-06, REVMODE-03)', () => {
+  it("contains the '## Reversible Mode (v3.0)' section heading", () => {
+    expect(readThreatModel()).toContain('## Reversible Mode (v3.0)')
+  })
+
+  it.each(REQUIRED_REVERSIBLE_SUBSECTION_FRAGMENTS)(
+    'has an H3 subsection heading covering "%s"',
+    (fragment) => {
+      const h3Headings = readThreatModel()
+        .split('\n')
+        .filter((line) => line.startsWith('### '))
+      expect(
+        h3Headings.some((heading) => heading.toLowerCase().includes(fragment)),
+        `No H3 heading in THREAT_MODEL.md contains "${fragment}". H3 headings found:\n${h3Headings.join('\n')}`,
+      ).toBe(true)
+    },
+  )
+
+  it("carries the honest-framing key phrase 'transcript ratchet'", () => {
+    expect(readThreatModel()).toContain('transcript ratchet')
+  })
+
+  it("carries the honest-framing key phrase 'design commitment'", () => {
+    expect(readThreatModel()).toContain('design commitment')
   })
 })
