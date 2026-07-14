@@ -59,5 +59,11 @@
     "gsd-code-reviewer": "fable",
     "gsd-code-fixer": "fable",
     "gsd-debugger": "fable"
+  },
+  "model_profile_overrides": {
+    "claude": {
+      "opus": "claude-fable-5",
+      "sonnet": "claude-fable-5"
+    }
   }
 }
