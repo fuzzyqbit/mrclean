@@ -32,7 +32,7 @@ MCP tool results accept string content and are honored.
 | Tool | String payload | Object payload |
 |------|----------------|----------------|
 | Bash (built-in) | **REJECTED** — zod shape validation; hook warning; original output used | **HONORED** — `{stdout, stderr, interrupted, isImage}` (probe session `e244a7f9-6296-4413-a636-efea169636e2`; fixture `tests/uat/fixtures/e1-object-rewrite-hook.sh`) |
-| Read (built-in) | **REJECTED** (string form; original output used) | **UNTESTED** — Read's expected output shape is unknown (open follow-up) |
+| Read (built-in) | **REJECTED** (string form; original output used) | **REJECTED** — Bash-style object refused: "rejected — zod error names Read's expected output shape (see verbatim excerpt)" (zod `invalid_union`, "No matching discriminator", path `["type"]`; probe session `df4534f2-190a-4060-8d50-0dbf94cfba94`, `experiments.E1_shape_validation.signals.read_object_verdict`/`read_object_hook_error`) |
 | MCP tools | **HONORED** — MCP content is string-shaped (model quoted the REWRITTEN marker) | n/a |
 
 ### Evidence excerpt
@@ -128,28 +128,27 @@ fork-session control minted `e08e5d75-0cdf-4226-bd02-a4f0027a8bff`.
 
 ## E4 — Does the documented 10K-char hook-output cap bind `updatedToolOutput`?
 
-**Verdict:** **Unanswerable for built-in tools on this version at run time** —
-the string-form `updatedToolOutput` was rejected for Bash and Read (see E1), so
-the cap could not be exercised through the built-in path; the MCP path was not
-exercised for the cap question. Honest documented outcome per RESEARCH Open
-Question 2. **Control finding:** a ~15K-char `additionalContext` was **NOT
+**Verdict:** **The cap does NOT bind `updatedToolOutput`.** Recorded verdict
+(`experiments.E4.verdict`):
+"cap does NOT bind updatedToolOutput (~15K survived intact for Bash)".
+A >10K Bash output (`seq 1 3000`) was rewritten by the fixture hook to a ~15K
+OBJECT-shaped `updatedToolOutput`; both HEAD and TAIL markers reached the
+model-facing `tool_result` intact (observed length: 15,032 chars). **Control finding:** a ~15K-char `additionalContext` was **NOT
 capped** in this observation — both HEAD and TAIL markers reached the transcript
 (the documented 10K cap was not observed at ~15K).
 
-`[verified on Claude Code 2.1.209, 2026-07-14, live headless -p sessions; ~15K additionalContext control with HEAD/TAIL markers; updatedToolOutput leg gated on E1]`
-
-**Reinterpretation (post shape-validation discovery):** E4 is potentially
-answerable via an OBJECT-shaped Bash payload — rerun deferred (open follow-up
-below).
+`[verified on Claude Code 2.1.209, 2026-07-14, live headless -p session; >10K Bash output; ~15K OBJECT-shaped updatedToolOutput via tests/uat/fixtures/e4-object-large-output-hook.sh]`
 
 ### Downstream implications
 
-- **Phase 10 restore-in-large-outputs scope:** no confirmed cap binds
-  `updatedToolOutput`; the documented `additionalContext` cap was not observed
-  at ~15K on 2.1.209. Do not design around an assumed 10K truncation without
-  re-running E4 via the object-shaped payload.
-- **Phase 9 map-size expectations:** same — no empirical cap evidence to bound
-  placeholder-map growth from tool-output rewrites.
+- **Phase 10 restore-in-large-outputs scope:** no truncation bound applies to
+  `updatedToolOutput` rewrites at ~15K on this version — a full-size rewritten
+  tool output survives intact, so restore-scope design needs no 10K truncation
+  carve-out. The bound is tested to ~15K; re-run E4 with a larger payload before
+  relying on sizes far beyond that.
+- **Phase 9 map-size expectations:** tool-output rewrites are not clipped at 10K
+  on 2.1.209, so placeholder-map growth from large-output rewrites is bounded by
+  actual tool-output size, not by a hook-output cap.
 
 ---
 
@@ -170,15 +169,22 @@ session — SC3's live observable satisfied.
 
 ---
 
-## Open follow-ups
+## Closed follow-ups
 
-1. **Read object-shape probe (E1):** built-in Read with an OBJECT-shaped
-   `updatedToolOutput` is untested — Read's expected output shape is unknown.
-2. **E4 rerun via object-shaped Bash payload:** now potentially answerable;
-   deliberately not re-run during 08-04 Task 3 checkpoint resolution.
+Both former open items were settled empirically by the 08-08 harness legs, run
+live in 08-09 (fresh 2.1.209 stamps, 2026-07-14):
 
-Both are recorded in `experiments.E1_shape_validation.reinterpretation_notes`
-in the findings artifact.
+- **Read object-shape probe (E1): CLOSED.** The Bash-style OBJECT payload is
+  REJECTED for built-in Read — the zod `invalid_union` error ("No matching
+  discriminator", path `["type"]`) names Read's expected output shape as a
+  discriminated union the Bash shape does not satisfy. Recorded in
+  `experiments.E1_shape_validation.signals` (`read_object_verdict`,
+  `read_object_hook_error`); rerunnable via the committed E1/Read-object leg.
+  Read's exact accepted shape remains undocumented upstream — what is settled
+  is that the Bash shape is refused, with the verbatim error on record.
+- **E4 rerun via object-shaped Bash payload: CLOSED.** Run through the honored
+  Bash-object leg — the cap does not bind at ~15K (see §E4). Recorded in
+  `experiments.E4`.
 
 ---
 
@@ -212,3 +218,10 @@ The harness regenerates `tests/uat/artifacts/contract-findings.json` with fresh
 version stamps. On any Claude Code upgrade that changes a verdict, update this
 document's stamps and the consuming copy (`src/shared/types.ts` JSDoc,
 `src/doctor/version-check.ts` detail, THREAT_MODEL.md wire re-entry section).
+
+The findings writer is guarded (08-08, proven live in 08-09): a run that records
+zero verdicts refuses to overwrite the artifact, so an auth-failed or crashed run
+cannot clobber committed evidence. Interactive-only evidence the headless harness
+cannot reproduce (`E1.rendering`, the string-shape `verbatim_hook_error`) is
+carried forward from the previous artifact — re-running on upgrades no longer
+destroys cited evidence (WR-01 closed).
