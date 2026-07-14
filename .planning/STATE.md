@@ -1,12 +1,12 @@
 ---
 gsd_state_version: 1.0
 milestone: v3.0
-milestone_name: Reversible Redact Mode
-status: planning
-last_updated: "2026-07-14T15:10:25.469Z"
+milestone_name: Reversible Redact Mode — Foundations + Operator Restore
+status: roadmap_created
+last_updated: "2026-07-14T00:00:00.000Z"
 last_activity: 2026-07-14
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,16 +21,17 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** Milestone v3.0 Reversible Redact Mode — defining requirements
+**Current Focus:** Milestone v3.0 Reversible Redact Mode — Foundations + Operator Restore — roadmap created (Phases 8–11), ready to plan Phase 8
 **Project Mode:** mvp (vertical slices)
 **Granularity:** coarse (3-5 phases)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 8 of 11 — Contract Verification & Reversible Plumbing (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-14 — Milestone v3.0 started
+Status: Roadmap created — ready for `/gsd-plan-phase 8`
+Progress: [░░░░░░░░░░] 0% (0/4 v3.0 phases)
+Last activity: 2026-07-14 — v3.0 roadmap created (Phases 8–11; 12/12 REVMODE requirements mapped)
 
 ## Performance Metrics
 
@@ -42,6 +43,7 @@ Last activity: 2026-07-14 — Milestone v3.0 started
 | False-positive rate on negative fixture corpus | 0% | 0% (0/10 — 02-06 fixture corpus) |
 | Line coverage on `src/` | ≥ 80% | 84.01% lines / 82.89% stmts / 82.12% funcs / 73.22% branches (03-00 baseline) |
 | Regex-PII hot-path latency (p95) | < 100 / < 200 ms | TBD (Phase 5 — must stay within v1 budget with L6a enabled) |
+| Reversible-mode PostToolUse overhead | ~4–8 ms typical / <60 ms contended worst-case | TBD (Phase 9/11 — research estimate; detection stays dominant cost) |
 | Phase 01 P06 | 10min | 3 tasks | 9 files |
 | Phase 01 P07 | 4min | 2 tasks | 1 files |
 
@@ -49,7 +51,27 @@ Last activity: 2026-07-14 — Milestone v3.0 started
 
 ### Decisions Made
 
-#### Milestone v2.0 (Native-Node PII/NER Layer)
+#### Milestone v3.0 (Reversible Redact Mode — Foundations + Operator Restore)
+
+- **Phase numbering continues from v2.0 (Phases 8–11)** — v1.0 ended at Phase 3, v2.0 at Phase 7; same-roadmap continuation per established pattern.
+- **4-phase v3.0 structure** derived from research/SUMMARY.md "Implications for Roadmap", adapted for the T1 reshape (in-session hook-path restore CUT from scope): contract verification + plumbing → session state adapter → operator restore → wire-safety verification. Coarse granularity (3-5) respected.
+- **T1/T2/T4/T6 decisions are MADE (2026-07-14, recorded in PROJECT.md Key Decisions)** — Phase 8 is contract *verification* + plumbing, not decision-making: no display-only hook channel exists, so no in-session restore; map = encrypted per-session file under `~/.mrclean/sessions/`; session-tagged v2 tokens in reversible mode only; `restore` MCP tool stays banned, operator-only CLI instead.
+- **REVMODE-07 maps to Phase 9** (janitor runtime is the requirement's core); Phase 8 lays its installer/dispatcher groundwork (SessionEnd routing, SessionStart matcher widening `startup|resume|clear|compact`, migration) with zero behavior change.
+- **REVMODE-03 maps to Phase 8** (THREAT_MODEL.md reversible section drafted from made decisions + in-phase empirical answers); Phase 11 finalizes it against the shipped implementation and locks it with the copy-drift gate (REVMODE-11 scope).
+- **Verification gates named early**: Phase 11's canary round-trip / chaos / concurrency-stress gates are named in Phases 8–10 success criteria so implementations build against them, not retrofit them (research phase-ordering rule).
+- **Storage-mechanics reconciliation deferred to Phase 9 planning** — append-only JSONL + lock-free hot path vs whole-file encrypt + short locked transaction, plus key layout; invariants already converged (SUMMARY.md T2), so it's a plan-phase design pin, not new research.
+
+### Phase → Requirement Mapping (v3.0)
+
+| Phase | Requirements | Count |
+|-------|--------------|-------|
+| Phase 8 — Contract Verification & Reversible Plumbing | REVMODE-10, REVMODE-03 | 2 |
+| Phase 9 — Session State Adapter | REVMODE-02, REVMODE-04, REVMODE-05, REVMODE-06, REVMODE-07 | 5 |
+| Phase 10 — Operator Restore | REVMODE-01, REVMODE-08, REVMODE-09, REVMODE-12 | 4 |
+| Phase 11 — Wire-Safety Verification & Hardening | REVMODE-11 | 1 |
+| **Total v3.0** | | **12** |
+
+#### Milestone v2.0 (Native-Node PII/NER Layer) — shipped 2026-06-03
 
 - **Phase numbering CONTINUES from v1 (Phases 4-7), not reset to 1** — v1 ended at Phase 3 (shipped 2026-05-14); v2.0 PII/NER is Phases 4-7 of the same roadmap.
 - **4-phase v2.0 structure** derived from research/SUMMARY.md + ARCHITECTURE-v2-pii.md build order, within `coarse` granularity (3-5): contracts → regex hot-path lane + model infra → NER + MCP wiring → security hardening. Each phase is operator-verifiable.
@@ -61,12 +83,12 @@ Last activity: 2026-07-14 — Milestone v3.0 started
 - **PII findings reuse existing PlaceholderManager + audit log + 5-axis allowlist with ZERO new sink code** — only schema additions are new `PII_*` TYPEs and `pii-regex`/`pii-ner` finding sources (Phase 4 contract).
 - **Audit schema extended with `engine`/`model_rev`/`quant`/`backend`; no-raw-value rule extended to PII** — pins reproducibility (NER is non-deterministic across model rev/quant/backend) and prevents `audit.jsonl` becoming a plaintext PII DB (Phase 4 schema + Phase 7 leak-grep).
 - **Hard scope fence (Phase 4, enforced every transition)**: one default model (`Xenova/bert-base-NER` int8) + optional piiranha tier; PER/ORG/LOC + listed regex-PII only. NO cloud PII APIs, NO model-facing unredact tool, NO Presidio Python sidecar in default distribution. Don't drift into "a worse Presidio in Node."
-- **PII placeholder reversibility deferred** — one-way PII redaction only this milestone; ties to the REVMODE backlog.
+- **PII placeholder reversibility deferred** — one-way PII redaction only this milestone; ties to the REVMODE backlog. (Now active: v3.0.)
 - [Phase ?]: Phase 01 gap-closure (01-06): the installer writes a fail-closed POSIX /bin/sh hook wrapper so ANY inner failure of node<bin>hook (missing bin, ENOENT, exit 1, module-not-found, signal) remaps to exit 2 — closes the SC4/HOOK-05 fail-open hole where a deleted bin silently disabled protection. Proven deterministically via spawnSync (no live Claude needed).
 - [Phase ?]: win32 hook stays plain-exec form (documented known-gap, fail-OPEN on spawn failure) — the cmd.exe nested-quote wrapper is fragile/untested; a mis-quote would false-BLOCK every tool call, so no wrapper ships for win32 this plan.
 - [Phase ?]: Doctor extracts node+bin from the wrapper arg tail (args[len-2]/args[len-1]) with a legacy/win32 fallback keyed on args[0] ending in '.js'; bins-missing FAIL now reports the fail-closed block-until-reinstall consequence (exit 2).
 
-### Phase → Requirement Mapping (v2.0)
+### Phase → Requirement Mapping (v2.0) — historical
 
 | Phase | Requirements | Count |
 |-------|--------------|-------|
@@ -78,19 +100,25 @@ Last activity: 2026-07-14 — Milestone v3.0 started
 
 ### Open Todos
 
-- [ ] Run `/gsd-plan-phase 4` to break Phase 4 (PII contracts) into executable plans
-- [ ] Phase 5/6 flagged for `--research-phase` / spike 002: benchmark `Xenova/bert-base-NER` int8 cold-load + warm-infer on macOS arm64 + Linux glibc; WASM-backend latency (decides musl NER posture); int8-vs-fp32 recall on code-style content; confirm `@huggingface/transformers` v4 import paths against live package
-- [ ] Phase 4 config plan: pin `pii.*.entities` array merge semantics (recommend last-wins for entity toggles per ARCHITECTURE-v2-pii.md)
+- [ ] Run `/gsd-plan-phase 8` — `--research-phase` recommended (live headless contract experiments: `updatedToolOutput` terminal rendering, `updatedInput` context echo, `session_id` continuity across `--resume`, 10K-char cap; UAT-2b harness precedent)
+- [ ] Phase 9 planning: pin storage mechanics (append-only JSONL + lock-free hot path vs whole-file encrypt + short locked transaction) and key layout (separate `~/.mrclean/keys/` dir favored) — invariants converged, design pin only
+- [ ] Phase 9/10 deps: `proper-lockfile@^4.1.2`, `write-file-atomic@^7.0.1` (PIN — do NOT float to ^8, breaks Node 20 floor); guard the major in dependabot/renovate
+- [ ] Phase 10 early: per-tool empirical verification of structured `tool_response` shapes (docs only show Bash string example)
+
+#### v2.0 milestone todos — historical (shipped 2026-06-03)
+
+- [x] All Phase 4–7 plans — COMPLETE (12 plans, 19 tasks)
+- [x] Phase 5/6 research spike (NER benchmarks, transformers v4 import paths) — resolved during v2.0
 
 #### v1 milestone todos (Phases 1-3) — historical
 
-- [x] All Phase 1 plans (01-01..01-05) — COMPLETE
+- [x] All Phase 1 plans (01-01..01-05) — COMPLETE (+ 01-06/01-07 gap-closure 2026-07-13)
 - [x] All Phase 2 plans (02-00..02-06) — COMPLETE
 - [x] All Phase 3 plans (03-00..03-05) — Tasks complete; 03-05 Task 3 = checkpoint:human-action (first manual publish)
 
 ### Blockers
 
-- v1 carryover: Task 3 (checkpoint:human-action): Maintainer must run first-publish manually (npm login + npm publish --access public). See docs/RELEASE.md. After publish, tag v1.0.0-rc.1 and push. (Does not block v2.0 planning.)
+- v1 carryover: Task 3 (checkpoint:human-action): Maintainer must run first-publish manually (npm login + npm publish --access public). See docs/RELEASE.md. After publish, tag v1.0.0-rc.1 and push. (Does not block v3.0 planning.)
 
 ### Quick Tasks Completed
 
@@ -100,7 +128,17 @@ Last activity: 2026-07-14 — Milestone v3.0 started
 | 260601-1sw | `mrclean init` CLI subcommand + /mrclean:mrclean-init slash command | 2026-06-01 | 0d12c88 | [260601-1sw-mrclean-init-command](./quick/260601-1sw-mrclean-init-command/) |
 | 260601-2fj | uninstall surgically removes only mrclean entries (no wholesale restore) | 2026-06-01 | ca2891a | [260601-2fj-uninstall-surgical](./quick/260601-2fj-uninstall-surgical/) |
 
-### Cross-Phase Notes (v2.0)
+### Cross-Phase Notes (v3.0)
+
+- Phase 8's `[reversible]` config table + SessionEnd/SessionStart plumbing is the contract Phases 9–10 build on; it must land with zero behavior change (byte-identical one-way default, proven by existing suites).
+- Phase 8's empirical contract answers gate design freezes downstream: `session_id` continuity across `--resume` decides whether Phase 9's retain-on-resume rehydration is real or dead code; `updatedInput` echo decides whether input-side restore stays deferred (currently scoped out).
+- Phase 9's secret floor is enforced at map-WRITE time — it must ship with (not after) the store, or a window exists where secret originals sit in shared state.
+- Phase 9's content-addressed allocation fixes the latent v1/v2 cross-process counter-collision gap — standalone value even if restore slips.
+- Phase 10's `restoreText()` lives in `src/restore/` (opposite trust direction from `src/placeholder/` — it *introduces* sensitive data); never reuse `substituteFindings`. Restore = map lookup only, never re-detection, never position-based, never fuzzy.
+- Phase 11's gates are named in Phases 8–10 criteria (canary round-trip, fs-write interception, chaos, 8–16-process stress) — build against them from the start; all extend shipped harnesses (UAT-2b, leak-grep, copy-drift).
+- Error-domain split is load-bearing everywhere: redact stays fail-closed, restore fails one-way (safe); no shared kill switch — chaos test proves a canary is still redacted after restore breaks.
+
+### Cross-Phase Notes (v2.0 — historical)
 
 - Phase 4's finding-shape + audit-schema + config additions are the contract every later v2.0 phase imports — touches Plan-02-00-owned files (`findings.ts`, `type-map.ts`) which carry "revise plan first" warnings; sequence the schema work first.
 - Phase 5's `model-cache.ts` + `pipeline-singleton.ts` plumbing is pure infra (testable without inference) and is the dependency gate for Phase 6's NER inference.
@@ -153,7 +191,7 @@ Last activity: 2026-07-14 — Milestone v3.0 started
 - **applyDryRun uses generic constraint** `T extends { effectiveAction: ... }` to avoid circular module import between dry-run.ts and index.ts.
 - **budgetExhausted is a signal, not an early exit:** findings collected before Layer 1 timeouts still populate DetectionResult; Plan 02-05 decides on deny path.
 - **Promise.allSettled for audit writes:** write failures logged to stderr as JSON warning; hook response always returned regardless of audit log state.
-- **Module-level WorkerPool + PlaceholderManager cache:** Map<sessionId, PlaceholderManager> ensures placeholder stability across calls; shutdownDetection() resets both on process exit.
+- **Module-level WorkerPool + PlaceholderManager cache:** Map<sessionId, PlaceholderManager> ensures placeholder stability across calls; shutdownDetection() resets both on process exit. (v3.0 NOTE: reversible mode replaces per-process counter allocation with content-addressed allocation under shared session state — Phase 9.)
 
 - **smol-toml ^1.6.1 replaces hand-rolled TOML parser** — Phase 2 requires [[rules]] array-of-tables and [entropy] sub-tables that the Phase 1 hand-rolled parser could not handle.
 - **secrets_files flattened from [secrets_files].paths** — `readConfigLayer` hoists `paths` to `config.secrets_files: string[]` for ergonomics; Layer 3 consumers see a flat string array.
@@ -171,9 +209,9 @@ Last activity: 2026-07-14 — Milestone v3.0 started
 - **shannonEntropy exported from layer2** — exported for testing and potential re-use; gitleaks-engine.ts already inlined a copy per 02-01 decision.
 - **HOOK-PROCESS LIFETIME cache in session-state.ts** — module-level sessionId-keyed Map for per-process reuse; Phase 3 PERF gate will evaluate if persistent IPC cache is needed.
 - **initSessionState uses Promise.all** — env blocklist and word list are independent I/O operations; parallel loading keeps SessionStart latency minimal.
-- **PlaceholderManager global counter (not per-TYPE)** — PH-03 collision-free across TYPEs; operator mental model is "the Nth thing redacted this session", not "the Nth AWS key".
-- **OVF path is non-fatal (stderr JSON warning, not throw)** — hook is in Claude Code hot path; blocking the user on >999 unique secrets would be worse than degraded placeholder labels.
-- **assertNoCanaryLeak checks JSON.stringify(record) substring** — normalises field order, catches partial leaks where value appears inside nested objects; ENOENT returns ok:true; malformed JSON returns ok:false with <malformed> canary. (v2.0: Phase 7 leak-grep extends this to raw PII values + error paths.)
+- **PlaceholderManager global counter (not per-TYPE)** — PH-03 collision-free across TYPEs; operator mental model is "the Nth thing redacted this session", not "the Nth AWS key". (v3.0 NOTE: reversible mode's counter must survive process restarts via the shared session store — Phase 9.)
+- **OVF path is non-fatal (stderr JSON warning, not throw)** — hook is in Claude Code hot path; blocking the user on >999 unique secrets would be worse than degraded placeholder labels. (v3.0 NOTE: OVF tokens are never restored — pass through unchanged, Phase 10.)
+- **assertNoCanaryLeak checks JSON.stringify(record) substring** — normalises field order, catches partial leaks where value appears inside nested objects; ENOENT returns ok:true; malformed JSON returns ok:false with <malformed> canary. (v2.0: Phase 7 leak-grep extends this to raw PII values + error paths. v3.0: Phase 10 extends over map artifacts + restore code/error paths.)
 - **findingToAuditRecord LOCKED comment + grep gate** — prevents future refactors from accidentally adding finding.value to the audit record; canary-leak test enforces at runtime.
 
 ### Additional Decisions (Phase 2 — Plan 06)
@@ -197,17 +235,17 @@ Last activity: 2026-07-14 — Milestone v3.0 started
 
 ## Session Continuity
 
-**Last command:** `/gsd-resume-work` (session crashed mid `/gsd-new-milestone` v3.0)
-**Last action:** Resumed after crash — verified v3.0 milestone start committed (5b2b726: PROJECT.md + STATE.md), no v3.0-REQUIREMENTS.md yet, tree clean, no handoff/checkpoint artifacts.
-**Stopped at:** v3.0 new-milestone flow interrupted before requirements step
-**Next action:** Resume `/gsd-new-milestone` at requirements definition for v3.0 Reversible Redact Mode (REVMODE-01/02/03; resolve REVMODE-02 plaintext-session-file tension).
+**Last command:** `/gsd:new-project` (roadmap step for v3.0)
+**Last action:** v3.0 roadmap created — Phases 8–11 appended to ROADMAP.md (numbering continued from v2.0), 12/12 REVMODE requirements mapped, REQUIREMENTS.md traceability filled, STATE.md updated.
+**Stopped at:** Roadmap created, awaiting phase planning
+**Next action:** `/gsd-plan-phase 8` — `--research-phase` recommended (live headless contract experiments; UAT-2b harness precedent)
 
 ---
-*Last updated: 2026-06-02 - v2.0 roadmap created (Phases 4-7 appended; phase numbering continued from v1)*
+*Last updated: 2026-07-14 — v3.0 roadmap created (Phases 8–11 appended; phase numbering continued from v2.0)*
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Run `/gsd-plan-phase 8` (research-phase recommended: live headless contract verification)
 
 ## Deferred Items
 
@@ -222,3 +260,11 @@ Items acknowledged and deferred at v2.0 milestone close on 2026-06-03 (pre-close
 | verification_gap | Phase 01 SC4/HOOK-05 UAT item | resolved 2026-07-13 (fail-closed wrapper 01-06 + live UAT 01-07) |
 
 The 2026-06-03 audit's "missing" statuses were stale — the quick-task directories exist at `.planning/quick/` with PLAN + SUMMARY, and all three commits are in history.
+
+### v3.0 deferred (from requirements, 2026-07-14)
+
+- In-session restore on the return path — v3.x fast-follow if/when Claude Code ships a display-only rewrite channel (upstream request filed under REVMODE-10, Phase 8)
+- PreToolUse input-side restore for local tools — only if Phase 8's `updatedInput` echo verification proves it safe
+- Delimiter/case-tolerant token matching + near-miss audit — only on field evidence of model-mangled tokens (never Levenshtein)
+- Keychain-backed key custody (POLISH-03) — `getMachineKey()` is the single swap point
+- Layer 5 `--deep` LLM classifier — planned v4.0

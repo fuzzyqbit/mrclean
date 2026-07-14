@@ -51,10 +51,22 @@
 
 ## Traceability
 
-Populated by roadmap creation.
+Mapped by v3.0 roadmap creation (2026-07-14). Coverage: 12/12 v3.0 requirements → exactly one phase each.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| REVMODE-01 | Phase 10 — Operator Restore | Pending |
+| REVMODE-02 | Phase 9 — Session State Adapter | Pending |
+| REVMODE-03 | Phase 8 — Contract Verification & Reversible Plumbing | Pending |
+| REVMODE-04 | Phase 9 — Session State Adapter | Pending |
+| REVMODE-05 | Phase 9 — Session State Adapter | Pending |
+| REVMODE-06 | Phase 9 — Session State Adapter | Pending |
+| REVMODE-07 | Phase 9 — Session State Adapter | Pending |
+| REVMODE-08 | Phase 10 — Operator Restore | Pending |
+| REVMODE-09 | Phase 10 — Operator Restore | Pending |
+| REVMODE-10 | Phase 8 — Contract Verification & Reversible Plumbing | Pending |
+| REVMODE-11 | Phase 11 — Wire-Safety Verification & Hardening | Pending |
+| REVMODE-12 | Phase 10 — Operator Restore | Pending |
 
 ---
-*Defined: 2026-07-14 — v3.0 milestone requirements (12 REQ-IDs) after research synthesis + T1 reshape*
+*Defined: 2026-07-14 — v3.0 milestone requirements (12 REQ-IDs) after research synthesis + T1 reshape. Traceability mapped 2026-07-14 (Phases 8–11).*
