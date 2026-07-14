@@ -135,13 +135,31 @@ export interface PreToolUseOutput {
  * PostToolUse is non-blocking: exit 2 only shows stderr, it cannot stop execution.
  *
  * `updatedToolOutput` requires Claude Code >= v2.1.121 (Plan 02-05 doctor floor bump).
- * When present, it replaces the tool output that re-enters the model context.
+ *
+ * E1 verdict — verified on Claude Code 2.1.209, 2026-07-14, live fixture-hook
+ * experiments (docs/HOOK-CONTRACT.md; tests/uat/artifacts/contract-findings.json):
+ * Claude Code SHAPE-VALIDATES `updatedToolOutput` per tool.
+ *   - MCP tools: STRING payloads honored (MCP content is string-shaped) — the
+ *     rewrite replaces the tool output that re-enters model context.
+ *   - Built-in Bash: STRING payloads REJECTED (zod invalid_type, "expected
+ *     object, received string"; hook warning shown, original output used —
+ *     the likely substance of anthropics/claude-code#68951). OBJECT payloads
+ *     ({stdout, stderr, interrupted, isImage}) ARE honored.
+ *   - Built-in Read: STRING payloads rejected; object shape untested (open
+ *     follow-up — expected shape unknown).
+ * mrclean emits the STRING form (post-tool-use.ts Step 7), so on 2.1.209 the
+ * PostToolUse rewrite is honored for MCP tool outputs and inert for built-in
+ * tools. Terminal rendering follows the model-facing value.
  */
 export interface PostToolUseOutput {
   hookSpecificOutput?: {
     hookEventName: 'PostToolUse'
     additionalContext?: string
-    /** Placeholder-substituted version of the tool output (CC >= v2.1.121). */
+    /**
+     * Placeholder-substituted version of the tool output (CC >= v2.1.121).
+     * String form is honored for MCP tools only; built-in tools reject it via
+     * per-tool shape validation on 2.1.209 — see docs/HOOK-CONTRACT.md §E1.
+     */
     updatedToolOutput?: string
   }
 }
