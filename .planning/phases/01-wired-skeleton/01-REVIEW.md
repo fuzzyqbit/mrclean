@@ -15,7 +15,8 @@ findings:
   warning: 3
   info: 3
   total: 6
-status: issues_found
+  resolved: [WR-01, WR-02, WR-03]
+status: clean
 ---
 
 # Phase 1: Code Review Report
@@ -23,7 +24,7 @@ status: issues_found
 **Reviewed:** 2026-07-13T23:32:33Z
 **Depth:** standard
 **Files Reviewed:** 6
-**Status:** issues_found
+**Status:** clean (all 3 warnings resolved 2026-07-13; 3 info advisory remain)
 
 ## Summary
 
@@ -58,6 +59,8 @@ a deterministic test), and three minor robustness/quality notes.
 
 ### WR-01: Doctor FAIL message hardcodes POSIX fail-closed language on every platform — inverts the security posture on Windows
 
+> **RESOLVED (2026-07-13, commit 586387b):** `checkBinsExecutable` takes an injected `platform` param; POSIX wording states fail-closed BLOCK, win32 wording warns fail-OPEN/UNPROTECTED. Tests cover both wordings.
+
 **File:** `src/doctor/checks.ts:333-338`
 **Issue:** `checkBinsExecutable` is invoked unconditionally by `computeDoctorReport`
 (no platform argument). When a registered bin is missing/non-executable it always
@@ -84,6 +87,8 @@ detail: failClosed
 
 ### WR-02: `extractHookNodeAndBin` discriminates on a filename heuristic (`args[0].endsWith('.js')`) instead of the command shape — a latent path-extraction trap
 
+> **RESOLVED (2026-07-13, commit 586387b):** Discriminates on `command === '/bin/sh' && args[0] === '-c'`; malformed wrapper returns `{}` via `MIN_WRAPPER_ARGS` guard. 5 new shape-discrimination tests incl. `.mjs`/extensionless bins.
+
 **File:** `src/doctor/checks.ts:74-95`
 **Issue:** The wrapper-vs-legacy discriminator keys on whether `args[0]` ends in
 `.js`. Today the bin is always `dist/cli.js` (confirmed via
@@ -107,6 +112,8 @@ return {}
 ```
 
 ### WR-03: Security test-coverage gap — the injection/space/stdin guarantees are asserted only in comments, never in a deterministic test
+
+> **RESOLVED (2026-07-13, commit 3cfa4c6):** Three deterministic spawnSync tests added to tests/install/settings.test.ts — injection (metachar bin path, no PWNED file), space safety (spaced node+bin dirs), stdin passthrough (payload reaches inner process intact). All pass against unmodified source.
 
 **File:** `tests/install/settings.test.ts:220-270`
 **Issue:** The `spawnSync` remap suite proves exit-code remapping (0/2/missing) and
