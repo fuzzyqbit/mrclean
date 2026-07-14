@@ -1,0 +1,255 @@
+{
+  "claude_version": "2.1.209 (Claude Code)",
+  "date": "2026-07-14",
+  "generated_by": "tests/uat/contract-verification.test.ts (MRCLEAN_UAT=1 opt-in, record-dont-assert)",
+  "issue_68951": "{\"state\":\"OPEN\",\"title\":\"PostToolUse `updatedToolOutput` silently ignored for built-in Bash tool (2.1.163/2.1.177) — regression; prior reports #65403/#67442/#54196 closed as duplicate, never fixed\"}",
+  "experiments": {
+    "E1": {
+      "question": "Is PostToolUse hookSpecificOutput.updatedToolOutput honored, per tool? Where does the rewrite surface?",
+      "method": "live headless -p sessions; fixture PostToolUse rewrite hook; signals: model quote, transcript jsonl tool_result, stream-json tool_result",
+      "claude_version": "2.1.209 (Claude Code)",
+      "date": "2026-07-14",
+      "verdict": "Bash: ignored (original output reached the model unchanged); Read: ignored (original output reached the model unchanged); MCP: honored (see E1_shape_validation: 'ignored' = string-form rejected by per-tool output-shape validation; object shape HONORED for Bash)",
+      "tools": {
+        "Bash": {
+          "verdict": "ignored (original output reached the model unchanged) (see E1_shape_validation: string form rejected by shape validation; object shape honored)",
+          "signals": {
+            "model_reply_excerpt": "ORIGINAL_E1_MARKER_q7v4",
+            "model_reply_contains_rewritten": false,
+            "model_reply_contains_original": true,
+            "stream_tool_result_contains_rewritten": false,
+            "stream_tool_result_contains_original": true,
+            "stream_tool_result_excerpt": "\"ORIGINAL_E1_MARKER_q7v4\"",
+            "transcript_found": true,
+            "transcript_tool_result_contains_rewritten": false,
+            "transcript_tool_result_contains_original": true
+          },
+          "evidence_paths": [
+            "/Users/me/.claude/projects/-private-var-folders-g9--hcbr44x5bbg980rhc--4kl00000gn-T-mrclean-contract-QOAAyy-project/d885fc08-18bd-4115-8f48-cd2658ed0a96.jsonl"
+          ]
+        },
+        "Read": {
+          "verdict": "ignored (original output reached the model unchanged) (see E1_shape_validation: string form rejected; object shape for Read untested — open follow-up for 08-05)",
+          "signals": {
+            "model_reply_excerpt": "File contents:\n\n```\nORIGINAL_E1_MARKER_q7v4\n```",
+            "model_reply_contains_rewritten": false,
+            "model_reply_contains_original": true,
+            "stream_tool_result_contains_rewritten": false,
+            "stream_tool_result_contains_original": true,
+            "stream_tool_result_excerpt": "\"1\\tORIGINAL_E1_MARKER_q7v4\\n2\\t\"",
+            "transcript_found": true,
+            "transcript_tool_result_contains_rewritten": false,
+            "transcript_tool_result_contains_original": true
+          },
+          "evidence_paths": [
+            "/Users/me/.claude/projects/-private-var-folders-g9--hcbr44x5bbg980rhc--4kl00000gn-T-mrclean-contract-QOAAyy-project/32549769-cb3f-457f-a5ae-fa0b0fbc39ba.jsonl"
+          ]
+        },
+        "MCP": {
+          "verdict": "honored",
+          "signals": {
+            "model_reply_excerpt": "Tool returned:\n\n```\nREWRITTEN_E1_MARKER_x9k2\n```",
+            "model_reply_contains_rewritten": true,
+            "model_reply_contains_original": false,
+            "stream_tool_result_contains_rewritten": true,
+            "stream_tool_result_contains_original": false,
+            "stream_tool_result_excerpt": "\"REWRITTEN_E1_MARKER_x9k2\"",
+            "transcript_found": true,
+            "transcript_tool_result_contains_rewritten": true,
+            "transcript_tool_result_contains_original": false
+          },
+          "evidence_paths": [
+            "/Users/me/.claude/projects/-private-var-folders-g9--hcbr44x5bbg980rhc--4kl00000gn-T-mrclean-contract-QOAAyy-project/2b237f66-c656-4603-8700-8b3fa1372d64.jsonl"
+          ]
+        }
+      },
+      "rendering": {
+        "verdict": "honored rewrite (object shape) → terminal renders REWRITTEN output; rejected rewrite (string shape) → terminal renders 'PostToolUse:Bash hook warning' and no output line; display follows the model-facing value",
+        "claude_version": "2.1.209 (Claude Code)",
+        "date": "2026-07-14",
+        "method": "operator-directed automated PTY observation (tmux capture-pane); operator delegated the interactive observation — NOT the committed harness",
+        "evidence": {
+          "string_shape_session_id": "79b56324-4cc2-4817-8ea9-c8e604bb18c5",
+          "string_shape_rendered": "Tool-result block (both collapsed and ctrl+o expanded modes): 'Bash(echo ORIGINAL_E1_MARKER_q7v4)' / '⎿  PostToolUse:Bash hook warning' — NEITHER marker was displayed as tool output; transcript tool_result content was 'ORIGINAL_E1_MARKER_q7v4' and the model replied 'Output: ORIGINAL_E1_MARKER_q7v4'",
+          "object_shape_session_id": "e244a7f9-6296-4413-a636-efea169636e2",
+          "object_shape_rendered": "Expanded tool-result block: 'Bash(echo ORIGINAL_E1_MARKER_q7v4)' / '⎿  REWRITTEN_E1_MARKER_x9k2' — the terminal DISPLAYS THE REWRITTEN output when the rewrite is honored; model also saw REWRITTEN",
+          "conclusion": "display follows the model-facing value: honored rewrite → rewritten shown; rejected rewrite → hook warning shown (not the output line); no case renders the original alongside a successful rewrite",
+          "evidence_paths": [
+            "/Users/me/.claude/projects/-Users-me--claude-jobs-32889d1e-tmp-e1-sandbox/79b56324-4cc2-4817-8ea9-c8e604bb18c5.jsonl",
+            "/Users/me/.claude/projects/-Users-me--claude-jobs-32889d1e-tmp-e1-probe2/e244a7f9-6296-4413-a636-efea169636e2.jsonl"
+          ]
+        }
+      }
+    },
+    "E1_shape_validation": {
+      "question": "Discovery behind the E1 'ignored for Bash/Read' verdicts: does Claude Code shape-validate updatedToolOutput per tool?",
+      "method": "interactive string-shape transcript inspection (hook_error_during_execution attachment) + headless -p probe with OBJECT-shaped updatedToolOutput fixture (tests/uat/fixtures/e1-object-rewrite-hook.sh)",
+      "claude_version": "2.1.209 (Claude Code)",
+      "date": "2026-07-14",
+      "verdict": "Claude Code 2.1.209 SHAPE-VALIDATES updatedToolOutput per tool: STRING payloads are REJECTED for Bash (zod invalid_type, expected object) with a warning and the original output is used; OBJECT-shaped payloads ({stdout, stderr, interrupted, isImage}) are HONORED for Bash. The channel is NOT dead for built-ins.",
+      "verbatim_hook_error": "PostToolUse hook returned updatedToolOutput that does not match Bash's output shape; using original output. [\n  {\n    \"expected\": \"object\",\n    \"code\": \"invalid_type\",\n    \"path\": [],\n    \"message\": \"Invalid input: expected object, received string\"\n  }\n]",
+      "fixture_path": "tests/uat/fixtures/e1-object-rewrite-hook.sh",
+      "signals": {
+        "string_shape_session_id": "79b56324-4cc2-4817-8ea9-c8e604bb18c5",
+        "string_shape_rejected": true,
+        "string_shape_hook_error_attachment_observed": true,
+        "object_probe_session_id": "e244a7f9-6296-4413-a636-efea169636e2",
+        "object_probe_payload": "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"updatedToolOutput\":{\"stdout\":\"REWRITTEN_E1_MARKER_x9k2\",\"stderr\":\"\",\"interrupted\":false,\"isImage\":false}}}",
+        "object_probe_honored": true,
+        "object_probe_hook_error_attachments": 0,
+        "object_probe_transcript_tool_result": "REWRITTEN_E1_MARKER_x9k2",
+        "object_probe_model_reply_excerpt": "Output: `REWRITTEN_E1_MARKER_x9k2`"
+      },
+      "evidence_paths": [
+        "/Users/me/.claude/projects/-Users-me--claude-jobs-32889d1e-tmp-e1-sandbox/79b56324-4cc2-4817-8ea9-c8e604bb18c5.jsonl",
+        "/Users/me/.claude/projects/-Users-me--claude-jobs-32889d1e-tmp-e1-probe2/e244a7f9-6296-4413-a636-efea169636e2.jsonl"
+      ],
+      "reinterpretation_notes": {
+        "E1_bash_read_verdicts": "E1 Bash/Read 'ignored' verdicts mean 'string-form rejected by per-tool output-shape validation' — not 'channel dead'",
+        "issue_68951": "#68951 likely reports the string form",
+        "mcp_honored": "MCP honored because MCP accepts string content",
+        "E4": "E4 (10K cap) potentially answerable via object-shaped Bash payload — rerun deferred to a follow-up",
+        "read_object_shape": "Read with OBJECT-shaped payload NOT tested (expected object shape for Read unknown) — open follow-up for 08-05"
+      }
+    },
+    "E2": {
+      "question": "Does PreToolUse hookSpecificOutput.updatedInput echo into the transcript / model context, or is the original preserved?",
+      "method": "live headless -p session; fixture PreToolUse allow+updatedInput hook (complete tool_input object); signals: tool output marker, transcript tool_use input, model quote",
+      "claude_version": "2.1.209 (Claude Code)",
+      "date": "2026-07-14",
+      "verdict": "rewrite executed: true; no echo: transcript tool_use input preserves the ORIGINAL command",
+      "signals": {
+        "rewrite_executed": true,
+        "stream_tool_result_contains_updated": true,
+        "stream_tool_result_contains_original": false,
+        "stream_tool_use_input_contains_original": true,
+        "stream_tool_use_input_contains_updated": false,
+        "transcript_found": true,
+        "transcript_tool_use_input_contains_original": true,
+        "transcript_tool_use_input_contains_updated": false,
+        "model_reply_excerpt": "**(1) Exact command run:**\n`echo INPUT_ORIG_MARKER_e2`\n\n**(2) Exact output returned:**\n`INPUT_UPDATED_MARKER_e2`"
+      },
+      "evidence_paths": [
+        "/Users/me/.claude/projects/-private-var-folders-g9--hcbr44x5bbg980rhc--4kl00000gn-T-mrclean-contract-QOAAyy-project/7f0b4239-e331-4296-b996-d6516ba9a264.jsonl"
+      ]
+    },
+    "E3": {
+      "question": "Is session_id continuous across --resume in hook payloads (T5 rehydration gate)? Control: --fork-session mints a NEW id.",
+      "method": "live headless sessions from the same cwd; log-hook side file on SessionStart+UserPromptSubmit; claude -p --resume <sid>; control: --resume <sid> --fork-session",
+      "claude_version": "2.1.209 (Claude Code)",
+      "date": "2026-07-14",
+      "verdict": "plain resume reuses session_id: true; fork-session mints new id: true; SessionStart source:resume observed via widened matcher: true",
+      "signals": {
+        "sid_run1": "8f87d5ac-b7b7-43bc-95e0-192352a6e416",
+        "sid_run2_init": "8f87d5ac-b7b7-43bc-95e0-192352a6e416",
+        "sid_run2_hook_payloads": [
+          "8f87d5ac-b7b7-43bc-95e0-192352a6e416"
+        ],
+        "resume_method": "claude -p --resume <sid>",
+        "resume_reuses_session_id": true,
+        "sessionstart_source_resume_observed": true,
+        "fork_control_ran": true,
+        "sid_run3": "e08e5d75-0cdf-4226-bd02-a4f0027a8bff",
+        "fork_minted_new_id": true,
+        "side_file_entries": [
+          {
+            "e": "SessionStart",
+            "sid": "8f87d5ac-b7b7-43bc-95e0-192352a6e416",
+            "src": "startup"
+          },
+          {
+            "e": "UserPromptSubmit",
+            "sid": "8f87d5ac-b7b7-43bc-95e0-192352a6e416",
+            "src": null
+          },
+          {
+            "e": "SessionStart",
+            "sid": "8f87d5ac-b7b7-43bc-95e0-192352a6e416",
+            "src": "resume"
+          },
+          {
+            "e": "UserPromptSubmit",
+            "sid": "8f87d5ac-b7b7-43bc-95e0-192352a6e416",
+            "src": null
+          },
+          {
+            "e": "SessionStart",
+            "sid": "8f87d5ac-b7b7-43bc-95e0-192352a6e416",
+            "src": "resume"
+          },
+          {
+            "e": "UserPromptSubmit",
+            "sid": "e08e5d75-0cdf-4226-bd02-a4f0027a8bff",
+            "src": null
+          }
+        ]
+      },
+      "evidence_paths": [
+        "/var/folders/g9/_hcbr44x5bbg980rhc__4kl00000gn/T/mrclean-contract-QOAAyy/e3-log.jsonl"
+      ]
+    },
+    "E4": {
+      "question": "Does the documented 10K-char hook-output cap bind updatedToolOutput (unlisted in docs)?",
+      "method": "gated on E1: requires a built-in tool where updatedToolOutput is honored",
+      "claude_version": "2.1.209 (Claude Code)",
+      "date": "2026-07-14",
+      "verdict": "unanswerable for built-in tools on this CC version — updatedToolOutput ignored for Bash and Read (#68951); honored only for MCP, which this harness does not exercise for the cap question (see E1_shape_validation: potentially answerable via object-shaped Bash payload — rerun deferred to a follow-up)",
+      "signals": {
+        "e1_bash_verdict": "ignored (original output reached the model unchanged)",
+        "e1_read_verdict": "ignored (original output reached the model unchanged)",
+        "e1_mcp_verdict": "honored"
+      },
+      "evidence_paths": [],
+      "control_additionalContext": {
+        "question": "Control: is >10K additionalContext capped as documented (file + preview replacement)?",
+        "method": "live headless -p session; inline UserPromptSubmit hook emits ~15K additionalContext with HEAD/TAIL markers",
+        "claude_version": "2.1.209 (Claude Code)",
+        "date": "2026-07-14",
+        "verdict": "NOT capped in this observation: both markers present in transcript (documented cap not observed at ~15K)",
+        "signals": {
+          "model_reply": "YES NO",
+          "head_in_transcript": true,
+          "tail_in_transcript": true,
+          "transcript_found": true
+        },
+        "evidence_paths": [
+          "/Users/me/.claude/projects/-private-var-folders-g9--hcbr44x5bbg980rhc--4kl00000gn-T-mrclean-contract-QOAAyy-project/44355f72-183b-4d53-b7d7-72e0111713c4.jsonl"
+        ]
+      }
+    },
+    "E5": {
+      "question": "Does SessionEnd fire in headless -p mode (which reason)? Does mrclean’s real hook produce exit-2 noise on session start/end?",
+      "method": "live headless -p sessions; log-hook side file (headless firing); mrclean real built hook + stderr scan (SC3 observable)",
+      "claude_version": "2.1.209 (Claude Code)",
+      "date": "2026-07-14",
+      "verdict": "headless firing: SessionEnd did NOT fire in headless -p mode (Phase 9 janitor must lean on the TTL sweep; SC3 verified via stderr scan instead) | mrclean real-hook stderr noise: zero hook-error/exit-2 stderr noise observed (SC3 live observable satisfied)",
+      "headless": {
+        "question": "Does SessionEnd fire at the end of a headless -p session (A4)? Which reason?",
+        "method": "live headless -p session; log-hook on SessionEnd (no matcher) appending to a side file",
+        "claude_version": "2.1.209 (Claude Code)",
+        "date": "2026-07-14",
+        "verdict": "SessionEnd did NOT fire in headless -p mode (Phase 9 janitor must lean on the TTL sweep; SC3 verified via stderr scan instead)",
+        "signals": {
+          "side_file_written": false,
+          "entries": []
+        },
+        "evidence_paths": [
+          "/var/folders/g9/_hcbr44x5bbg980rhc__4kl00000gn/T/mrclean-contract-QOAAyy/e5-log.jsonl"
+        ]
+      },
+      "mrclean_real_hook": {
+        "question": "Does mrclean’s real hook (SessionStart widened matcher + SessionEnd no-op) produce exit-2/hook-error noise in a live session?",
+        "method": "live headless -p session; buildHookCommand fail-closed wrapper registered for SessionStart+SessionEnd in sandbox settings; stderr scanned",
+        "claude_version": "2.1.209 (Claude Code)",
+        "date": "2026-07-14",
+        "verdict": "zero hook-error/exit-2 stderr noise observed (SC3 live observable satisfied)",
+        "signals": {
+          "stderr_excerpt": "",
+          "exit_status": 0,
+          "model_reply": "OK"
+        },
+        "evidence_paths": []
+      }
+    }
+  }
+}
