@@ -1,759 +1,455 @@
-# Architecture Research
+# Architecture Research — v3.0 Reversible Redact Mode
 
-**Domain:** In-session AI-payload-redaction for Claude Code (hook + MCP integration)
-**Researched:** 2026-05-13
-**Confidence:** HIGH (hook contract verified against Anthropic CHANGELOG; MCP transports verified against current MCP spec)
+**Domain:** In-session AI-payload redaction for Claude Code — reversible restore path atop shipped v2.0 architecture
+**Researched:** 2026-07-14
+**Confidence:** HIGH on hook contract + existing-code integration points (verified against code.claude.com/docs/en/hooks and the shipped source); MEDIUM on MCP-server lifecycle assumptions; LOW on session_id continuity across `--resume` (flagged as open question)
+
+> Prior-milestone research preserved at `ARCHITECTURE.v1.md` (v1.0 MVP) and `ARCHITECTURE-v2-pii.md` (v2.0 PII/NER). This document covers ONLY what v3.0 adds.
 
 ---
 
 ## TL;DR
 
-mrclean is **two parallel surfaces** sharing one core: (a) a hook adapter that Claude Code spawns per-event over stdin/stdout, and (b) an MCP server Claude can call as a tool. The architecturally-pivotal finding is that **Claude Code v2.1.121+ supports `hookSpecificOutput.updatedToolOutput` on PostToolUse for all tools** — meaning inbound tool-result redaction is contractually possible without a custom proxy. The other pivotal finding is that **`UserPromptSubmit` hooks cannot rewrite the prompt** — they can only block or append `additionalContext` (open feature requests #34390, #46761, #53330). Outbound redaction must therefore be expressed as **block + reason** for prompts and **`updatedInput`** for tool calls.
+1. **The core tension is real and cannot be dissolved in-process.** Hook processes are spawned fresh per event (`src/hook/index.ts` → `process.exit()` every time); the module-level `Map<sessionId, PlaceholderManager>` in `src/detect/index.ts` dies with each process. Any restore in a later PostToolUse process requires the placeholder→original map to live *outside* hook process memory. Three ownership options exist (encrypted per-session file, MCP-server-resident map + IPC, hybrid); the decision matrix below leans strongly toward the **encrypted per-session file under `~/.mrclean/sessions/<session_id>/`**, but this is the requirements-step decision (REVMODE-02) — do not treat it as settled here.
 
-The single hardest design question — *where does the placeholder map live across hook invocations?* — has a clean answer driven by these constraints:
+2. **The single biggest blast-radius lever is not encryption — it is what goes in the map.** Today `PlaceholderManager` stores only `sha256(value)`; originals are discarded the moment substitution completes. Reversible mode is the FIRST time any original value is retained anywhere. Recommendation: persist originals **only for restorable-policy types** (WORD/paths/identifiers/PII names); secret-type entries persist `{placeholder, type, hash, counter}` with **no original** — they are needed only for cross-process stability, not restore. A fully exfiltrated map file then leaks one session's paths/names, never keys.
 
-- **One-way mode** needs no cross-invocation state. Each hook is independent. No daemon required.
-- **Reversible mode** needs the outbound substitution map to be readable by a later inbound `PostToolUse` hook in the same session. Since hooks are spawned fresh per event with **no shared memory**, state must be persisted somewhere. The right answer is a **per-session file under `~/.claude/mrclean/sessions/<session_id>.json`** keyed off the `session_id` field that every hook receives — *not* a sidecar daemon. A daemon adds IPC, lifecycle, and crash-recovery surface for marginal latency gains; file-backed state with `flock` is simpler, survives process crashes, and matches the patterns the wider hook ecosystem already uses (`disler/claude-code-hooks-mastery` does exactly this).
+3. **Locking is correctness-critical, not hygiene.** Verified: Claude Code runs matching hooks **in parallel**, and parallel tool calls fire concurrent PostToolUse processes. Today each process has its own counter starting at 0 — cross-process placeholder collisions (`<MRCLEAN:AWS_KEY:001>` meaning two different values) are *already latent in v1/v2*, merely cosmetic in one-way mode. In reversible mode a counter collision makes restore substitute the **wrong original**. The persisted map + lock fixes the latent PH-02/PH-03 cross-process hole as a side effect.
 
-Build order: **Installer → Detection Engine (layers 1-4) → Hook Adapter (one-way) → MCP Server → Reversible mode (file-backed map) → Layer 5 LLM classifier.** Sidecar daemon is *not* on the critical path and may never be needed.
+4. **Restore is a different algorithm than redact — do not reuse `substituteFindings`.** Forward redaction is span-based, right-to-left. Restore is a single-pass token-regex scan (`/<MRCLEAN:([A-Z0-9_]+):(\d{3}|OVF)>/g`) with a lookup map. "Longest-first ordering" is **not needed**: placeholder tokens are delimited, non-overlapping regex matches, and a single-pass `replace()` never rescans inserted text (no recursive expansion). `OVF` tokens must be **skipped** (last-writer-wins ambiguity in the manager makes them unrestorable).
 
----
+5. **Restored content re-enters the conversation context and therefore the wire.** `updatedToolOutput` replaces the tool result Claude sees — the restored originals ride the next API call. This is the fundamental reversible-mode hazard: restore MUST be type-policy-scoped (never secrets), opt-in, and the centerpiece of the THREAT_MODEL.md update (REVMODE-03).
 
-## Standard Architecture
-
-### System Overview
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         Claude Code Process                           │
-│                                                                       │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │                       Event Bus                                  │ │
-│  │  SessionStart  UserPromptSubmit  PreToolUse  PostToolUse        │ │
-│  └────────┬─────────────┬─────────────────┬──────────────┬──────────┘ │
-│           │             │                 │              │            │
-│   spawns subprocess per event (cold start, parallel-safe)             │
-└───────────┼─────────────┼─────────────────┼──────────────┼────────────┘
-            │             │                 │              │
-            ▼             ▼                 ▼              ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                  mrclean Hook Adapter (single bin)                   │
-│   Reads JSON from stdin → routes by hook_event_name → writes JSON   │
-│   to stdout. Cold start ~30-80ms (Node.js + module load).            │
-│                                                                       │
-│   ┌────────────┐  ┌─────────────────┐  ┌──────────────────────────┐ │
-│   │ Hook Router│→ │ Config Loader   │→ │ Session State Adapter    │ │
-│   │            │  │ (memoized in    │  │ (file lock + JSON r/w on │ │
-│   │            │  │  warm v8 cache) │  │  ~/.claude/mrclean/...)  │ │
-│   └─────┬──────┘  └─────────────────┘  └────────────┬─────────────┘ │
-│         │                                            │               │
-│         ▼                                            ▼               │
-│   ┌──────────────────────────────────────────────────────────────┐  │
-│   │                      Core Library (shared)                    │  │
-│   │                                                               │  │
-│   │  ┌────────────────────┐    ┌─────────────────────────────┐   │  │
-│   │  │ Detection Engine   │    │ Placeholder Manager         │   │  │
-│   │  │                    │    │                             │   │  │
-│   │  │ L1: Regex pack     │    │ - substitute(text, matches) │   │  │
-│   │  │ L2: Entropy        │    │ - allocate(value) → token   │   │  │
-│   │  │ L3: .env values    │ →  │ - lookup(token) → value     │   │  │
-│   │  │ L4: Word list      │    │ - persist(sessionId)        │   │  │
-│   │  │ L5: LLM (opt-in)   │    │   [reversible mode only]    │   │  │
-│   │  └─────────┬──────────┘    └──────────┬──────────────────┘   │  │
-│   │            │                           │                      │  │
-│   │            ▼                           ▼                      │  │
-│   │  ┌──────────────────────────────────────────────────────┐    │  │
-│   │  │  Audit Logger (append .mrclean/audit.jsonl)          │    │  │
-│   │  │  rule_id, severity, sha256(value), session_id, ts    │    │  │
-│   │  └──────────────────────────────────────────────────────┘    │  │
-│   └──────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────┘
-            ▲                                           ▲
-            │                                           │
-            │ same Core Library (no IPC, in-process)    │
-            │                                           │
-┌───────────┴───────────────────────────────────────────┴──────────────┐
-│              mrclean MCP Server (separate process)                   │
-│   Long-lived, started by Claude Code via .mcp.json or settings.json  │
-│   Transports: stdio (default), Streamable HTTP (--http opt-in)       │
-│                                                                       │
-│   Tools exposed:                                                      │
-│     - redact(text, mode)        → returns sanitized text + map       │
-│     - restore(text, sessionId)  → reverses placeholders for human    │
-│     - audit_show(sessionId)     → returns recent audit entries       │
-│     - block_term(term)          → adds runtime word to .mrclean      │
-└──────────────────────────────────────────────────────────────────────┘
-            ▲
-            │
-┌───────────┴────────────────────────────────────────────────────────┐
-│                Installer CLI (`npx mrclean install`)                │
-│   - Reads existing ~/.claude/settings.json (if any)                 │
-│   - Deep-merges hook entries (idempotent; identifies own entries    │
-│     by stable "name": "mrclean" marker)                             │
-│   - Writes .mrclean/config.json template in project cwd             │
-│   - Optionally registers MCP server in ~/.claude.json               │
-│   - Prints "next steps" with detection-layer toggles                │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Talks to |
-|-----------|----------------|----------|
-| **Installer CLI** | One-shot: read+merge `~/.claude/settings.json`, register hook entries, optionally register MCP server, scaffold `.mrclean/` in project. Idempotent — safe to re-run. | Filesystem only |
-| **Hook Adapter (bin)** | Single Node.js entrypoint Claude Code spawns per hook event. Reads JSON from stdin, routes by `hook_event_name`, calls into Core Library, writes JSON decision to stdout. | stdin/stdout, Core Library, Session State |
-| **Hook Router** | Dispatches based on `hook_event_name` to per-event handlers. Each handler knows the input/output contract for that event. | Hook Adapter, event handlers |
-| **Config Loader** | Loads `.mrclean/config.json` (project) merged over `~/.claude/mrclean/config.json` (user) merged over built-in defaults. Memoized per process (cold per hook spawn — that's fine). | Filesystem |
-| **Detection Engine** | Pure function: `(text, config) → DetectedSpan[]`. Runs layers 1-4 always; layer 5 only when `--deep` and configured. No I/O, no state. Highly testable with golden fixtures. | Config Loader (read-only) |
-| **Placeholder Manager** | Owns the substitution semantics: stable token format (`<MRCLEAN:KIND:NNN>`), collision-free allocation within a session, deterministic IDs (sha256 of value, truncated, monotonic per-kind suffix). In reversible mode, owns the in-memory `Map<token, original>` and serialization. | Session State Adapter (reversible only) |
-| **Session State Adapter** | Reads/writes `~/.claude/mrclean/sessions/<session_id>.json` under `flock`. Map is plaintext on disk by default; opt-in encryption via `MRCLEAN_SESSION_KEY` env var. TTL'd (deleted on `SessionEnd` if hook fires; swept by installer on next run). | Filesystem, OS file locking |
-| **Audit Logger** | Appends one JSON line per match to `.mrclean/audit.jsonl` in the project cwd. Never logs raw values — only `sha256(value)[:16]` + rule_id + severity + offset. Append-only, fsync per write. | Filesystem |
-| **MCP Server** | Long-lived process Claude Code launches once per session via `.mcp.json`. Exposes the same Core Library as MCP tools for cases where the hook isn't enough (explicit redact-this-blob calls, audit queries, runtime word additions). Holds its own session-scoped state in memory. | stdio or Streamable HTTP, Core Library, Session State |
+6. **PROJECT.md's "wire the `restore` MCP tool (stub since Phase 1)" target is stale against shipped code.** The stub was deleted in Plan 03-01; `restore` sits on `FORBIDDEN_TOOL_NAMES` (`tests/mcp/tools-list.test.ts:44-60`, CI-enforced), and the v1 decision record says restoration "runs server-side, not as a model-facing tool" (`03-03-PLAN.md:460`, prompt-injection Pitfall #10). Separately, the MCP server never learns the Claude Code `session_id` (`src/mcp/server.ts:87` boots as `'mcp-server'`; `mrclean_redact` defaults to `randomUUID()` per call), so an MCP restore tool cannot even locate the right session map. Requirements must resolve this conflict — see Open Question 6. Recommended default: keep the ban; deliver restore hook-side plus an operator-only `mrclean restore` CLI.
 
 ---
 
-## The Pivotal Architectural Question: Where Does Session State Live?
+## The Core Tension: Ephemeral Hooks vs Session-Persistent Map
 
-This is the question that will define whether mrclean ships in a week or a quarter. The constraint chain:
+```
+   Claude Code session (one session_id, minutes-to-hours)
+   ─────────────────────────────────────────────────────────────────►
+     │            │             │             │              │
+     ▼            ▼             ▼             ▼              ▼
+  ┌──────┐   ┌──────┐      ┌──────┐      ┌──────┐       ┌──────┐
+  │hook  │   │hook  │      │hook  │      │hook  │       │hook  │
+  │proc 1│   │proc 2│      │proc 3│      │proc 4│  ...  │proc N│
+  │(UPS) │   │(Pre) │      │(Post)│      │(Post)│       │(End) │
+  └──┬───┘   └──┬───┘      └──┬───┘      └──┬───┘       └──┬───┘
+     │ alloc    │ alloc       │ alloc+     │ alloc+        │ cleanup
+     │ :001     │ :002        │ RESTORE    │ RESTORE       │
+     ▼          ▼             ▼            ▼               ▼
+  ╳ dies     ╳ dies    needs :001,:002  procs 3+4 can   must find
+  with map   with map  from procs 1+2   run in PARALLEL  the artifact
+```
 
-1. **Claude Code spawns a fresh process for every hook event.** No in-memory persistence between events. Confirmed in the official hooks reference: *"Hooks spawn fresh for each event (no persistence between events)."*
-2. **Reversible mode requires that the placeholder→original map written during outbound redaction (PreToolUse) is readable during inbound restoration (PostToolUse).** These are separate process invocations, sometimes seconds apart.
-3. **Every hook receives `session_id`.** This is the natural correlation key.
+Facts that constrain every option (all verified in source / official docs):
 
-There are three viable storage strategies. Pick exactly one for v1, plan for the third only if the second proves insufficient:
+| Fact | Source | Confidence |
+|------|--------|------------|
+| Hook process exits after every event; no shared memory across events | `src/hook/index.ts` (`runHook` always `process.exit()`s) | HIGH |
+| `cachedManagers` Map + `cachedSessionState` are module-level, per-process only | `src/detect/index.ts:157`, `src/detect/session-state.ts:62` | HIGH |
+| Matching hooks run **in parallel**; parallel tool calls → concurrent PostToolUse processes | code.claude.com/docs/en/hooks ("All matching hooks run in parallel") | HIGH |
+| `SessionEnd` hook event exists; receives `session_id`, `cwd`, `reason` (`clear`/`logout`/`prompt_input_exit`/`other`...); cannot block — "used for side effects like logging or cleanup" | code.claude.com/docs/en/hooks | HIGH |
+| `SessionStart` carries `source`: `startup` / `resume` / `clear` / `compact` | code.claude.com/docs/en/hooks | HIGH |
+| PostToolUse `updatedToolOutput` rewrites the tool result (CC ≥ 2.1.121; already the shipped redact path) | `src/shared/types.ts:124`, `src/hook/handlers/post-tool-use.ts` | HIGH |
+| PostToolUse is non-blocking — restore failures can only degrade to pass-through, never halt the session | doc + shipped handler comment | HIGH |
+| `PlaceholderManager` discards originals — only `hash` + `placeholder` retained | `src/placeholder/manager.ts` (byHash/byPlaceholder store hash, never value) | HIGH |
+| Counter is per-process today → cross-process collisions already possible | `src/detect/index.ts` `getOrCreateManager` (fresh manager per process) | HIGH |
+| `restore` is a CI-banned MCP tool name; only check/redact/status may exist | `tests/mcp/tools-list.test.ts:44-60, 87-99` (T2 exact-list + T2b forbidden-list) | HIGH |
+| MCP server never receives Claude Code's `session_id` | `src/mcp/server.ts:87` (`sessionId: 'mcp-server'`), `src/mcp/tools/redact.ts:116` (`providedSessionId ?? randomUUID()`) | HIGH |
 
-### Option A — File-backed per-session map (RECOMMENDED for v1)
+---
 
-**Where:** `~/.claude/mrclean/sessions/<session_id>.json`
+## Map Ownership — The REVMODE-02 Decision
 
-**How:**
-- PreToolUse handler: open file with exclusive `flock`, read existing map, merge new mappings, write atomically (write to `.tmp` then rename), release lock.
-- PostToolUse handler: open file with shared `flock`, read map, run restoration, release lock. No write.
-- SessionEnd handler (if registered): delete the file.
-- Janitor sweep on `SessionStart`: delete files older than 7 days.
+Three candidate owners. **This matrix is input to the requirements step, not a fait accompli.** The PROJECT.md constraint — "in-memory only by default; if persisted to disk, must be encrypted at rest and removed on session exit" — is literally unsatisfiable for cross-hook-process state without a resident process, so the requirements step must either (a) read "in-memory by default" as describing one-way mode (the default mode has no map at all; opting into reversible = consenting to encrypted session-scoped disk state), or (b) mandate Option B and accept its availability/recovery costs.
 
-**Pros:**
-- Zero IPC. Survives crashes of any single hook invocation.
-- Matches the pattern `disler/claude-code-hooks-mastery` already proves works for stateful hooks.
-- Trivial to test — fixtures are just files.
-- Crash-resistant: a hook that dies mid-write doesn't corrupt the session (atomic rename).
-- Encryption is opt-in, lives at the file boundary.
+### Option A — Encrypted per-session file (`~/.mrclean/sessions/<session_id>/`)
 
-**Cons:**
-- Filesystem latency on every hook (typically <5ms; well inside the 100/200ms hook budgets).
-- File contention if many parallel hooks for the same session race — `flock` serializes them, which is what you want anyway for map consistency.
-- Map persists across crashes including crashes you'd *want* to wipe state from. Mitigated by SessionEnd cleanup + janitor.
+Artifacts: `map.enc` (AES-256-GCM whole-file: `magic|iv|authTag|ciphertext`), `map.key` (32 random bytes, mode 0600, sibling file), `map.lock` (O_EXCL lockfile). Directory mode 0700. **Never inside the project `.mrclean/`** — project dirs get committed, synced, and backed up.
 
-**Why this is right for v1:** It satisfies every requirement, has the smallest moving-parts surface, and is the boring choice. The performance budget is generous enough that the disk hit is invisible.
+| Axis | Assessment |
+|------|------------|
+| **Crash recovery** | Best-in-class. Hook crashes are irrelevant (state on disk between events). Claude Code crash → map survives; `SessionStart source=resume` can rehydrate (subject to the session_id-continuity open question). Counter is persisted → a mid-session restart can never re-issue an NNN already living in the transcript. |
+| **SessionEnd cleanup** | Good but not perfect. SessionEnd handler deletes the session dir. SessionEnd does NOT fire on SIGKILL/power loss → residual encrypted artifact until the janitor sweep (next SessionStart) or TTL. Belt-and-braces janitor required (see Pattern 3). |
+| **Concurrent hooks** | Requires lock + atomic rewrite — exactly what REVMODE-02 already scopes. ~200 LOC of well-understood mechanism. Contention cost bounded (see perf table). Fixes the latent v1 cross-process counter collision as a side effect. |
+| **Perf (<200ms PostToolUse)** | Comfortable. AES-256-GCM in Node (OpenSSL + AES-NI) runs GB/s; a 50 KB map costs <1 ms each way. Itemized budget below: ~4–8 ms typical added, ~60 ms worst-case contended — detection remains the dominant cost. |
+| **Blast radius if leaked** | Ciphertext + key are sibling files, so encryption defends against *partial* exfil (backup/sync tools grabbing one file, cross-user reads, casual disk scans) — not a same-user live attacker (nothing on disk can). Mitigated decisively by the restorable-types-only rule: secrets' originals never touch disk. Session-scoped: one leaked map = one session's paths/names. |
+| **Availability** | Always works — including hook-only installs with no MCP server registered. |
 
-### Option B — MCP server holds the map in-process
+### Option B — MCP-server-resident map + hook→server IPC
 
-**Where:** Inside the long-lived MCP server's RAM, keyed by `session_id`.
+The long-lived stdio MCP server (already home to the warm NER singleton) owns a `Map<sessionId, SessionMap>` in memory. Hooks cannot speak MCP (that transport is owned by Claude Code), so the server must open a **second channel** — Unix domain socket / localhost HTTP — plus a discovery file and an auth token (any local process could otherwise connect).
 
-**How:** Hook adapter, instead of touching files, invokes the MCP server (same machine, stdio or local HTTP) with `redact()` / `restore()` tool calls. MCP server keeps the map in a `Map<sessionId, Map<token, value>>`.
+| Axis | Assessment |
+|------|------------|
+| **Crash recovery** | Worst-in-class, and dangerously so: an MCP server restart mid-session (crash, `/mcp` reconnect, config reload) silently loses the map. Restore goes dark for placeholders already in the transcript, AND the counter resets to 0 → **new allocations collide with placeholder NNNs already in the conversation with different meanings**. That is a correctness failure, not a degradation. |
+| **SessionEnd cleanup** | Perfect — memory vanishes with the process; OS guarantees it. (Eviction for multi-session servers still needs SessionEnd → IPC.) |
+| **Concurrent hooks** | Free — single process, event-loop serialization, atomic counter. |
+| **Perf** | ~1 ms socket round-trip. Fine — but adds a connect-timeout failure mode to every hook event. |
+| **Blast radius** | Best — nothing at rest; matches the constraint's letter. Process memory is dumpable by a same-user attacker, but so is everything else. |
+| **Availability** | Poor. The MCP server is optional (hook-only installs exist) and its liveness at hook time is not guaranteed. Additional identity problem: the server has no Claude Code `session_id` of its own (`src/mcp/server.ts:87`), so hooks would have to push session identity in-band over the new channel. New surface: socket auth, discovery, lifecycle supervision, fail-open-vs-closed policy when the socket is down. v1 research already rejected a sidecar daemon for exactly this class of cost. |
 
-**Pros:**
-- No disk I/O.
-- One source of truth even if multiple hook events race.
-- Encryption at rest is moot — RAM only.
+### Option C — Hybrid (server-resident memory + encrypted write-through file)
 
-**Cons:**
-- Hook adapter now has a dependency on the MCP server being running. If the user disables MCP, reversible mode breaks silently.
-- Calling MCP from a hook means a sub-1s round-trip on a transport that wasn't designed for hook fanout. Adds 20-50ms latency per hook.
-- MCP server crash = total session map loss. No crash recovery without writing to disk anyway, at which point you're doing Option A with extra steps.
-- Conflates two surfaces (hook + MCP) in a way that makes either harder to disable independently.
+Fast path through the server when alive, file as source of truth for recovery. Gets A's recovery and B's serialization — and both implementations' complexity plus a cache-coherence problem between them. Nothing in the v3.0 feature set needs the extra ~1–3 ms the fast path saves. Classic YAGNI; only revisit if profiling shows lock contention actually hurting.
 
-**Verdict:** Tempting but worse than A. Only consider if Option A's filesystem latency turns out to violate the 100ms budget on slow disks (it won't on SSD; might on network-mounted homedir, which is a niche).
+### Leaning (to be ratified or overturned by requirements)
 
-### Option C — Sidecar daemon over Unix socket (DEFER, possibly forever)
+**Option A.** The decisive arguments: (1) mid-session map loss under B is a *correctness* hazard (counter reuse against a transcript that already contains those NNNs), (2) B makes reversible mode unavailable for hook-only installs, (3) A's at-rest risk collapses once secrets' originals are excluded from the file. What would flip it: a requirements ruling that *nothing* plaintext-recoverable may ever rest on disk even session-scoped — then B is the only option and reversible mode must be documented as requiring the MCP server and as non-recoverable across server restarts.
 
-**Where:** A `mrclean-daemon` process spawned on first hook invocation, listens on `/tmp/mrclean-<uid>.sock`. Hook is a thin client that connects, sends event JSON, gets decision JSON back.
+---
 
-**How:**
-- First hook spawns the daemon if `mrclean-daemon.pid` is stale.
-- Daemon holds maps in RAM, persists snapshots to `~/.claude/mrclean/sessions/` periodically and on SIGTERM.
-- Daemon self-exits after N minutes of idleness.
+## Critical Design Insights (what the phases must get right)
 
-**Pros:**
-- Eliminates Node.js cold-start cost (~30-80ms per hook). The hook client could be a 5MB statically-linked Go/Rust binary that connects in <2ms.
-- True per-session in-memory state with no file contention.
-- Centralizes audit logging without per-hook file appends.
+### Insight 1 — The map is the first place originals ever persist; scope it by restore policy
 
-**Cons:**
-- A whole new process lifecycle to manage: spawn, health check, crash recovery, shutdown.
-- Two-binary distribution (client + daemon) breaks the "single npm package" simplicity.
-- Unix socket path management on Windows is awkward (named pipes have different semantics).
-- Adds attack surface: the socket is a control channel into a process holding decrypted secrets.
-- **The 100/200ms budget is generous enough that Node cold-start is unlikely to be the bottleneck.** If it is, profile first.
+`PlaceholderManager.allocate()` keeps `sha256(value)` and throws the value away. The map file schema must make original-retention **opt-in per entry**:
 
-**Verdict:** Build only if Option A demonstrably violates the perf budget for real users, *and* a profile shows Node cold-start is the dominant cost. This is a v2 conversation, not a v1 conversation. Do not build speculatively.
+```typescript
+interface SessionMapEntry {
+  placeholder: string      // '<MRCLEAN:WORD:007>'
+  type: string             // locked vocabulary (src/detect/type-map.ts)
+  index: number            // global counter value
+  hash: string             // sha256 hex — always present (stability key)
+  original?: string        // ONLY for types on the restorable allowlist
+  firstSeenTs: string
+}
 
-### Decision
+interface SessionMap {
+  version: 1
+  sessionId: string
+  counter: number          // authoritative cross-process counter
+  entries: SessionMapEntry[]
+}
+```
 
-**v1: Option A.** Reversible-mode map lives in `~/.claude/mrclean/sessions/<session_id>.json`, accessed under `flock`, deleted on `SessionEnd`. The Session State Adapter is a thin module — easy to swap to Option B or C later behind a stable interface if profiling demands it.
+Secret types (AWS_KEY, JWT, …) get entries **without** `original` — they participate in counter/stability, are structurally unrestorable, and never touch disk in recoverable form. This single rule does more for blast radius than any encryption choice. Against the locked vocabulary (`src/detect/type-map.ts:37-66`): all 14 secret TYPEs + ENV + ENTROPY + SECRET are never-restorable (hardcoded denylist, not config-overridable); WORD is the primary restorable class; PII_EMAIL/PHONE/PERSON/ORG/LOC/IP are policy-configurable (narrowing only); PII_SSN and PII_CREDIT_CARD are treated as secret-class (their default action is already `block`, `src/config/defaults.ts:44-50`).
+
+### Insight 2 — Two-phase allocation transaction; never hold the lock across detection
+
+Detection (L1 worker pool + layers) can take most of the 100–200 ms budget. Holding the file lock across it would serialize parallel PostToolUse hooks and blow the budget under contention. Correct shape:
+
+```
+Phase 1 (lock-free):   read map snapshot → hydrate manager → runDetection layers
+Phase 2 (locked, ~2ms): acquire lock → re-read map → allocate for deduped findings
+                        (re-check byHash: another process may have allocated the same
+                        value meanwhile — take ITS placeholder, don't burn a counter)
+                        → serialize → encrypt → tmp-write + fsync + rename → unlock
+Phase 3 (lock-free):   substituteFindings with the reconciled placeholders
+```
+
+This maps cleanly onto the existing orchestrator: allocation already happens *after* the layers (step 8 in `runDetection`); the transaction wraps only the allocate-and-persist step.
+
+### Insight 3 — PostToolUse ordering: redact first, then restore
+
+An inbound tool result may contain BOTH fresh secrets (must redact) and known placeholders (may restore). Order matters:
+
+- **Redact first** on the raw text — detection layers cannot match placeholder tokens (angle-bracket format, PH-04), so existing placeholders pass through the redact pass untouched.
+- **Restore second**, policy-filtered — restored values are by definition previously-detected values of restorable types; re-inserting them is policy-consistent, and single-pass replacement never re-triggers detection in this process.
+- The reverse order (restore→redact) creates a tug-of-war: restored WORD values whose action is `substitute` would be immediately re-redacted (stable placeholders make it a churn-only no-op, but it wastes budget and re-audits).
+
+### Insight 4 — Restore is token-scan, not span-substitution
+
+New pure function, ~80 LOC, no I/O:
+
+```typescript
+const PLACEHOLDER_RE = /<MRCLEAN:([A-Z0-9_]+):(\d{3}|OVF)>/g
+
+function restoreText(
+  text: string,
+  map: ReadonlyMap<string, SessionMapEntry>,  // placeholder → entry
+  policy: RestorePolicy,                       // type allowlist
+): { restored: string; hits: number; skipped: number }
+```
+
+Properties that fall out of the single-pass `replace()` design:
+- **No ordering problem.** Regex matches are disjoint delimited tokens; longest-first sorting (needed nowhere) and right-to-left processing (a forward-redaction concern) do not apply.
+- **No recursive expansion.** `replace()` never rescans inserted text, so an original that happens to contain placeholder-shaped text cannot trigger a second substitution.
+- **`OVF` skipped.** `byPlaceholder` is last-writer-wins for OVF (manager.ts:108) — ambiguous, therefore unrestorable. Count it in `skipped`.
+- **Unknown placeholders left intact** (other session, pre-reversible history) — never guess.
+
+### Insight 5 — Restored output re-enters the wire; the threat model owns this
+
+`updatedToolOutput` is what Claude sees and what persists in the transcript/context — the next API call carries restored originals to Anthropic. This is *the point* of reversible mode for paths/names (usability) and *the catastrophe* for secrets. Consequences for architecture: restore policy is a **type allowlist in config** (default: WORD + PII name/loc types + any future PATH type; never secret types), reversible mode is opt-in config (`[reversible] enabled = false` default), and THREAT_MODEL.md (REVMODE-03) documents: map artifact contents, key/ciphertext split, residual-file window, and the wire-reentry property. Same hazard applies if requirements later add PreToolUse input-restore (see Open Questions).
+
+---
+
+## Component Map: New vs Modified
+
+### New components
+
+| Component | Path | Responsibility |
+|-----------|------|----------------|
+| Session State Adapter (facade) | `src/state/index.ts` | `withSessionMap(sessionId, fn)` locked read-modify-write transaction; `readSessionMap(sessionId)` lock-free read for restore; single import surface for handlers + MCP |
+| Map schema + (de)serialization | `src/state/session-map.ts` | Types above; version field; migration guard |
+| Encrypted store | `src/state/map-store.ts` | AES-256-GCM encrypt/decrypt (`node:crypto`, random 96-bit IV per write); per-session random key file (0600); tmp-in-same-dir + fsync + rename atomic write (extend the `install/atomic-json.ts` pattern — that helper writes plaintext JSON without fsync, so extend, don't reuse as-is); path layout under `~/.mrclean/sessions/<id>/` |
+| Lock | `src/state/lock.ts` | O_EXCL lockfile (`fs.open(path,'wx')`), retry w/ ~5 ms backoff, hard deadline (~50 ms), stale-break by mtime age (hook processes are short-lived; >10 s = dead holder). If edge cases bite in practice, `proper-lockfile` is the battle-tested fallback dep — a STACK-level call |
+| Janitor | `src/state/janitor.ts` | Delete session dir on SessionEnd; sweep stale dirs (TTL) on SessionStart |
+| Restore engine | `src/restore/restore-text.ts` | Pure token-scan restore (Insight 4) + `RestorePolicy` type filter |
+| SessionEnd handler | `src/hook/handlers/session-end.ts` | Invoke janitor delete; always exit 0 (SessionEnd cannot block; cleanup failure = stderr warn) |
+| Operator restore CLI | `src/cli.ts` subcommand (or `src/restore/cli.ts`) | `mrclean restore <text|file>` — human-invoked, local-only reverse lookup via `src/state/`. Delivers the "recover my originals" value with **no model in the loop**; recommended replacement for the MCP tool below |
+| `mrclean_restore` MCP tool — **CONTINGENT, decide in requirements (Open Question 6)** | `src/mcp/tools/restore.ts` | Reads map via `src/state/` (same library — **no IPC needed under Option A**); applies same policy filter; gated on `[reversible] enabled`. **Counter-record before building this:** no stub exists today (PROJECT.md's "stub since Phase 1" is stale — Plan 03-01 deleted it with "NO aliases retained", `src/mcp/server.ts:12-16`); `restore` is CI-banned on `FORBIDDEN_TOOL_NAMES` (`tests/mcp/tools-list.test.ts:44-60`); v1 explicitly decided restoration "runs server-side, not as a model-facing tool" (`03-03-PLAN.md:460`, prompt-injection Pitfall #10 — a prompt-injected model calling restore pulls originals into its own context); and the MCP server has no Claude Code `session_id` to select the map with (`src/mcp/server.ts:87`, `redact.ts:116`). Building it means a conscious amendment of the MCP-03 invariant + tests AND a session-identity handshake design. Cut-first candidate |
+
+### Modified components
+
+| Component | Path | Change |
+|-----------|------|--------|
+| PlaceholderManager | `src/placeholder/manager.ts` | Hydrate-from/serialize-to `SessionMap` (counter + entries); opt-in `retainOriginals(policy)` so originals are captured only for restorable types; keep default construction byte-identical for one-way mode |
+| Detection orchestrator | `src/detect/index.ts` | Injection seam: `DetectionOptions.placeholderManager?` (or a manager-provider) so handlers can pass a map-hydrated manager; `getOrCreateManager` remains the one-way default. Allocation step gains the phase-2 reconcile hook (Insight 2) |
+| PostToolUse handler | `src/hook/handlers/post-tool-use.ts` | Reversible branch: hydrated manager into `runDetection`; persist allocations (locked txn); then `restoreText()` pass; emit combined `updatedToolOutput`; restore failures degrade to redact-only pass-through + stderr warn (PostToolUse can't block anyway) |
+| PreToolUse handler | `src/hook/handlers/pre-tool-use.ts` | Persist allocations in reversible mode (write path — its `updatedInput` substitutions are exactly what later needs restoring). Note `substituteToolInputDeep` calls `runDetection` per string leaf — batch the persist into ONE locked transaction per hook event, not per leaf |
+| UserPromptSubmit handler | `src/hook/handlers/user-prompt-submit.ts` | Optional: persist allocations for counter monotonicity (no substitution occurs on this path — UPS can only block — so this is uniformity, not necessity) |
+| SessionStart handler | `src/hook/handlers/session-start.ts` | Janitor sweep; on `source=resume` attempt map rehydration (subject to open question); on `source=clear` treat as fresh |
+| Hook types + dispatcher | `src/shared/types.ts`, `src/hook/dispatcher.ts` | Add `SessionEndInput` (`reason` field) to the `HookInput` union; route in `dispatch()`. Ship types+dispatcher with (or before) installer registration — `dispatch()` throws on unknown events (`dispatcher.ts:45-49`) → crash guard → exit 2 noise on every session end if sequenced wrong |
+| Installer | `src/install/settings.ts` | Register SessionEnd hook entry; **extend the SessionStart matcher** — currently `'startup'` only, so resume/clear/compact never fire the janitor/rehydration today. Migration path for existing installs |
+| Doctor | `src/doctor/checks.ts`, `version-check.ts` | Checks: SessionEnd hook registered; CC ≥ 2.1.121 floor (exists — keep); stale session dirs report; key/dir permission check (0600/0700) |
+| Config | `src/config/defaults.ts`, `src/shared/types.ts` | `[reversible]` table: `enabled=false`, `restore_types` allowlist, `ttl_hours`, `max_map_bytes` |
+| Audit | `src/audit/log.ts` | `action` union gains `'restore'` (schema is LOCKED — extend deliberately, update canary-leak test); restore events log placeholder + hash only, never the restored value |
+| MCP server registration | `src/mcp/server.ts` | ONLY if Open Question 6 resolves toward the tool: conditionally register `mrclean_restore`; update the "exactly three tools" invariant comment/tests. Otherwise unchanged |
+| THREAT_MODEL.md | repo root | REVMODE-03: map artifact, key split, residual window, wire-reentry, opt-in flow |
+
+---
+
+## Recommended Project Structure (delta only)
+
+```
+src/
+├── state/                    # Session State Adapter (REVMODE-02) — NEW
+│   ├── index.ts              # facade: withSessionMap / readSessionMap
+│   ├── session-map.ts        # SessionMap types + (de)serialize + version guard
+│   ├── map-store.ts          # AES-256-GCM store, key mgmt, atomic write, paths
+│   ├── lock.ts               # O_EXCL lockfile, backoff, deadline, stale-break
+│   └── janitor.ts            # SessionEnd delete + SessionStart TTL sweep
+├── restore/                  # NEW — kept out of placeholder/ deliberately:
+│   └── restore-text.ts       #   different algorithm, different trust direction
+├── hook/handlers/
+│   └── session-end.ts        # NEW
+└── mcp/tools/
+    └── restore.ts            # CONTINGENT — only if OQ6 amends the MCP-03 ban
+```
+
+**Rationale:** `src/state/` matches the milestone's named deliverable and isolates every byte of disk-I/O policy behind one facade — handlers and MCP tools never touch `node:crypto` or lockfiles directly, which keeps the leak-grep and canary-leak CI gates pointed at one module. `src/restore/` is separate from `src/placeholder/` because reverse substitution shares no code with forward substitution (Insight 4) and has the opposite trust direction (it *introduces* sensitive data rather than removing it) — a reviewer auditing "what can put originals back" should find exactly one directory. Note `src/detect/session-state.ts` (env blocklist + words cache) keeps its name; the new adapter is a different concern under `src/state/` — flag the near-collision in docs to avoid confusion.
 
 ---
 
 ## Data Flow
 
-### Outbound: User prompt → Claude (sanitize on the way out)
+### Redact-write path (reversible mode; PreToolUse shown, PostToolUse redact identical in shape)
 
 ```
-User types prompt in Claude Code
-    │
-    ▼
-Claude Code fires UserPromptSubmit
-    │  spawns: node mrclean-hook (fresh process)
-    │  stdin: {"hook_event_name":"UserPromptSubmit","session_id":"abc",
-    │          "prompt":"deploy to AKIAIOSFODNN7EXAMPLE","cwd":"...",
-    │          "transcript_path":"..."}
-    ▼
-mrclean Hook Adapter
-    │
-    ├─→ Hook Router: route to UserPromptSubmit handler
-    │
-    ├─→ Config Loader: load merged config
-    │
-    ├─→ Detection Engine.scan(prompt, config)
-    │     L1 regex: matches AKIA... → AWS_ACCESS_KEY_ID, severity=critical
-    │     L2 entropy: no additional matches
-    │     L3 env values: no match (no .env loaded yet at session start)
-    │     L4 word list: no match
-    │     → DetectedSpan[{kind:"AWS_KEY", value:"AKIA...", offset:11, len:20}]
-    │
-    ├─→ Audit Logger.append({rule:"aws-access-key",
-    │                        sha:"a1b2c3...", session:"abc", ts:...})
-    │
-    ├─→ Decision: contains_critical → BLOCK with reason
-    │     (UserPromptSubmit cannot rewrite — only block or add context)
-    │
-    ▼
-stdout: {"decision":"block",
-         "reason":"mrclean: AWS access key detected in prompt.
-                   Replace it with a placeholder and resubmit.
-                   See .mrclean/audit.jsonl for details."}
-exit 0
-    │
-    ▼
-Claude Code shows the reason to the user; prompt is not sent to the model.
+Claude Code ──spawn──► hook proc (PreToolUse)
+                          │ stdin JSON {session_id, tool_input, cwd}
+                          ▼
+              ┌─ Phase 1 (lock-free) ────────────────────────────┐
+              │ readSessionMap(sid) ──► hydrate PlaceholderManager│
+              │ runDetection layers L1→L2→L3→L4[→L6a]            │
+              └──────────────────────────────────────────────────┘
+                          │ deduped findings
+                          ▼
+              ┌─ Phase 2 (locked, ~2ms) ─────────────────────────┐
+              │ lock.acquire(~50ms deadline)                      │
+              │ re-read map ► reconcile (foreign allocations win) │
+              │ allocate new ► entry.original ONLY if policy type │
+              │ encrypt(AES-256-GCM) ► tmp+fsync+rename ► unlock  │
+              └──────────────────────────────────────────────────┘
+                          │ resolved placeholders
+                          ▼
+              substituteFindings (existing, span-based, unchanged)
+                          │
+                          ▼
+              stdout: permissionDecision:allow + updatedInput
+                          │
+Claude Code ◄─────────────┘        ~/.mrclean/sessions/<sid>/
+                                     ├── map.enc   (ciphertext)
+                                     ├── map.key   (0600)
+                                     └── map.lock  (transient)
 ```
 
-**Key constraint:** `UserPromptSubmit` cannot mutate the prompt as of Claude Code v2.1.123. Three open feature requests track this (#34390, #46761, #53330). For v1, the only honest options on prompt are *block-with-reason* or *allow-with-warning-via-additionalContext*. Silent rewriting would require either a `replaceUserMessage` field that doesn't exist, or terminal-input interception (out of scope).
-
-This is a defensible v1 stance: the user gets told exactly what was detected and rewrites their prompt themselves. Compare gitleaks pre-commit, which does the same thing.
-
-### Outbound: Tool call → external service (sanitize tool args)
+### Restore-read path (PostToolUse, CC ≥ 2.1.121)
 
 ```
-Claude Code is about to call: Bash(curl -H "Authorization: Bearer sk_live_..." api.com)
-    │
-    ▼
-Claude Code fires PreToolUse with matcher "Bash"
-    │  stdin: {"hook_event_name":"PreToolUse","session_id":"abc",
-    │          "tool_name":"Bash",
-    │          "tool_input":{"command":"curl -H \"Authorization: Bearer sk_live_xyz\" ..."},
-    │          "tool_use_id":"t1"}
-    ▼
-mrclean Hook Adapter → PreToolUse handler
-    │
-    ├─→ Detection Engine.scan(tool_input.command)
-    │     → DetectedSpan[{kind:"STRIPE_KEY", value:"sk_live_xyz", offset:24, len:32}]
-    │
-    ├─→ Placeholder Manager.allocate("sk_live_xyz", "STRIPE_KEY")
-    │     → "<MRCLEAN:STRIPE_KEY:001>"
-    │
-    ├─→ if reversible mode:
-    │     Session State Adapter.persist("abc", {"<MRCLEAN:STRIPE_KEY:001>":"sk_live_xyz"})
-    │       (flock + atomic rewrite of sessions/abc.json)
-    │
-    ├─→ Build modified command with placeholder substituted
-    │
-    ├─→ Audit Logger.append({...})
-    │
-    ▼
-stdout: {"hookSpecificOutput":{
-           "hookEventName":"PreToolUse",
-           "permissionDecision":"allow",
-           "updatedInput":{"command":"curl -H \"Authorization: Bearer <MRCLEAN:STRIPE_KEY:001>\" ..."}
-         }}
-exit 0
-    │
-    ▼
-Claude Code executes the modified command (placeholder goes out to api.com — guaranteed to fail
-the API call, which is the point: the secret never leaves the machine).
-    │
-    ▼
-PostToolUse fires with tool_response containing whatever curl returned.
+tool executes locally ──► Claude Code ──spawn──► hook proc (PostToolUse)
+                                                    │ {session_id, tool_response}
+                                                    ▼
+                                        1. REDACT pass (existing runDetection
+                                           + Phase-2 persist as above)
+                                           — placeholder tokens in the input
+                                             are inert to detection layers
+                                                    ▼
+                                        2. readSessionMap(sid)   (lock-free;
+                                           decrypt ~<1ms; missing/corrupt file
+                                           → skip restore, stderr warn)
+                                                    ▼
+                                        3. restoreText(redacted, map, policy)
+                                           — single regex pass
+                                           — policy: restorable types only
+                                           — OVF + unknown tokens skipped
+                                                    ▼
+                                        4. stdout: hookSpecificOutput.
+                                           updatedToolOutput = restored text
+                                                    │
+Claude Code ◄───────────────────────────────────────┘
+   │  transcript/context now holds restored originals
+   ▼  (⚠ next API call carries them — THREAT_MODEL REVMODE-03)
+conversation continues; user's view shows real paths/names
 ```
 
-**Key constraint:** `updatedInput` requires `permissionDecision: "allow"` or `"ask"` to take effect. With `"defer"` it is silently ignored. This is documented in the SDK reference and applies equally to shell-command hooks.
+**Parallel-safety note:** two concurrent PostToolUse processes both execute Phase 2 under the lock — the second re-reads the first's allocations, so counters never collide and `same value → same placeholder` finally holds across processes (fixes latent v1 PH-02/PH-03 gap).
 
-### Inbound: Tool result → Claude (restore placeholders on the way in)
-
-This path only matters in **reversible mode**. In one-way mode, PostToolUse is purely observational (audit only).
+### Lifecycle / janitor flow
 
 ```
-Bash tool finishes; tool_response = "ls -la /Users/alice/Projects/CodenameZephyr/secrets.json"
-    │
-    ▼
-Claude Code fires PostToolUse with matcher "Bash"
-    │  stdin: {"hook_event_name":"PostToolUse","session_id":"abc",
-    │          "tool_name":"Bash",
-    │          "tool_input":{...},
-    │          "tool_response":"ls -la /Users/alice/Projects/CodenameZephyr/...",
-    │          "tool_use_id":"t1","duration_ms":42}
-    ▼
-mrclean Hook Adapter → PostToolUse handler
-    │
-    ├─→ Detection Engine.scan(tool_response)
-    │     L4 word list: matches "CodenameZephyr"
-    │     → DetectedSpan[{kind:"USER_WORD", value:"CodenameZephyr", offset:..., len:14}]
-    │
-    ├─→ Placeholder Manager.allocate("CodenameZephyr", "USER_WORD")
-    │     → "<MRCLEAN:USER_WORD:042>"
-    │
-    ├─→ Session State Adapter.persist (so user-facing restore can reverse it later)
-    │
-    ├─→ Build sanitized response with placeholders substituted in
-    │
-    ▼
-stdout: {"hookSpecificOutput":{
-           "hookEventName":"PostToolUse",
-           "updatedToolOutput":"ls -la /Users/alice/Projects/<MRCLEAN:USER_WORD:042>/..."
-         }}
-exit 0
-    │
-    ▼
-Claude Code shows Claude the sanitized output. Codename never reaches the model.
+SessionStart(source=startup) ─► janitor.sweep(TTL) ─► fresh map on first alloc
+SessionStart(source=resume)  ─► attempt rehydrate <sid> (open question below)
+SessionStart(source=clear)   ─► fresh session id ─► sweep catches the old dir
+SessionEnd(reason=*)         ─► janitor.delete(<sid>) — best effort
+SIGKILL / power loss         ─► nothing fires ─► encrypted residue until next
+                                sweep or TTL — documented residual window
 ```
-
-**Critical version dependency:** `hookSpecificOutput.updatedToolOutput` for non-MCP tools was added in **Claude Code v2.1.121** (changelog: *"PostToolUse hooks can now replace tool output for all tools via `hookSpecificOutput.updatedToolOutput` (previously MCP-only)"*). Below v2.1.121, mrclean's inbound-redaction path simply does not work for Bash/Read/Edit. The installer should detect Claude Code version and warn if older.
-
-### MCP server path (parallel surface, not in the hook flow)
-
-The MCP server is **not** in the data path of the hook flow — they're independent surfaces, both backed by the same Core Library. The MCP server exists for cases the hook can't address:
-
-- **Explicit redaction:** Claude calls `mcp__mrclean__redact(text)` mid-conversation when it knows it's about to paste something sensitive into a different tool (e.g., a follow-up `WebFetch`).
-- **User-facing restore:** A separate UI tool (or `npx mrclean show <session_id>`) calls `restore()` to render the original values for the human reading the transcript later.
-- **Runtime configuration:** `block_term("internal-codename")` adds a word to the live blocklist without restarting the session.
-- **Audit query:** `audit_show(session_id)` for the agent to introspect what was redacted in this session.
-
-The MCP server holds its own copy of the in-memory state map for the lifetime of the session. It writes to the same `sessions/<session_id>.json` files the hooks read, so the two surfaces stay coherent (the file is the source of truth; both reads/writes go through Session State Adapter).
 
 ---
 
-## How MCP Server Differs from Hook Surface
+## Performance Budget (<200 ms PostToolUse, itemized)
 
-| Dimension | Hook Adapter | MCP Server |
-|-----------|--------------|------------|
-| **Process model** | Spawned fresh per event (cold start, ~50ms overhead) | Long-lived for session (started once, persists until session end) |
-| **Invocation** | Automatic — Claude Code spawns it on every matching event | Explicit — Claude (the model) chooses to call a tool |
-| **Coverage** | Every prompt and every tool call goes through it (deterministic) | Only when Claude decides to call (best-effort) |
-| **Configurability** | Routed via `~/.claude/settings.json` `hooks` block | Routed via `~/.claude.json` `mcpServers` block or `.mcp.json` |
-| **Transport** | stdin/stdout JSON, exit code | MCP JSON-RPC over stdio or Streamable HTTP |
-| **State** | None in-process (cold start); state via file | In-process (RAM) + file for cross-process coherence |
-| **Failure mode** | Per-event isolated; one bad hook call can't break the session | Server crash takes out the tool surface for the whole session |
-| **Use it for** | Always-on guard rails (redact every secret regardless of model behavior) | On-demand operations (explicit redact, audit query, restore for humans) |
+| Step | Typical | Worst case | Notes |
+|------|--------:|-----------:|-------|
+| Read + decrypt map (50 KB) | <1 ms | 2 ms | AES-256-GCM via OpenSSL/AES-NI runs GB/s; dominated by file open |
+| Lock acquire (uncontended) | ~0.1 ms | — | single `open(wx)` syscall |
+| Lock acquire (contended) | ~5–10 ms | 50 ms (deadline) | 5 ms backoff; deadline → degrade path, never block session |
+| Allocate + reconcile + serialize | <1 ms | 2 ms | in-memory map ops |
+| Encrypt + tmp-write + fsync + rename | 1–2 ms | 5 ms | fsync dominates |
+| `restoreText` scan (100 KB tool output) | <1 ms | 3 ms | one regex pass + Map lookups |
+| **Total added by reversible mode** | **~4–8 ms** | **~60 ms** | detection layers remain the dominant cost; fits the existing envelope |
 
-**Layering rule:** The hook is the safety net. The MCP server is the convenience layer. The hook must stand alone — if a user disables the MCP server, the redaction guarantee still holds. The MCP server must not duplicate the hook's job (don't redact the same payload twice).
-
----
-
-## Recommended Project Structure
-
-```
-mrclean/
-├── package.json                 # bin: { "mrclean": "./dist/cli/index.js" }
-├── README.md
-├── src/
-│   ├── core/                    # Pure logic, no I/O. Reusable from hook AND MCP.
-│   │   ├── detection/
-│   │   │   ├── index.ts         # scan(text, config) → DetectedSpan[]
-│   │   │   ├── layer1-regex.ts  # gitleaks-derived regex pack
-│   │   │   ├── layer2-entropy.ts# Shannon entropy heuristic + allowlist
-│   │   │   ├── layer3-env.ts    # parses .env* files
-│   │   │   ├── layer4-words.ts  # .mrclean/words.txt loader
-│   │   │   ├── layer5-llm.ts    # opt-in LLM classifier (deferred)
-│   │   │   └── rules/
-│   │   │       └── gitleaks.toml  # vendored ruleset
-│   │   ├── placeholder/
-│   │   │   ├── manager.ts       # allocate, lookup, format token
-│   │   │   ├── token-format.ts  # <MRCLEAN:KIND:NNN> ↔ parse
-│   │   │   └── id-strategy.ts   # deterministic per-kind monotonic
-│   │   ├── audit/
-│   │   │   └── logger.ts        # append .mrclean/audit.jsonl
-│   │   ├── config/
-│   │   │   ├── schema.ts        # zod schema for config file
-│   │   │   ├── loader.ts        # merge defaults + user + project
-│   │   │   └── defaults.ts
-│   │   └── types.ts             # DetectedSpan, RedactionMap, Config, etc.
-│   │
-│   ├── state/                   # I/O boundary. The only place files are touched.
-│   │   ├── session-store.ts     # flock + atomic rewrite of sessions/<id>.json
-│   │   ├── encryption.ts        # opt-in AES-GCM via MRCLEAN_SESSION_KEY
-│   │   └── janitor.ts           # sweep stale sessions on SessionStart
-│   │
-│   ├── hook/                    # Hook adapter — the bin entrypoint for hook events.
-│   │   ├── adapter.ts           # main(): read stdin → route → write stdout
-│   │   ├── router.ts            # dispatch on hook_event_name
-│   │   ├── handlers/
-│   │   │   ├── session-start.ts # extract .env values into runtime blocklist
-│   │   │   ├── user-prompt-submit.ts # block-with-reason on critical
-│   │   │   ├── pre-tool-use.ts  # updatedInput with placeholders
-│   │   │   └── post-tool-use.ts # updatedToolOutput in reversible mode
-│   │   └── stdio.ts             # safe JSON read/write, never throws to stdout
-│   │
-│   ├── mcp/                     # MCP server — separate bin entrypoint.
-│   │   ├── server.ts            # @modelcontextprotocol/sdk McpServer
-│   │   ├── transports.ts        # stdio default; HTTP via --http
-│   │   ├── tools/
-│   │   │   ├── redact.ts        # tool: redact(text, mode)
-│   │   │   ├── restore.ts       # tool: restore(text, sessionId)
-│   │   │   ├── audit-show.ts    # tool: audit_show(sessionId)
-│   │   │   └── block-term.ts    # tool: block_term(term)
-│   │   └── session-bridge.ts    # share state with hook via session-store
-│   │
-│   └── cli/                     # User-facing CLI (npx mrclean ...)
-│       ├── index.ts             # commander: install | uninstall | doctor | show
-│       ├── commands/
-│       │   ├── install.ts       # writes ~/.claude/settings.json
-│       │   ├── uninstall.ts     # removes our hook entries (idempotent)
-│       │   ├── doctor.ts        # checks Claude Code version, hook wiring
-│       │   └── show.ts          # render restored output for a session
-│       └── settings-merge.ts    # idempotent JSON deep-merge with marker
-│
-├── test/
-│   ├── fixtures/
-│   │   ├── prompts/             # golden inputs
-│   │   │   ├── aws-key.txt
-│   │   │   ├── github-token.txt
-│   │   │   └── ...
-│   │   └── expected/            # golden outputs (sanitized form)
-│   │       ├── aws-key.txt
-│   │       └── ...
-│   ├── unit/                    # mirrors src/ tree
-│   │   ├── core/detection/      # scan() against fixtures
-│   │   ├── core/placeholder/    # token uniqueness, format
-│   │   └── state/               # session-store concurrency
-│   ├── integration/
-│   │   ├── hook-end-to-end.ts   # spawn mrclean bin with fixture stdin,
-│   │   │                        # assert stdout matches contract
-│   │   ├── mcp-end-to-end.ts    # in-process MCP client → tool calls
-│   │   └── installer.ts         # install on tmp HOME, verify settings.json
-│   └── e2e/
-│       └── claude-code-sim.ts   # simulate full session: SessionStart →
-│                                # UserPromptSubmit → PreToolUse → PostToolUse
-└── .mrclean/                    # template scaffolded by `mrclean install`
-    ├── config.json              # rule overrides, mode, layer toggles
-    ├── words.txt                # user dirty-word list (created empty)
-    └── audit.jsonl              # append-only audit log (created empty)
-```
-
-### Structure Rationale
-
-- **`core/` is pure and side-effect free.** Detection and placeholder logic must be testable without spinning up processes or touching disk. This is also what gets reused identically by the hook surface and the MCP surface.
-- **`state/` is the only place files are touched.** All the gnarliness of `flock`, atomic writes, encryption, and TTL is one module. Swap to a different backend (Option B daemon, in-memory for tests) by replacing this module.
-- **`hook/` and `mcp/` are sibling adapters.** Each is a thin shell over `core/` plus event-specific I/O. Neither imports the other.
-- **`cli/` is a third entrypoint** for human interaction. It can read the same audit log and session files for `mrclean show`.
-- **Two bins in `package.json`:** `"mrclean"` (CLI + hook — same binary, dispatched by argv[2]) and `"mrclean-mcp"` (MCP server). Or one bin with a sub-command — fewer bins is simpler.
+Degrade policies when budget/deadline is hit (PostToolUse cannot block, so all are non-fatal):
+- **Lock deadline on write path** → proceed with process-local allocations (v1 behavior), stderr warn `mrclean map lock timeout`. Restore may later miss these placeholders — cosmetic, not a leak.
+- **Missing/corrupt/undecryptable map on read path** → skip restore entirely, redact-only output, stderr warn. Fail-safe direction: a broken map can never cause a leak, only unrestored placeholders.
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Hook-as-pure-function
+### Pattern 1: Locked read-modify-write transaction behind a facade
 
-**What:** Every hook handler is `(input: HookInput) => HookOutput` — pure given the file-backed state. No globals, no side effects beyond audit log + session file.
+**What:** All map mutation flows through `withSessionMap(sessionId, fn)` — acquire lock, decrypt-read, run `fn(map) → newMap` (immutable update), encrypt, atomic-rename, release. Reads for restore use lock-free `readSessionMap` (atomic rename guarantees readers never see a torn file).
+**When:** Every allocation-persisting hook event and the MCP redact tool.
+**Trade-offs:** Serializes writers (~2 ms hold) — irrelevant at human tool-call rates; buys single-writer counter integrity, which reversible mode cannot function without.
 
-**When to use:** Every hook handler in `src/hook/handlers/`.
+### Pattern 2: Restore-policy allowlist as a first-class type
 
-**Trade-offs:** Forces all I/O through `state/` and `audit/` modules. Slightly more boilerplate; massive testability win.
+**What:** `RestorePolicy` = set of TYPE strings permitted to (a) retain `original` in the map and (b) be substituted back by `restoreText`. Enforced at BOTH write time (map-store refuses to serialize `original` for non-policy types) and read time (restore skips non-policy tokens) — two independent gates, same rule.
+**When:** Always; not configurable to include secret types without editing source (make the footgun require a fork, not a config line).
+**Trade-offs:** Slightly duplicated enforcement; that redundancy is the point for a security tool.
 
-```typescript
-// Pseudocode
-async function handlePreToolUse(input: PreToolUseInput, deps: Deps): Promise<PreToolUseOutput> {
-  const config = await deps.config.load(input.cwd)
-  const text = extractScannableText(input.tool_input)
-  const spans = detect(text, config)
-  if (spans.length === 0) return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } }
-  const map = await deps.state.read(input.session_id)
-  const newMap = allocateAll(spans, map)
-  const updatedInput = applySubstitutions(input.tool_input, spans, newMap)
-  if (config.mode === 'reversible') await deps.state.write(input.session_id, newMap)
-  await deps.audit.append(spans.map(toAuditEntry))
-  return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', updatedInput } }
-}
-```
+### Pattern 3: Belt-and-braces janitor
 
-### Pattern 2: Layered detection with short-circuit
-
-**What:** Run layer 1 → 2 → 3 → 4 → 5 in order; short-circuit on critical-severity match if the user has set "block on first critical." Otherwise gather all matches and substitute in a single pass.
-
-**When to use:** `core/detection/index.ts` `scan()`.
-
-**Trade-offs:** Layer ordering matters for performance (regex is fastest, LLM is slowest). Putting LLM last and gating it on `--deep` means typical hooks never pay the cost. Short-circuit on critical is a UX choice — debatable; could surprise users by not surfacing all matches at once.
-
-### Pattern 3: Session ID as the only correlation key
-
-**What:** Never invent your own session identifier. Always use `input.session_id` provided by Claude Code. File names, audit entries, MCP map keys — all keyed on it.
-
-**When to use:** Everywhere session correlation is needed.
-
-**Trade-offs:** Coupling to Claude Code's lifecycle is the entire point — mrclean has no meaningful concept of "session" outside Claude Code's. Makes correlation across hook invocations and MCP calls trivial and unambiguous.
-
-### Pattern 4: Stdin/stdout discipline for hooks
-
-**What:** The hook adapter must write *only* the JSON decision to stdout. All logging goes to stderr. Any uncaught exception must be caught at the top level, logged to stderr, and produce a permissive default output (don't break Claude Code because mrclean crashed).
-
-**When to use:** `src/hook/adapter.ts`.
-
-**Trade-offs:** "Fail open" (allow on crash) vs "fail closed" (block on crash) is a security policy decision. v1 should fail open with a loud stderr message — a redaction tool that breaks the IDE will get uninstalled within an hour. Document the choice clearly.
-
-### Pattern 5: Idempotent installer
-
-**What:** `mrclean install` must be safe to run any number of times. Tag mrclean's own entries in settings.json with a stable marker (e.g., `"name": "mrclean"` or a `_mrclean: true` field). On re-run: deep-read existing, replace mrclean entries, leave others untouched.
-
-**When to use:** `src/cli/commands/install.ts`.
-
-**Trade-offs:** Requires careful JSON merging — naive `Object.assign` will obliterate user customizations. Use a JSON-aware merge with explicit policy: arrays of hooks are filtered for `_mrclean` markers and rewritten; everything else is preserved.
+**What:** Three overlapping cleanup mechanisms: SessionEnd delete (primary), SessionStart TTL sweep (catches missed ends), and doctor reporting stale dirs (visibility). None is individually reliable; together the residual window is "until the next session or TTL, encrypted".
+**Trade-offs:** Sweep adds ~1 ms of `readdir` to SessionStart. Requires the installer to widen the SessionStart matcher beyond `'startup'`.
 
 ---
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Putting state in module-level variables
-
-**What people do:** `let sessionMap = new Map()` at the top of a module, expecting it to persist across hook invocations.
-
-**Why it's wrong:** Each hook is a fresh Node.js process. Module state resets every time. You'll get correct behavior in tests (where you call the function in the same process) and silent breakage in production.
-
-**Do this instead:** Always go through `state/session-store.ts`. Treat module-level mutable state as a code smell in this codebase.
-
-### Anti-Pattern 2: Spawning a sub-process from inside a hook
-
-**What people do:** Hook calls `child_process.spawn('python', ['some-detector.py'])` for an "advanced" check.
-
-**Why it's wrong:** Compounds cold-start cost. A hook that takes 800ms because it spawns Python is one users disable.
-
-**Do this instead:** Implement detection in TypeScript. For LLM (layer 5), call an HTTP API directly with `fetch`. If you absolutely need a binary, distribute it via `optionalDependencies` and keep the spawn out of the hot path.
-
-### Anti-Pattern 3: Modifying the prompt in UserPromptSubmit "creatively"
-
-**What people do:** Try to use `additionalContext` to "ask Claude to ignore the secret" or attempt to terminate the original prompt's processing some other way.
-
-**Why it's wrong:** `UserPromptSubmit` only blocks or appends. Anything you put in `additionalContext` *adds to* the prompt — the original secret still goes to the model. Trying to be clever produces a false sense of security.
-
-**Do this instead:** Block with a clear reason and let the user rewrite. Track upstream feature requests #34390, #46761, #53330 — when any of those land with `replaceUserMessage` semantics, switch to silent rewrite. Until then, *block* is the only honest answer for prompts.
-
-### Anti-Pattern 4: Storing the placeholder map encrypted by default
-
-**What people do:** Encrypt session files at rest using a hardcoded key or one derived from the session ID, "for safety."
-
-**Why it's wrong:** The encryption key is then either constant (no security) or trivially derivable from public data (worse than no encryption — false sense of safety). Disk encryption belongs at the OS layer.
-
-**Do this instead:** Plaintext by default. Provide an opt-in `MRCLEAN_SESSION_KEY` env var path to AES-GCM if the user wants it (e.g., they're on a multi-user machine). Document that the right answer for "I don't trust my disk" is FileVault/dm-crypt, not application-level encryption with no key management story.
-
-### Anti-Pattern 5: Treating MCP server and hook as redundant safety nets
-
-**What people do:** Run detection in both hook and MCP, "just to be sure."
-
-**Why it's wrong:** Doubles the latency, doubles the audit log noise, and creates ambiguity about which one's substitution map is canonical. If the user disables one, the other's behavior changes invisibly.
-
-**Do this instead:** Hook is the always-on enforcement layer. MCP is for *different* operations (explicit redact, restore, audit query). They share state via the session file but should never both redact the same payload.
-
----
-
-## Build Order (Dependencies First)
-
-The right build order is dictated by what depends on what. **Each step ships something demonstrable before the next step starts.**
-
-### Step 0 — Repo scaffold (½ day)
-
-`package.json` with two bin entries; TypeScript + tsup for build; vitest; biome/eslint. CI on Node 18/20/22.
-
-### Step 1 — Installer (1 day) **[ship-blocking, but trivial]**
-
-`mrclean install` writes a *no-op* hook into `~/.claude/settings.json` (echo input → stdout). Lets you prove the wiring end-to-end before any detection logic exists. Adds `mrclean doctor` to verify wiring.
-
-**Why first:** Validates the integration assumption (does Claude Code actually invoke our binary?) before we invest in detection. If the install/wiring story is broken, nothing else matters.
-
-### Step 2 — Detection Engine layers 1-4 (3-5 days)
-
-`src/core/detection/`. Pure functions. Layer 1 (gitleaks regex pack), layer 2 (entropy + allowlist), layer 3 (env extractor), layer 4 (word list). Vetted against golden fixtures from day one.
-
-**Why second:** Pure logic, no I/O dependencies, fully testable in isolation. The riskiest detection layer (layer 1's regex coverage) is the one most worth building and reviewing first.
-
-### Step 3 — Audit Logger (½ day)
-
-`src/core/audit/`. Append-only JSONL with sha-only values.
-
-**Why now:** Used by every other component going forward. Trivial dependency.
-
-### Step 4 — Hook Adapter, one-way mode only (2-3 days)
-
-`src/hook/`. SessionStart (loads .env into runtime blocklist), UserPromptSubmit (block-with-reason), PreToolUse (`updatedInput`). PostToolUse is observational only at this stage.
-
-**At this point you have a shippable v0.1.** It catches secrets in prompts and tool calls, blocks or redacts them outbound. No reversible mode yet. No restore. No MCP. This is the MVP — get it in front of users.
-
-### Step 5 — MCP Server (3-4 days)
-
-`src/mcp/`. stdio transport first; HTTP transport later. Tools: `redact()`, `audit_show()`, `block_term()`. (No `restore()` yet — that needs reversible mode.) Reuses Core Library entirely.
-
-**Why now:** Independent surface. Doesn't gate reversible mode; can ship in parallel.
-
-### Step 6 — Session State Adapter (2-3 days)
-
-`src/state/`. Atomic file write under flock. SessionStart janitor sweep. SessionEnd cleanup.
-
-**Why now:** Reversible mode depends on this and only this.
-
-### Step 7 — Reversible mode (2-3 days)
-
-PostToolUse handler emits `updatedToolOutput`. Placeholder Manager gains persistence. MCP server gains `restore()` tool. CLI gains `mrclean show <session_id>`.
-
-**Critical version check:** `mrclean doctor` must verify Claude Code >= 2.1.121 before enabling reversible mode. Fall back gracefully on older versions.
-
-### Step 8 — Layer 5 LLM classifier (2-4 days, opt-in)
-
-Off by default. `--deep` flag or config `deep: true` enables it. Calls Anthropic API or local model. Cost-gated.
-
-**Why last:** Highest complexity, lowest urgency, opt-in only. Don't let it block anything earlier.
-
-### Step 9 — Sidecar daemon (DEFER)
-
-Only if Step 4-7 profile shows Node cold-start is the dominant latency cost. Not in v1 plan. Possibly never.
-
----
-
-## Test Architecture
-
-### Layer 1: Unit tests (mirrors `src/`)
-
-Detection layer has the highest test density. Each rule in the regex pack gets:
-
-- A positive fixture (`test/fixtures/prompts/aws-key.txt`) → expected match
-- A negative fixture (`test/fixtures/prompts/aws-key-negative.txt`) → expected no-match
-- A boundary fixture (right at entropy threshold) → behavior pinned
-
-Placeholder Manager unit tests:
-- Token format round-trip (parse what you format)
-- Collision-free allocation (1000 random values → 1000 unique tokens)
-- Determinism (same value → same token within a session)
-- Distinct values → distinct tokens even if they hash similarly
-
-State store unit tests:
-- Concurrent reader/writer (spawn N children, all hit the same session file, assert no corruption)
-- Atomic write (kill mid-write, verify file is either old-version or new-version, never partial)
-
-### Layer 2: Hook contract integration tests
-
-```
-test/integration/hook-end-to-end.ts:
-  for each fixture in test/fixtures/hook-events/:
-    spawn mrclean bin
-    pipe fixture.stdin (Claude-Code-shaped JSON) to its stdin
-    capture stdout, stderr, exit code
-    assert stdout matches fixture.expected (JSON deep equality)
-    assert exit code matches fixture.expected_exit
-```
-
-Fixtures cover every hook event × every detection layer × both modes:
-- `pre-tool-use-bash-with-aws-key/`
-- `post-tool-use-bash-restoration-reversible/`
-- `user-prompt-submit-with-jwt-blocks/`
-- `session-start-loads-env-values/`
-
-These run the actual binary the way Claude Code runs it — they catch packaging bugs, JSON parsing edge cases, exit code mistakes, and contract regressions.
-
-### Layer 3: Simulated full-session E2E
-
-```
-test/e2e/claude-code-sim.ts:
-  Set up tmp HOME, run `mrclean install`.
-  Programmatically spawn the hook bin in sequence, simulating:
-    1. SessionStart event → assert .env values are in subsequent blocklist
-    2. UserPromptSubmit with secret → assert blocked
-    3. UserPromptSubmit without secret → assert allowed
-    4. PreToolUse Bash with secret → assert updatedInput contains placeholder
-    5. PostToolUse Bash returning user-word → assert updatedToolOutput substituted
-    6. Restart simulation: spawn another hook with same session_id,
-       assert reversible-mode map is still readable
-```
-
-This is the test that gives confidence the whole system actually composes. It's slow (file I/O, multiple spawns) so it lives in a separate test target run on CI not on every save.
-
-### Layer 4: Real Claude Code integration (manual + CI smoke)
-
-A small script that drives the actual `claude` CLI in headless mode (`claude -p`) against a corpus of prompts known to contain secrets, scrapes the resulting audit log, and asserts every secret was caught. Run weekly on CI; run manually before each release. This is what catches breakage from Claude Code hook contract changes upstream.
-
-### Golden fixture format
-
-```
-test/fixtures/hook-events/pre-tool-use-bash-with-aws-key/
-├── stdin.json          # exact JSON Claude Code would send
-├── stdout.json         # exact JSON we expect to write
-├── stderr.txt          # expected stderr (or empty)
-├── exit                # expected exit code as integer
-└── env.json            # any env vars to set (config overrides, etc.)
-```
-
-Test runner just iterates the directory. Adding a new test = creating a new folder. Reviewing a redaction change = looking at the diff in `stdout.json`.
-
----
-
-## Scaling Considerations
-
-mrclean runs on one developer's machine, in one Claude Code session, processing one stream of events serially per session. There is no horizontal scaling story.
-
-| Scale | What changes |
-|-------|--------------|
-| 1 user, 1 session | Default. Reference architecture above. |
-| 1 user, many parallel sessions | Same architecture. Each session has its own `<session_id>.json`. Audit log appends are per-project so they don't collide. |
-| Many users sharing a CI runner | Each user is a separate `~/.claude/`. No shared state. |
-| Per-event throughput | Cap is Claude Code's hook fanout, not mrclean's. mrclean's hot path is regex over a few KB of text — sub-millisecond outside cold-start. |
-
-**The only real scaling concern is cold-start latency** (Node.js + module load = 30-80ms before our code runs). The 100ms UserPromptSubmit budget and 200ms PostToolUse budget tolerate this. If they don't on some user's machine, that's the trigger to revisit Option C (sidecar daemon).
+### Anti-Pattern 1: Holding the lock across detection
+**What people do:** Wrap the whole hook body in the file lock for simplicity.
+**Why wrong:** Detection can consume most of the 100–200 ms budget; parallel PostToolUse hooks would serialize and stack deadlines.
+**Instead:** Two-phase transaction (Insight 2) — detect lock-free, allocate+persist under a ~2 ms lock.
+
+### Anti-Pattern 2: "It's encrypted, so store everything"
+**What people do:** Persist originals for all types because the file is AES-256-GCM anyway.
+**Why wrong:** The key is a sibling file on the same disk; encryption here defends against partial exfil and accident, not a same-user attacker. Secrets in the map turn a paths-and-names leak into a credentials leak.
+**Instead:** Restorable-types-only originals (Insight 1); secret entries are hash+counter, exactly as safe as today's audit log.
+
+### Anti-Pattern 3: Blanket reversal
+**What people do:** Restore every `<MRCLEAN:*>` token found.
+**Why wrong:** `updatedToolOutput` re-enters conversation context → next API call ships restored values to the wire. Restoring a secret placeholder is a direct violation of the core value.
+**Instead:** Policy allowlist enforced at write AND read (Pattern 2); OVF and unknown tokens always skipped.
+
+### Anti-Pattern 4: Daemon/IPC for state a locked file can hold
+**What people do:** Reach for the MCP server (or a new sidecar) as the map owner because "memory is cleaner."
+**Why wrong:** Server restart mid-session loses the map AND resets the counter into NNN-collision territory against the live transcript; hook-only installs get nothing; new socket-auth surface; the server doesn't even know the session_id. v1 research rejected the daemon for the same reasons.
+**Instead:** Option A file, unless requirements explicitly forbid any at-rest artifact — then accept and document B's costs.
+
+### Anti-Pattern 5: Reusing `substituteFindings` for restore
+**What people do:** Model restore as findings-with-spans and feed the existing right-to-left substituter.
+**Why wrong:** There are no detection spans on the restore path — placeholders are self-delimiting tokens; forcing span bookkeeping adds drift bugs for zero benefit.
+**Instead:** Single-pass token regex in a new `src/restore/` module (Insight 4).
+
+### Anti-Pattern 6: Keying encryption off session_id or storing the map in the project
+**What people do:** Derive the AES key from `session_id` ("no key file needed!") or write `map.enc` into project `.mrclean/` next to the audit log.
+**Why wrong:** `session_id` appears in transcripts and hook payloads — it is not a secret. Project dirs get committed, synced, and backed up.
+**Instead:** 32 random bytes per session in a 0600 sibling file; map lives under `~/.mrclean/sessions/`.
+
+### Anti-Pattern 7: A model-facing restore tool
+**What people do:** Re-add `restore`/`unredact` to the MCP tool surface "since the map exists anyway".
+**Why wrong:** A prompt-injected model can call it and pull originals into its own context — the exact attack MCP-03 was written to prevent (Pitfall #10, enforced by `FORBIDDEN_TOOL_NAMES` in CI). Policy scoping softens but does not eliminate this: it still converts every restorable-class value into something the model can request on demand, and the MCP server cannot even scope the request to the right session (no session_id).
+**Instead:** Restore lives in the PostToolUse hook (deterministic, operator-configured policy, no model discretion) plus an operator-only `mrclean restore` CLI for manual recovery.
 
 ---
 
 ## Integration Points
 
-### External Services
+### External (Claude Code contract)
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Claude Code (hook surface) | Subprocess spawn per event over stdin/stdout JSON | Contract is documented and stable; track changelog for breaking changes |
-| Claude Code (MCP surface) | Long-lived process via stdio (default) or Streamable HTTP | Use `@modelcontextprotocol/sdk` TypeScript SDK |
-| Anthropic API (layer 5, opt-in) | HTTPS POST | Only invoked when `deep` mode enabled; respects `ANTHROPIC_API_KEY` |
-| Filesystem | Direct (Node `fs`) | All session/audit/config I/O is local |
+| Surface | Integration | Notes |
+|---------|-------------|-------|
+| PostToolUse `updatedToolOutput` | Restore output rides the same field the redact pass already uses | CC ≥ 2.1.121 floor already enforced by doctor; one combined redact+restore string per event |
+| SessionEnd hook | New handler + installer registration | Cannot block; `reason` field available; NOT guaranteed on hard kill → janitor |
+| SessionStart `source` | Janitor sweep + resume rehydration branch | Installer matcher currently `'startup'` only — must widen (`startup|resume|clear|compact`) + migrate existing installs |
+| Parallel hook execution | Lock + reconcile makes concurrent PostToolUse safe | Verified: "All matching hooks run in parallel" |
 
-### Internal Boundaries
+### Internal boundaries
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Hook ↔ Core Library | Direct in-process function call | Same Node process; no serialization |
-| MCP ↔ Core Library | Direct in-process function call | Same as hook side; identical Core import |
-| Hook ↔ MCP | None directly | Coordinate only via `state/session-store` files |
-| Hook ↔ State | File I/O under `flock` | The single I/O choke point; mockable for tests |
-| Installer ↔ Claude Code settings | Read+merge+write JSON file | Idempotent; tag own entries for safe re-runs |
+| Boundary | Communication | Considerations |
+|----------|---------------|----------------|
+| handlers ↔ `src/state/` | Direct import of facade only | No `node:crypto`/lock imports outside `src/state/` — enforce with an import-graph test (precedent: NER cold-path test T-06-02-01). Lazy `await import()` behind `config.reversible.enabled` keeps the cold path byte-identical when off |
+| `src/state/` ↔ `src/placeholder/manager.ts` | `SessionMap` ⇄ manager hydrate/serialize | Manager stays I/O-free; adapter owns all disk concerns |
+| `src/detect/index.ts` ↔ handlers | New `opts.placeholderManager` injection seam | One-way mode path byte-identical when opt not passed |
+| `src/restore/` ↔ `src/state/` | `readSessionMap` (lock-free) | Restore engine itself is pure — trivially unit-testable |
+| MCP server ↔ `src/state/` | Same library, direct file access — **no IPC under Option A** | Two caveats: (1) the MCP process must re-read per call (its module cache goes stale vs hook writes) — mtime check or always-read (~1 ms); (2) **the MCP server has no Claude Code session_id** (`src/mcp/server.ts:87` boots as `'mcp-server'`; `mrclean_redact` defaults `providedSessionId ?? randomUUID()`, `redact.ts:116`) — it cannot select the correct map file without a caller-supplied sessionId or a new identity handshake. MCP-lane allocations are therefore non-restorable in v3.0 unless OQ6 designs that handshake |
+| Audit ↔ restore | New `action:'restore'` records, placeholder+hash only | LOCKED schema amendment; extend canary-leak + leak-grep gates to the map key/plaintext |
+
+---
+
+## Suggested Build Order
+
+Dependencies drive the order; steps 4/5 are the first user-visible behavior change.
+
+1. **Contract plumbing (no behavior change):** `SessionEndInput` type + dispatcher route + no-op handler; `[reversible]` config table (default off); installer SessionEnd registration + SessionStart matcher widening + migration; doctor checks. Resolve the requirements conflicts up front: OQ6 (MCP restore tool vs MCP-03 ban), OQ1 (resume continuity), restorable-type policy. *Unblocks everything; independently shippable.*
+2. **`src/state/` core (pure + I/O, no integration):** session-map schema, encrypted map-store (key mgmt, atomic write, 0600/0700), lock. Heaviest unit-test surface (corrupt file, wrong key, torn write, stale lock, contention) — build and gate it before anything consumes it.
+3. **PlaceholderManager persistence seam:** hydrate/serialize + policy-scoped `retainOriginals`; `runDetection` injection seam. One-way path proven byte-identical by existing tests.
+4. **Redact-write integration (REVMODE-02 lands):** PreToolUse/PostToolUse (+ optionally UserPromptSubmit) persist allocations via the two-phase transaction. *Cross-process placeholder stability fix lands here — valuable even before restore exists.* (MCP redact-tool persistence is blocked on the OQ6 identity gap — exclude unless resolved.)
+5. **Restore engine (parallel with 4):** `restoreText` + `RestorePolicy` — pure function, table-driven tests (OVF skip, unknown skip, adjacency, placeholder-shaped originals, policy filter).
+6. **PostToolUse restore wiring (REVMODE-01):** redact→persist→restore ordering; degrade paths (lock timeout, missing/corrupt map); perf gate extension covering decrypt+substitute+re-encrypt in CI.
+7. **Janitor:** SessionEnd delete + SessionStart sweep + doctor stale-dir report. (Depends only on 2; can run parallel to 4–6, but janitor-before-restore-ships keeps residue from ever accumulating in the wild.)
+8. **Operator restore surface:** `mrclean restore` CLI subcommand wired to `src/state/` + policy. The `mrclean_restore` MCP tool happens here ONLY if OQ6 resolved toward amending MCP-03 + tests + an identity handshake — default expectation is that it does not.
+9. **THREAT_MODEL.md (REVMODE-03) + CI hardening:** blast-radius section, opt-in flow docs; extend leak-grep to assert no plaintext originals in `map.enc` fixtures, no key material in logs; import-graph test for the `src/state/` crypto boundary; PROJECT.md amendment removing the stale "restore MCP tool stub" wording.
+
+---
+
+## Open Questions (for requirements / phase research)
+
+1. **session_id continuity across `--resume`** — does a resumed session keep the old `session_id` (map rehydratable) or mint a new one (`source=resume` with fresh id → old map is orphaned and only TTL-swept)? Not verified anywhere; determines whether resume-rehydration in step 1 is real or dead code. **LOW confidence — verify empirically in Phase 1 of this milestone.**
+2. **Does the user's terminal render `updatedToolOutput` or the raw tool result?** The docs confirm it replaces what Claude sees; whether the local UI shows the updated text determines how much of the "round-trips back into the user's view" value restore actually delivers vs. only improving Claude's context. **Unverified — quick live test.**
+3. **Should PreToolUse also restore placeholders in `tool_input`?** When Claude echoes `<MRCLEAN:WORD:001>` into a `Read` path, the tool fails unless PreToolUse restores it via `updatedInput` — and today the placeholder literal lands verbatim in files Claude writes. Milestone scopes REVMODE-01 to PostToolUse only — but without input-restore, round-tripping may break the moment Claude acts on a redacted path. Wire-reentry caveat: official docs do NOT state whether `updatedInput` is echoed back into the model context (**LOW confidence — verify live before designing**). **Product call for requirements; architecture above supports it with zero new components (same map, same policy, `restoreText` on string leaves).**
+4. **TTL and sweep aggressiveness** — 24 h vs 7 d residual window for missed SessionEnds; requirements should set it alongside the opt-in consent copy.
+5. **`reason=clear` semantics** — `/clear` fires SessionEnd(clear) then SessionStart(source=clear) with a new session; confirm the old id's dir is deleted by the End handler rather than waiting for sweep.
+6. **MCP restore tool vs the MCP-03 ban + session-identity gap (requirements conflict — must be resolved before roadmapping the MCP surface).** PROJECT.md's v3 target says "Wire the `restore` MCP tool (stub since Phase 1)" — but (a) the stub was deleted in Plan 03-01 (`src/mcp/server.ts:12-16`), (b) `restore` is CI-banned (`tests/mcp/tools-list.test.ts:44-60` FORBIDDEN_TOOL_NAMES; T2 asserts *exactly* three tools), (c) the v1 decision record rules restoration non-model-facing (`03-03-PLAN.md:460`, prompt-injection Pitfall #10), and (d) the MCP server never receives the Claude Code `session_id` (`server.ts:87`, `redact.ts:116`), so the tool cannot locate the right map without a new handshake. **Recommended resolution: keep the ban; deliver restore as the PostToolUse hook pass + operator-only `mrclean restore` CLI; amend PROJECT.md.** Alternative (amend MCP-03 + tests + identity handshake) is architecturally supported but expands the prompt-injection surface for marginal value. **HIGH confidence on all four code facts.**
 
 ---
 
 ## Sources
 
-- [Claude Code Hooks Reference](https://code.claude.com/docs/en/hooks) — confirms hooks spawn fresh per event, no inter-event state; documents `session_id`, `transcript_path`, `cwd` in every hook input; full I/O contracts for SessionStart, UserPromptSubmit, PreToolUse, PostToolUse including `updatedInput` and `updatedToolOutput`
-- [Claude Code CHANGELOG (raw)](https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md) — confirms `updatedToolOutput` for all tools added in v2.1.121; PostToolUse `duration_ms` available; `additionalContext` for UserPromptSubmit added earlier
-- [Claude Agent SDK — Hooks](https://code.claude.com/docs/en/agent-sdk/hooks) — formalizes hook output schema including `hookSpecificOutput.updatedToolOutput` and `permissionDecision: "allow|deny|ask|defer"`; documents must-pair `permissionDecision` with `updatedInput`
-- [Issue #34390 — UserPromptSubmit prompt modification](https://github.com/anthropics/claude-code/issues/34390) — confirms current limitation: cannot rewrite prompts, only block or append context
-- [Issue #46761](https://github.com/anthropics/claude-code/issues/46761) and [Issue #53330](https://github.com/anthropics/claude-code/issues/53330) — open feature requests for `replaceUserMessage` / `modifiedPrompt`; not yet implemented as of May 2026
-- [Issue #18594 / #4544](https://github.com/anthropics/claude-code/issues/18594) — historical PostToolUse-modification requests; both pre-date the v2.1.121 ship that delivered the capability
-- [MCP Transports specification](https://modelcontextprotocol.io/docs/concepts/transports) — stdio vs Streamable HTTP semantics; session ID via `Mcp-Session-Id` header; lifecycle of long-lived MCP server processes
-- [@modelcontextprotocol/sdk on npm](https://www.npmjs.com/package/@modelcontextprotocol/sdk) and [typescript-sdk on GitHub](https://github.com/modelcontextprotocol/typescript-sdk) — official TS SDK; `McpServer` + `StdioServerTransport` lifecycle pattern
-- [disler/claude-code-hooks-mastery](https://github.com/disler/claude-code-hooks-mastery) — production reference for stateful hooks using session-keyed files (no daemon); validates the file-backed-state architecture choice
-- [gitleaks default ruleset](https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml) — TOML rule format mrclean's layer 1 vendors
-- [secretlint on npm](https://www.npmjs.com/package/secretlint) — JS-native alternative ruleset and rule-pattern format; useful as a fallback or supplement to gitleaks rules
-- [Node.js `net` Unix socket docs](https://nodejs.org/api/net.html) — referenced for the deferred Option C sidecar evaluation
+- [Claude Code Hooks reference](https://code.claude.com/docs/en/hooks) — fetched 2026-07-14: SessionEnd event (+`reason`, cannot block, "side effects like logging or cleanup"), parallel hook execution ("All matching hooks run in parallel"), SessionStart `source` field (`startup`/`resume`/`clear`/`compact`), PostToolUse input shape + `updatedToolOutput`; `updatedInput` model-context echo unspecified. **HIGH (except the `updatedInput` echo question — LOW, flagged)**
+- Shipped source (read 2026-07-14): `src/hook/index.ts`, `src/hook/dispatcher.ts`, `src/hook/handlers/{session-start,user-prompt-submit,pre-tool-use,post-tool-use}.ts`, `src/detect/index.ts`, `src/detect/session-state.ts`, `src/detect/type-map.ts`, `src/placeholder/{manager,substitute}.ts`, `src/mcp/server.ts`, `src/mcp/tools/redact.ts`, `src/audit/log.ts`, `src/install/{settings,atomic-json}.ts`, `src/config/defaults.ts`, `src/shared/types.ts`, `src/doctor/version-check.ts`, `src/cli.ts`. **HIGH**
+- MCP-03 ban + non-model-facing-restore decision record: `tests/mcp/tools-list.test.ts:44-60, 87-99`; `.planning/milestones/v1.0-phases/03-mcp-tools-performance-gate-public-release/03-03-PLAN.md:460`; `src/mcp/server.ts:12-16`. **HIGH**
+- `updatedToolOutput` ≥ 2.1.121 floor — already encoded in shipped code (`src/shared/types.ts:124`) and doctor version floor from Plan 02-05 research. **HIGH**
+- Node `crypto` AES-256-GCM / `fs` atomic-rename semantics — stable platform APIs, matching the project's existing `atomic-json.ts` pattern. **HIGH**
+- MCP server lifecycle (stdio servers restarted on reconnect/config change; liveness not guaranteed at hook time) — training-data + v1 research daemon analysis; load-bearing only for Option B's downsides. **MEDIUM**
+- session_id continuity across resume; terminal rendering of `updatedToolOutput`; `updatedInput` context echo — **unverified, LOW; flagged above.**
 
 ---
-*Architecture research for: in-session Claude Code redaction tooling*
-*Researched: 2026-05-13*
+*Architecture research for: mrclean v3.0 Reversible Redact Mode*
+*Researched: 2026-07-14*
