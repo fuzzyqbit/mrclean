@@ -139,4 +139,64 @@ describe('loadEffectiveConfig', () => {
     expect(result.dry_run).toBe(DEFAULT_CONFIG.dry_run)
     expect(result.allowlist).toEqual(DEFAULT_CONFIG.allowlist)
   })
+
+  // Test G (Phase 8-07, CR-01 repro): a project-layer [reversible] table carrying only
+  // unknown/future keys (the documented Phase-9 forward-compat scenario) must NOT clear
+  // the user-layer opt-in. Real TOML files are load-bearing here — the defect lives in
+  // the validators, so programmatic mergeConfigs layers cannot reproduce it.
+  it('preserves user-layer reversible opt-in when project layer has a partial [reversible] table (CR-01)', async () => {
+    // Arrange
+    await mkdir(join(tmpHome, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpHome, '.mrclean', 'config.toml'), '[reversible]\nenabled = true\n')
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[reversible]\nfuture_key = 1\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert
+    expect(result.reversible.enabled).toBe(true)
+  })
+
+  // Test H (Phase 8-07, CR-01 repro): a project file that ONLY narrows [pii.regex].entities
+  // must not silently disable the user's global PII opt-in (including the SSN/credit-card
+  // block actions) nor reset the NER confidence floor.
+  it('preserves user-layer PII opt-ins when project layer sets only [pii.regex] (CR-01)', async () => {
+    // Arrange
+    await mkdir(join(tmpHome, '.mrclean'), { recursive: true })
+    await writeFile(
+      join(tmpHome, '.mrclean', 'config.toml'),
+      '[pii]\nenabled = true\n\n[pii.ner]\nenabled = true\nconfidence = 0.9\n',
+    )
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[pii.regex]\nentities = ["email"]\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert — user opt-ins survive the partial project table...
+    expect(result.pii.enabled).toBe(true)
+    expect(result.pii.ner.enabled).toBe(true)
+    expect(result.pii.ner.confidence).toBe(0.9)
+    // ...while the project narrowing still applies.
+    expect(result.pii.regex.entities).toEqual(['email'])
+  })
+
+  // Test K (Phase 8-07, regression guard): default-filling survives its relocation into
+  // mergeConfigs — a single layer setting only [pii].enabled still gets every unset
+  // field from the bundled defaults, exactly once.
+  it('fills defaults exactly once when a single layer sets only [pii].enabled', async () => {
+    // Arrange
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[pii]\nenabled = true\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert — the opt-in applies and every unset field carries the bundled default.
+    expect(result.pii.enabled).toBe(true)
+    expect(result.pii.regex).toEqual(DEFAULT_CONFIG.pii.regex)
+    expect(result.pii.ner.model).toBe(DEFAULT_CONFIG.pii.ner.model)
+    expect(result.pii.ner.confidence).toBe(DEFAULT_CONFIG.pii.ner.confidence)
+  })
 })
