@@ -44,6 +44,7 @@ export interface CheckResult {
 
 const REQUIRED_EVENTS = [
   'SessionStart',
+  'SessionEnd',
   'UserPromptSubmit',
   'PreToolUse',
   'PostToolUse',
@@ -115,8 +116,8 @@ function extractHookNodeAndBin(
 // ---------------------------------------------------------------------------
 
 /**
- * Verify that all four hook events are registered in settings.json with
- * at least one mrclean-tagged entry (`_mrclean: true`).
+ * Verify that all required hook events (REQUIRED_EVENTS) are registered in
+ * settings.json with at least one mrclean-tagged entry (`_mrclean: true`).
  */
 export async function checkHooksRegistered(settingsPath: string): Promise<CheckResult> {
   const data = await readJsonOrEmpty(settingsPath)
@@ -160,7 +161,7 @@ export async function checkHooksRegistered(settingsPath: string): Promise<CheckR
   return {
     name: 'hooks',
     status: 'PASS',
-    detail: `4 hook events registered (${REQUIRED_EVENTS.join(', ')})`,
+    detail: `${REQUIRED_EVENTS.length} hook events registered (${REQUIRED_EVENTS.join(', ')})`,
     exitCodeOnFail: 1,
   }
 }

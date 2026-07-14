@@ -48,6 +48,45 @@ async function makeTempEnv(): Promise<{ homeDir: string; cwd: string; cleanup: (
   }
 }
 
+/**
+ * Wave-2 seam bridge (08-03): doctor now requires the 5-event hook surface
+ * (including SessionEnd), but the installer's SessionEnd registration lands
+ * in plan 08-02 (same wave, parallel worktree). Until 08-02 merges, a fresh
+ * install writes only 4 events — so add a SessionEnd mrclean entry IF (and
+ * only if) it is missing after install. Post-merge the installer registers
+ * SessionEnd itself and this helper becomes a pure no-op, keeping these
+ * tests exercising the real installer output. Safe to delete once the
+ * installer's 5-event surface is asserted in tests/install/.
+ */
+async function ensureSessionEndRegistered(homeDir: string, binPath = DIST_CLI): Promise<void> {
+  const settingsPath = join(homeDir, '.claude', 'settings.json')
+  const raw = await readFile(settingsPath, 'utf8')
+  const settings = JSON.parse(raw) as { hooks?: Record<string, unknown[]> }
+  const hooks = settings.hooks ?? {}
+  const existing = hooks['SessionEnd']
+  const hasMrcleanSessionEnd =
+    Array.isArray(existing) &&
+    existing.some(
+      (e) =>
+        typeof e === 'object' &&
+        e !== null &&
+        (e as Record<string, unknown>)['_mrclean'] === true,
+    )
+  if (hasMrcleanSessionEnd) return
+
+  const { buildHookCommand } = await import('../../src/install/settings.js')
+  const hookCmd = buildHookCommand(process.execPath, binPath)
+  // SessionEnd is registered with NO matcher key (matchers filter on `reason`).
+  const next = {
+    ...settings,
+    hooks: {
+      ...hooks,
+      SessionEnd: [...(Array.isArray(existing) ? existing : []), { _mrclean: true, hooks: [hookCmd] }],
+    },
+  }
+  await writeFile(settingsPath, JSON.stringify(next, null, 2), 'utf8')
+}
+
 /** Run install via the runInstall API (not CLI) so we control homeDir/cwd. */
 async function doInstall(homeDir: string, cwd: string): Promise<void> {
   const { runInstall } = await import('../../src/install/index.js')
@@ -58,6 +97,7 @@ async function doInstall(homeDir: string, cwd: string): Promise<void> {
     mrcleanBinPath: DIST_CLI,
     mcpBinPath: DIST_MCP,
   })
+  await ensureSessionEndRegistered(homeDir)
 }
 
 /** Run uninstall via the runUninstall API. */
@@ -126,6 +166,7 @@ describe('computeDoctorReport end-to-end', { timeout: 60000 }, () => {
       await writeFile(settingsPath, '{}', 'utf8') // create the file first
       const { VERSION } = await import('../../src/shared/version.js')
       await writeHookEntries(settingsPath, process.execPath, DIST_CLI, VERSION)
+      await ensureSessionEndRegistered(homeDir)
 
       const { computeDoctorReport } = await import('../../src/doctor/index.js')
       const report = await computeDoctorReport({ homeDir, cwd })
@@ -156,6 +197,7 @@ describe('computeDoctorReport end-to-end', { timeout: 60000 }, () => {
         mrcleanBinPath: fakeBin,
         mcpBinPath: DIST_MCP,
       })
+      await ensureSessionEndRegistered(homeDir, fakeBin)
 
       // chmod -x the fake bin
       await chmod(fakeBin, 0o644)
@@ -257,6 +299,11 @@ describe('computeDoctorReport end-to-end', { timeout: 60000 }, () => {
         },
       )
       expect(installResult.status).toBe(0)
+
+      // Seam bridge: the CLI install above runs the worktree installer (4
+      // events until 08-02 merges) — patch in SessionEnd if missing so the
+      // spawned doctor sees the required 5-event surface.
+      await ensureSessionEndRegistered(homeDir)
 
       // Run doctor via CLI with MRCLEAN_TEST_FAKE_CLAUDE_VERSION env var
       const doctorResult = spawnSync(
