@@ -55,7 +55,7 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
 
 Plans:
 **Wave 1**
-- [ ] 08-01-PLAN.md — `[reversible]` config table + Phase 8 type contracts (TDD; wave 1)
+- [x] 08-01-PLAN.md — `[reversible]` config table + Phase 8 type contracts (TDD; wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 08-02-PLAN.md — SessionEnd no-op routing + installer 5-event widening/migration (wave 2)
