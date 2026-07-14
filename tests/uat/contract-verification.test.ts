@@ -6,13 +6,21 @@
  *
  *   E1 — is `updatedToolOutput` honored, per tool (Bash / Read / MCP)? Which
  *        surfaces show the rewrite (model quote, transcript, stream-json)?
- *        (Hypothesis: ignored for built-in Bash — open bug #68951.)
+ *        (Hypothesis: STRING form rejected by per-tool shape validation —
+ *        #68951 reports the string form.) Object-shape legs: E1/Bash-object
+ *        probes the {stdout, stderr, interrupted, isImage} payload 2.1.209
+ *        honors for Bash; E1/Read-object probes the same payload on a Read
+ *        matcher (closes the read_object_shape follow-up). Together they
+ *        assemble the E1_shape_validation record.
  *   E2 — does PreToolUse `updatedInput` echo into the transcript / model
  *        context, or is the original command preserved?
  *   E3 — is `session_id` continuous across `--resume` (hook-payload proof),
  *        with a `--fork-session` control expecting a NEW id?
  *   E4 — does the documented 10K-char hook-output cap bind `updatedToolOutput`
- *        (unlisted in docs)? Control: >10K `additionalContext` (documented capped).
+ *        (unlisted in docs)? Gated on the object-shape leg: when Bash-object
+ *        is honored, the run uses a >10K OBJECT-shaped payload
+ *        (e4-object-large-output-hook.sh); legacy string-form gating is the
+ *        fallback. Control: >10K `additionalContext` (documented capped).
  *   E5 — does SessionEnd fire in headless -p mode, with which reason? Plus the
  *        SC3 live observable: mrclean's REAL hook on SessionStart (widened
  *        matcher) + SessionEnd produces zero exit-2/hook-error stderr noise.
@@ -54,8 +62,10 @@ const ARTIFACTS_DIR = path.resolve(REPO_ROOT, 'tests/uat/artifacts')
 const FINDINGS_PATH = path.join(ARTIFACTS_DIR, 'contract-findings.json')
 
 const E1_HOOK = path.join(FIXTURES_DIR, 'e1-rewrite-hook.sh')
+const E1_OBJECT_HOOK = path.join(FIXTURES_DIR, 'e1-object-rewrite-hook.sh')
 const E2_HOOK = path.join(FIXTURES_DIR, 'e2-updated-input-hook.sh')
 const E4_HOOK = path.join(FIXTURES_DIR, 'e4-large-output-hook.sh')
+const E4_OBJECT_HOOK = path.join(FIXTURES_DIR, 'e4-object-large-output-hook.sh')
 const LOG_HOOK = path.join(FIXTURES_DIR, 'log-hook.sh')
 
 /** Markers (MUST match the fixture scripts — never real secret shapes). */
@@ -76,6 +86,12 @@ const E4C_TAIL = 'E4C_TAIL_MARKER'
 let claudeVersion = 'unknown'
 let issue68951State = 'not-checked'
 const e1Tools: Record<string, ToolVerdict> = {}
+let e1ObjectBash: ToolVerdict | undefined
+/** Stashed by E1/Bash so the object leg can scan the string-leg transcript for the shape-rejection error. */
+let e1BashTranscriptPath: string | null = null
+let bashObjectSessionId: string | undefined
+let stringShapeHookError: string | undefined
+let shapeValidationRecord: Record<string, unknown> | undefined
 let e2Record: ExperimentRecord | undefined
 let e3Record: ExperimentRecord | undefined
 let e4Record: ExperimentRecord | undefined
@@ -260,6 +276,24 @@ function buildE1Verdict(run: ClaudeRun, originalDetectable: boolean): ToolVerdic
   return { verdict, signals, evidence_paths: transcriptPath !== null ? [transcriptPath] : [] }
 }
 
+/**
+ * Regex-scan a transcript's raw text for the updatedToolOutput shape-rejection
+ * hook error (zod: "does not match" / "invalid_type"). Returns a trimmed
+ * excerpt (<= 600 chars) starting at the match, or undefined when absent.
+ */
+function scanHookErrorExcerpt(transcriptPath: string | null): string | undefined {
+  if (transcriptPath === null || !existsSync(transcriptPath)) return undefined
+  let raw: string
+  try {
+    raw = readFileSync(transcriptPath, 'utf8')
+  } catch {
+    return undefined
+  }
+  const match = /updatedToolOutput[\s\S]{0,500}?(?:does not match|invalid_type)/.exec(raw)
+  if (match === null) return undefined
+  return raw.slice(match.index, match.index + 600).trim()
+}
+
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
@@ -334,6 +368,7 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
         date: todayIso(),
         issue68951State,
         e1Tools,
+        shapeValidation: shapeValidationRecord,
         e2: e2Record,
         e3: e3Record,
         e4: e4Record,
@@ -386,6 +421,115 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
 
     // Contract verdict (recorded, never asserted).
     e1Tools['Bash'] = buildE1Verdict(run, true)
+    // Stash the string-leg transcript for the object leg's rejection-evidence scan.
+    e1BashTranscriptPath = findTranscript(run.init?.session_id)
+  }, 240_000)
+
+  test('E1/Bash-object: OBJECT-shaped updatedToolOutput for built-in Bash (the shape 2.1.209 honors)', () => {
+    const hookLog = path.join(sandbox, 'e1-bash-object-hook.log')
+    const settings = writeSettings('settings-e1-bash-object.json', {
+      PostToolUse: [hookEntry(fixtureCmd(E1_OBJECT_HOOK, 'HOOK_LOG', hookLog), 'Bash')],
+    })
+
+    const run = runClaude(
+      `Run the bash command \`echo ${E1_ORIGINAL}\` and then repeat back, verbatim, the exact output the tool returned to you.`,
+      settings,
+      { cwd: projectDir, extraArgs: ['--allowedTools', 'Bash'] },
+    )
+
+    // Harness integrity (hard): session ran, fixture hook actually fired.
+    assertSessionRan(run)
+    expect(existsSync(hookLog), 'harness integrity: e1-object-rewrite-hook never fired for Bash (no HOOK_LOG side file)').toBe(true)
+
+    // Contract verdict (recorded, never asserted) — the E1_shape_validation
+    // object-probe leg, and the gate E4 checks first.
+    e1ObjectBash = buildE1Verdict(run, true)
+    bashObjectSessionId = run.init?.session_id
+
+    // String-leg rejection evidence: the E1/Bash (string form) transcript
+    // carries the shape-rejection hook error when validation rejected it.
+    stringShapeHookError = scanHookErrorExcerpt(e1BashTranscriptPath)
+  }, 240_000)
+
+  test('E1/Read-object: Bash-style OBJECT payload on a Read matcher (probe — closes the read_object_shape follow-up)', () => {
+    const hookLog = path.join(sandbox, 'e1-read-object-hook.log')
+    const settings = writeSettings('settings-e1-read-object.json', {
+      PostToolUse: [hookEntry(fixtureCmd(E1_OBJECT_HOOK, 'HOOK_LOG', hookLog), 'Read')],
+    })
+
+    const run = runClaude(
+      `Read the file ${path.join(projectDir, 'e1-read-marker.txt')} and quote back, verbatim, the exact contents the tool returned to you.`,
+      settings,
+      { cwd: projectDir, extraArgs: ['--allowedTools', 'Read'] },
+    )
+
+    // Harness integrity only (record-don't-assert): either probe outcome is an
+    // answer — a rejection error that names Read's expected shape is itself
+    // the empirical close of the open follow-up.
+    assertSessionRan(run)
+    expect(existsSync(hookLog), 'harness integrity: e1-object-rewrite-hook never fired for Read (no HOOK_LOG side file)').toBe(true)
+
+    const transcriptPath = findTranscript(run.init?.session_id)
+    const t = extractTranscriptToolData(transcriptPath)
+    const streamResults = extractToolResultText(run)
+    const rewrittenSeen = streamResults.includes(E1_REWRITTEN) || t.toolResults.includes(E1_REWRITTEN)
+
+    let readObjectVerdict: string
+    let readObjectHookError: string | undefined
+    if (rewrittenSeen) {
+      readObjectVerdict = 'honored (Bash-style object accepted for Read)'
+    } else {
+      readObjectHookError = scanHookErrorExcerpt(transcriptPath)
+      readObjectVerdict =
+        readObjectHookError !== undefined
+          ? "rejected — zod error names Read's expected output shape (see verbatim excerpt)"
+          : 'indeterminate'
+    }
+
+    // Both object legs have run — assemble the E1_shape_validation record.
+    const objectHonored = e1ObjectBash?.verdict === 'honored'
+    const stringRejected = stringShapeHookError !== undefined
+
+    let shapeVerdict: string
+    if (objectHonored && stringRejected) {
+      shapeVerdict =
+        'Claude Code SHAPE-VALIDATES updatedToolOutput per tool: STRING payloads are REJECTED for Bash (zod invalid_type, expected object) with a warning and the original output is used; OBJECT-shaped payloads ({stdout, stderr, interrupted, isImage}) are HONORED for Bash. The channel is NOT dead for built-ins.'
+    } else if (objectHonored) {
+      shapeVerdict =
+        'object shape HONORED for Bash this run; the string-shape rejection error was not re-observed in the E1/Bash transcript (committed verbatim_hook_error carries the prior observation)'
+    } else {
+      shapeVerdict = `shape-validation conclusion NOT reproduced this run — Bash-object verdict: ${e1ObjectBash?.verdict ?? 'not-run'}; inspect evidence`
+    }
+
+    shapeValidationRecord = {
+      ...baseRecord(
+        "Discovery behind the E1 'ignored for Bash/Read' verdicts: does Claude Code shape-validate updatedToolOutput per tool?",
+        'headless -p probes: OBJECT-shaped updatedToolOutput fixture on Bash + Read matchers (tests/uat/fixtures/e1-object-rewrite-hook.sh); string-leg rejection evidence regex-scanned from the E1/Bash transcript',
+      ),
+      verdict: shapeVerdict,
+      // undefined when not observed this run — the builder's field-level
+      // fallback preserves the committed verbatim excerpt (WR-01, Test 4).
+      verbatim_hook_error: stringShapeHookError,
+      fixture_path: 'tests/uat/fixtures/e1-object-rewrite-hook.sh',
+      signals: {
+        object_probe_honored: objectHonored,
+        object_probe_session_id: bashObjectSessionId ?? null,
+        object_probe_payload:
+          '{"hookSpecificOutput":{"hookEventName":"PostToolUse","updatedToolOutput":{"stdout":"REWRITTEN_E1_MARKER_x9k2","stderr":"","interrupted":false,"isImage":false}}}',
+        string_shape_rejected: stringRejected,
+        read_object_verdict: readObjectVerdict,
+        read_object_hook_error: readObjectHookError ?? null,
+      },
+      evidence_paths: [...(e1ObjectBash?.evidence_paths ?? []), ...(transcriptPath !== null ? [transcriptPath] : [])],
+      reinterpretation_notes: {
+        E1_bash_read_verdicts:
+          "E1 Bash/Read 'ignored' verdicts mean 'string-form rejected by per-tool output-shape validation' — not 'channel dead'",
+        issue_68951: '#68951 likely reports the string form',
+        mcp_honored: 'MCP honored because MCP accepts string content',
+        E4: 'answerable via object-shaped Bash payload — E4 leg now gated on the object verdict',
+        read_object_shape: `Read object-shape probe recorded this run: ${readObjectVerdict}`,
+      },
+    }
   }, 240_000)
 
   test('E1/Read: updatedToolOutput for built-in Read', () => {
@@ -582,20 +726,25 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
   // E4 — 10K-char cap vs updatedToolOutput (+ additionalContext control)
   // -------------------------------------------------------------------------
 
-  test('E4: 10K cap vs ~15K updatedToolOutput (runs against whichever tool E1 proved honored)', () => {
-    const honored = (['Bash', 'Read'] as const).find((t) => e1Tools[t]?.verdict === 'honored')
+  test('E4: 10K cap vs ~15K updatedToolOutput (object-gated: prefers the honored E1/Bash-object leg)', () => {
+    // FIRST preference: the object-shape Bash leg — the payload form 2.1.209
+    // honors for built-in Bash (see E1_shape_validation).
+    const objectLeg = e1ObjectBash?.verdict === 'honored'
+    // Fallback: the legacy string-form gating, unchanged.
+    const stringHonored = objectLeg ? undefined : (['Bash', 'Read'] as const).find((t) => e1Tools[t]?.verdict === 'honored')
 
-    if (honored === undefined) {
+    if (!objectLeg && stringHonored === undefined) {
       const mcpHonored = e1Tools['MCP']?.verdict === 'honored'
       e4Record = {
         ...baseRecord(
           'Does the documented 10K-char hook-output cap bind updatedToolOutput (unlisted in docs)?',
-          'gated on E1: requires a built-in tool where updatedToolOutput is honored',
+          'gated on E1: requires a tool+shape where updatedToolOutput is honored (object-shape Bash leg preferred)',
         ),
         verdict: mcpHonored
-          ? 'unanswerable for built-in tools on this CC version — updatedToolOutput ignored for Bash and Read (#68951); honored only for MCP, which this harness does not exercise for the cap question'
-          : 'unanswerable on this CC version — blocked by #68951 (updatedToolOutput ignored for all tested tools)',
+          ? `unanswerable for built-in tools on this CC version — object-shaped updatedToolOutput not honored for Bash in this run (Bash-object verdict: ${e1ObjectBash?.verdict ?? 'not-run'}; see E1_shape_validation) and no string-form leg honored; honored only for MCP, which this harness does not exercise for the cap question`
+          : `unanswerable on this CC version — object-shaped updatedToolOutput not honored for Bash in this run (Bash-object verdict: ${e1ObjectBash?.verdict ?? 'not-run'}; see E1_shape_validation), and no string-form leg was honored`,
         signals: {
+          e1_bash_object_verdict: e1ObjectBash?.verdict ?? 'not-run',
           e1_bash_verdict: e1Tools['Bash']?.verdict ?? 'not-run',
           e1_read_verdict: e1Tools['Read']?.verdict ?? 'not-run',
           e1_mcp_verdict: e1Tools['MCP']?.verdict ?? 'not-run',
@@ -605,23 +754,27 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
       return
     }
 
+    // objectLeg → Bash with the OBJECT-shaped fixture; else the string leg.
+    const tool: 'Bash' | 'Read' = objectLeg ? 'Bash' : (stringHonored ?? 'Bash')
+    const e4Hook = objectLeg ? E4_OBJECT_HOOK : E4_HOOK
+
     const hookLog = path.join(sandbox, 'e4-hook.log')
     const settings = writeSettings('settings-e4.json', {
-      PostToolUse: [hookEntry(fixtureCmd(E4_HOOK, 'HOOK_LOG', hookLog), honored)],
+      PostToolUse: [hookEntry(fixtureCmd(e4Hook, 'HOOK_LOG', hookLog), tool)],
     })
 
     const prompt =
-      honored === 'Bash'
+      tool === 'Bash'
         ? 'Run the bash command `seq 1 3000` and then report the first 40 characters and the last 40 characters of the tool output you saw, quoted verbatim.'
         : `Read the file ${path.join(projectDir, 'e4-large.txt')} and then report the first 40 characters and the last 40 characters of the tool output you saw, quoted verbatim.`
 
     const run = runClaude(prompt, settings, {
       cwd: projectDir,
-      extraArgs: ['--allowedTools', honored],
+      extraArgs: ['--allowedTools', tool],
     })
 
     assertSessionRan(run)
-    expect(existsSync(hookLog), 'harness integrity: e4-large-output-hook never fired (no HOOK_LOG side file)').toBe(true)
+    expect(existsSync(hookLog), `harness integrity: ${path.basename(e4Hook)} never fired (no HOOK_LOG side file)`).toBe(true)
 
     const sid = run.init?.session_id
     const transcriptPath = findTranscript(sid)
@@ -632,18 +785,21 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
     const tailSeen = streamResults.includes(E4_TAIL) || t.toolResults.includes(E4_TAIL)
 
     let verdict: string
-    if (headSeen && tailSeen) verdict = `cap does NOT bind updatedToolOutput (~15K survived intact for ${honored})`
-    else if (headSeen && !tailSeen) verdict = `capped/truncated: HEAD survived, TAIL lost (~10K cap appears to bind updatedToolOutput for ${honored})`
-    else verdict = `indeterminate for ${honored}: neither/only-tail marker observed in tool_result — inspect evidence`
+    if (headSeen && tailSeen) verdict = `cap does NOT bind updatedToolOutput (~15K survived intact for ${tool})`
+    else if (headSeen && !tailSeen) verdict = `capped/truncated: HEAD survived, TAIL lost (~10K cap appears to bind updatedToolOutput for ${tool})`
+    else verdict = `indeterminate for ${tool}: neither/only-tail marker observed in tool_result — inspect evidence`
 
     e4Record = {
       ...baseRecord(
         'Does the documented 10K-char hook-output cap bind updatedToolOutput (unlisted in docs)?',
-        `live headless -p session; ${honored} produces >10K output; fixture hook returns ~15K updatedToolOutput with HEAD/TAIL markers`,
+        objectLeg
+          ? 'live headless -p session; Bash produces >10K output; fixture hook returns ~15K OBJECT-shaped updatedToolOutput ({stdout,...}) with HEAD/TAIL markers (fixture tests/uat/fixtures/e4-object-large-output-hook.sh)'
+          : `live headless -p session; ${tool} produces >10K output; fixture hook returns ~15K updatedToolOutput with HEAD/TAIL markers`,
       ),
       verdict,
       signals: {
-        tool_used: honored,
+        tool_used: tool,
+        payload_shape: objectLeg ? 'object ({stdout, stderr, interrupted, isImage})' : 'string',
         head_marker_seen: headSeen,
         tail_marker_seen: tailSeen,
         stream_tool_result_char_length: streamResults.length,
