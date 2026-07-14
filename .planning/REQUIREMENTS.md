@@ -26,7 +26,7 @@
 
 ### Threat Model & Docs
 
-- [ ] **REVMODE-03**: THREAT_MODEL.md gains a reversible-mode section — map blast radius, secret-floor rationale, wire re-entry analysis (why in-session restore is deferred: `updatedToolOutput` is model-facing and the transcript ratchet is permanent), key-custody honesty (what file-based custody does and does not defend against), and accepted residual risks; PROJECT.md's stale "restore MCP tool stub" wording amended
+- [x] **REVMODE-03**: THREAT_MODEL.md gains a reversible-mode section — map blast radius, secret-floor rationale, wire re-entry analysis (why in-session restore is deferred: `updatedToolOutput` is model-facing and the transcript ratchet is permanent), key-custody honesty (what file-based custody does and does not defend against), and accepted residual risks; PROJECT.md's stale "restore MCP tool stub" wording amended
 
 ## Future Requirements (deferred)
 
@@ -57,7 +57,7 @@ Mapped by v3.0 roadmap creation (2026-07-14). Coverage: 12/12 v3.0 requirements 
 |-------------|-------|--------|
 | REVMODE-01 | Phase 10 — Operator Restore | Pending |
 | REVMODE-02 | Phase 9 — Session State Adapter | Pending |
-| REVMODE-03 | Phase 8 — Contract Verification & Reversible Plumbing | Pending |
+| REVMODE-03 | Phase 8 — Contract Verification & Reversible Plumbing | Complete |
 | REVMODE-04 | Phase 9 — Session State Adapter | Pending |
 | REVMODE-05 | Phase 9 — Session State Adapter | Pending |
 | REVMODE-06 | Phase 9 — Session State Adapter | Pending |
