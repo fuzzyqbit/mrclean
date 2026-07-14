@@ -36484,15 +36484,18 @@ var init_canary = __esm({
 import { access as access7, constants as constants6 } from "fs/promises";
 function extractHookNodeAndBin(command, args) {
   if (!Array.isArray(args) || args.length === 0) return {};
-  if (typeof args[0] === "string" && args[0].endsWith(".js")) {
-    return { nodePath: command, binPath: args[0] };
-  }
-  if (args.length >= 2) {
+  const isWrapperShape = command === POSIX_WRAPPER_SHELL && args[0] === "-c";
+  if (isWrapperShape) {
+    if (args.length < MIN_WRAPPER_ARGS) return {};
     const binPath = args[args.length - 1];
     const nodePath = args[args.length - 2];
     if (typeof binPath === "string" && typeof nodePath === "string") {
       return { nodePath, binPath };
     }
+    return {};
+  }
+  if (typeof args[0] === "string") {
+    return { nodePath: command, binPath: args[0] };
   }
   return {};
 }
@@ -36625,7 +36628,7 @@ async function extractRegisteredPaths(settingsPath, claudeJsonPath, projectCwd) 
   const mcpBinPath = Array.isArray(mcpArgs) && typeof mcpArgs[0] === "string" ? mcpArgs[0] : "";
   return { nodePath, hookBinPath, mcpBinPath };
 }
-async function checkBinsExecutable(settingsPath, claudeJsonPath, projectCwd) {
+async function checkBinsExecutable(settingsPath, claudeJsonPath, projectCwd, platform = process.platform) {
   const binPaths = await collectRegisteredBinPaths(settingsPath, claudeJsonPath, projectCwd);
   if (binPaths.length === 0) {
     return {
@@ -36635,6 +36638,7 @@ async function checkBinsExecutable(settingsPath, claudeJsonPath, projectCwd) {
       exitCodeOnFail: 3
     };
   }
+  const isFailClosedPlatform = platform !== "win32";
   for (const binPath of binPaths) {
     try {
       await access7(binPath, constants6.X_OK);
@@ -36642,11 +36646,7 @@ async function checkBinsExecutable(settingsPath, claudeJsonPath, projectCwd) {
       return {
         name: "bins",
         status: "FAIL",
-        // Post 01-06 the POSIX hook is a fail-closed /bin/sh wrapper: a missing
-        // or non-executable mrclean bin makes the wrapper BLOCK every tool call
-        // (exit 2) until restored — not a silent fail-open. Point the operator
-        // at the repair path.
-        detail: `registered mrclean binary is missing or not executable: ${binPath} \u2014 on POSIX the fail-closed hook wrapper now BLOCKS every tool call (exit 2) until restored; run \`mrclean install\` to repair`,
+        detail: isFailClosedPlatform ? `registered mrclean binary is missing or not executable: ${binPath} \u2014 the fail-closed POSIX hook wrapper now BLOCKS every tool call (exit 2) until restored; run \`mrclean install\` to repair` : `registered mrclean binary is missing or not executable: ${binPath} \u2014 WARNING: on Windows the hook fails OPEN, so tool calls pass through UNPROTECTED until restored; run \`mrclean install\` to repair`,
         exitCodeOnFail: 3
       };
     }
@@ -36757,7 +36757,7 @@ async function checkConfigLoad(homeDir, cwd) {
     };
   }
 }
-var REQUIRED_EVENTS;
+var REQUIRED_EVENTS, POSIX_WRAPPER_SHELL, MIN_WRAPPER_ARGS;
 var init_checks4 = __esm({
   "src/doctor/checks.ts"() {
     "use strict";
@@ -36771,6 +36771,8 @@ var init_checks4 = __esm({
       "PreToolUse",
       "PostToolUse"
     ];
+    POSIX_WRAPPER_SHELL = "/bin/sh";
+    MIN_WRAPPER_ARGS = 4;
   }
 });
 
