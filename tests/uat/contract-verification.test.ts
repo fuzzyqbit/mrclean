@@ -456,13 +456,23 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
       PostToolUse: [hookEntry(fixtureCmd(E1_HOOK, 'HOOK_LOG', hookLog), 'mcp__mrclean__.*')],
     })
 
+    // Harness-integrity fixes observed on 2.1.209:
+    //  - ENABLE_TOOL_SEARCH=false: MCP tool schemas are deferred behind
+    //    ToolSearch by default; Haiku retrieved the schema but then failed to
+    //    invoke the tool (looped or claimed it could not call MCP tools).
+    //    Eager loading makes the direct call land on the first turn.
+    //  - Direct-call prompt + Task disallowed: a loose prompt made the nested
+    //    session delegate to a Task subagent that burned the spawn timeout.
     const run = runClaude(
-      `Call the mrclean_check MCP tool with the text argument "${E1_ORIGINAL}" and then quote back, verbatim, exactly what the tool returned to you.`,
+      `Call the MCP tool named mcp__mrclean__mrclean_check (from the connected mrclean MCP server) with the text argument "${E1_ORIGINAL}". Call the tool directly yourself — do not delegate to a subagent. Then quote back, verbatim, exactly what the tool returned to you.`,
       settings,
       {
         cwd: projectDir,
         mcpConfigPath,
-        extraArgs: ['--allowedTools', 'mcp__mrclean__mrclean_check'],
+        extraArgs: ['--allowedTools', 'mcp__mrclean__mrclean_check', '--disallowedTools', 'Task'],
+        env: { ENABLE_TOOL_SEARCH: 'false' },
+        maxTurns: 6,
+        timeoutMs: 220_000,
       },
     )
 
@@ -475,7 +485,7 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
     // mrclean_check's un-rewritten output is findings JSON (the scanned text is
     // not echoed), so the ORIGINAL marker is not detectable in tool_result.
     e1Tools['MCP'] = buildE1Verdict(run, false)
-  }, 240_000)
+  }, 300_000)
 
   // -------------------------------------------------------------------------
   // E2 — PreToolUse updatedInput: context echo?

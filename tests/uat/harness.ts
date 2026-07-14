@@ -53,6 +53,12 @@ export interface RunClaudeOptions {
   env?: Record<string, string>
   /** Turn-cap override; defaults to MAX_TURNS. */
   maxTurns?: number
+  /**
+   * Per-run spawn timeout override; defaults to CLAUDE_TIMEOUT_MS. Needed for
+   * runs where deferred MCP tool discovery (ToolSearch) adds turns before the
+   * tool call lands (observed on CC 2.1.209 in the E1/MCP experiment).
+   */
+  timeoutMs?: number
 }
 
 /**
@@ -102,7 +108,7 @@ export function runClaude(prompt: string, settingsPath: string, options: RunClau
     {
       cwd: options.cwd,
       encoding: 'utf8',
-      timeout: CLAUDE_TIMEOUT_MS,
+      timeout: options.timeoutMs ?? CLAUDE_TIMEOUT_MS,
       env: { ...process.env, ...options.env },
     },
   )
