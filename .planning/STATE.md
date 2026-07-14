@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Native-Node PII/NER Layer
-status: milestone_complete
-stopped_at: Phase 01 gap-closure complete (01-07 — SC4/HOOK-05 UAT resolved)
-last_updated: "2026-07-13T23:25:08.608Z"
-last_activity: 2026-07-13
+milestone: v3.0
+milestone_name: Reversible Redact Mode
+status: planning
+last_updated: "2026-07-14T15:10:25.469Z"
+last_activity: 2026-07-14
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 33
-  completed_plans: 33
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # State: mrclean
@@ -28,10 +27,10 @@ progress:
 
 ## Current Position
 
-Phase: All 7 phases complete (v1.0 + v2.0; v2.0 milestone archived)
-Plan: Phase 01 gap-closure 01-06/01-07 complete
-Status: No phase pending
-Last activity: 2026-07-13
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-07-14 — Milestone v3.0 started
 
 ## Performance Metrics
 

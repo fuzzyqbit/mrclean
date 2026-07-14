@@ -22,9 +22,19 @@ mrclean now ships an opt-in, native-Node PII/NER detection layer with **zero dat
 
 **Guardrails held:** no Python runtime; cloud PII APIs ruled out; Microsoft Presidio (Python sidecar) remains deferred (PIISEC-03 scope fence). Secrets remain mrclean's deterministic core.
 
-### Next Milestone Goals (candidates)
+## Current Milestone: v3.0 Reversible Redact Mode
 
-Deferred open items surfaced at v2.0 close (tracked in STATE.md → Deferred Items): `mrclean init` command, surgical `uninstall`, install-stub dead-keys fix. Plus: reversible redact mode and Layer-5 `--deep` LLM classifier remain unshipped from the original vision.
+**Goal:** Opt-in reversible redaction — a session-scoped placeholder→original map restores paths/names/identifiers on the return path so they round-trip cleanly back into the user's view, while secrets stay protected on the wire. Default remains one-way.
+
+**Target features:**
+- PostToolUse restore path: placeholders → originals on inbound tool results (REVMODE-01; requires Claude Code ≥ 2.1.121)
+- Session State Adapter (`src/state/`): map lifecycle, locking + atomic rewrite, janitor cleanup on SessionEnd (REVMODE-02)
+- Wire the `restore` MCP tool (stub since Phase 1) to the session map
+- THREAT_MODEL.md coverage of reversible-mode blast radius + operator opt-in flow (REVMODE-03)
+
+**Key context:** Map is session-scoped and in-memory by default (PROJECT.md security constraint); any disk persistence must be encrypted at rest and removed on session exit — the requirements step resolves the REVMODE-02 plaintext-session-file tension. Keychain persistence (POLISH-03) deferred.
+
+> Note (2026-07-14): the three v1-era polish candidates (`mrclean init`, surgical uninstall, install-stub dead-keys fix) were verified already shipped 2026-06-01 as quick tasks (commits 0d12c88, ca2891a, 1afefec). Layer-5 `--deep` classifier is the planned v4.0 milestone.
 
 ## Requirements
 
@@ -48,14 +58,19 @@ Deferred open items surfaced at v2.0 close (tracked in STATE.md → Deferred Ite
 - ✓ Model acquisition/cache/integrity infra + `optionalDependencies` — v2.0
 - ✓ PII leak-grep regression + `sanitizeForOutput()` error chokepoint — v2.0
 - ✓ Honest best-effort framing + copy-drift CI gate + scope fence (no Python/cloud/unredact) — v2.0
+- ✓ `mrclean init` CLI subcommand + `/mrclean:mrclean-init` slash command — quick task 0d12c88 (2026-06-01)
+- ✓ Surgical uninstall — removes only mrclean entries, never wholesale-restore — quick task ca2891a (2026-06-01)
+- ✓ Install stub no longer advertises dead `[words]`/`[detection]` keys — quick task 1afefec (2026-06-01)
 
-### Active (next milestone candidates)
+### Active (v3.0)
 
-- [ ] `mrclean init` command (deferred from v1)
-- [ ] Surgical `mrclean uninstall` (deferred from v1)
-- [ ] Install-stub dead-keys fix (deferred from v1)
 - [ ] Reversible redact mode — session-scoped placeholder→original map for path/name round-trip (unshipped from original vision)
-- [ ] Layer 5 — optional `--deep` LLM classifier for semantic PII (unshipped, off by default)
+
+### Future
+
+- [ ] Layer 5 — optional `--deep` LLM classifier for semantic PII (planned v4.0, off by default)
+
+> Shipped as quick tasks 2026-06-01 (verified 2026-07-14, moved to Validated): `mrclean init` (0d12c88), surgical uninstall (ca2891a), install-stub dead-keys fix (1afefec).
 
 ### Out of Scope
 
