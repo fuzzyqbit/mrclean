@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdir, readFile, writeFile, rm, copyFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile, rm, copyFile, symlink } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
@@ -213,8 +214,10 @@ describe('buildHookCommand', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Deterministic exit-code remap proof — runs the actual POSIX wrapper via
-// /bin/sh (no live Claude session needed). Skipped on win32 (no shell wrapper).
+// Deterministic wrapper proof — runs the actual POSIX wrapper via /bin/sh
+// (no live Claude session needed): exit-code remap, plus the WR-03 security
+// guarantees (injection safety, space safety, stdin passthrough) that the
+// buildHookCommand JSDoc asserts. Skipped on win32 (no shell wrapper).
 // ---------------------------------------------------------------------------
 
 describe.skipIf(process.platform === 'win32')('buildHookCommand POSIX exit-code remap (spawnSync)', () => {
@@ -230,9 +233,12 @@ describe.skipIf(process.platform === 'win32')('buildHookCommand POSIX exit-code 
   })
 
   /** Run the built wrapper command exactly as Claude Code would spawn it. */
-  function runWrapper(binPath: string): ReturnType<typeof spawnSync> {
-    const cmd = buildHookCommand(process.execPath, binPath, 'linux')
-    return spawnSync(cmd.command, cmd.args, { encoding: 'utf8' })
+  function runWrapper(
+    binPath: string,
+    opts: { nodePath?: string; input?: string; cwd?: string } = {},
+  ): ReturnType<typeof spawnSync> {
+    const cmd = buildHookCommand(opts.nodePath ?? process.execPath, binPath, 'linux')
+    return spawnSync(cmd.command, cmd.args, { encoding: 'utf8', input: opts.input, cwd: opts.cwd })
   }
 
   it('missing bin → sh exits 2 (spawn failure fails CLOSED)', () => {
@@ -266,6 +272,67 @@ describe.skipIf(process.platform === 'win32')('buildHookCommand POSIX exit-code 
     const res = runWrapper(stub)
     expect(res.status).toBe(0)
     expect(res.stdout).toContain(JSON_LINE)
+  })
+
+  // -------------------------------------------------------------------------
+  // WR-03: deterministic proof of the security guarantees the buildHookCommand
+  // JSDoc asserts. A regression to string interpolation
+  // (`"${nodePath}" "${binPath}" hook || exit 2`) would fail these.
+  // -------------------------------------------------------------------------
+
+  it('passes a bin path with spaces + shell metacharacters literally — injected command does NOT execute', async () => {
+    // Arrange: bin path embeds spaces AND a `; touch PWNED #` injection attempt.
+    const evilDir = join(stubDir, 'dir with spaces')
+    await mkdir(evilDir, { recursive: true })
+    const evil = join(evilDir, 'x; touch PWNED #.js')
+    await writeFile(evil, 'process.exit(0)\n', 'utf8')
+
+    // Act: cwd pinned to stubDir so a fired `touch PWNED` would land there.
+    const res = runWrapper(evil, { cwd: stubDir })
+
+    // Assert: "$2" is a quoted positional param — the whole path resolves as
+    // one literal file (exit 0) and the embedded command never fires.
+    expect(res.status).toBe(0)
+    expect(existsSync(join(stubDir, 'PWNED'))).toBe(false)
+    expect(existsSync(join(evilDir, 'PWNED'))).toBe(false)
+  })
+
+  it('resolves and executes when BOTH node and bin paths contain spaces (wrapper quoting)', async () => {
+    // Arrange: node symlinked into a spaced dir, bin written into another.
+    const nodeDir = join(stubDir, 'node dir with spaces')
+    const binDir = join(stubDir, 'bin dir with spaces')
+    await mkdir(nodeDir, { recursive: true })
+    await mkdir(binDir, { recursive: true })
+    const spacedNode = join(nodeDir, 'node')
+    await symlink(process.execPath, spacedNode)
+    const spacedBin = join(binDir, 'ok.js')
+    await writeFile(spacedBin, 'process.exit(0)\n', 'utf8')
+
+    // Act
+    const res = runWrapper(spacedBin, { nodePath: spacedNode })
+
+    // Assert: quoted "$1" "$2" keep each spaced path a single word → exit 0.
+    expect(res.status).toBe(0)
+  })
+
+  it('delivers the hook payload piped on stdin to the inner process intact (no silent fail-OPEN)', async () => {
+    // Arrange: stub echoes everything it receives on stdin back to stdout.
+    // If stdin passthrough broke, the real hook's own stdin timeout would
+    // exit 0 — a silent fail-OPEN — which is why this must stay guarded.
+    const PAYLOAD = '{"hook_event_name":"UserPromptSubmit","prompt":"hello"}'
+    const stub = join(stubDir, 'echo-stdin.js')
+    await writeFile(
+      stub,
+      'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{process.stdout.write("GOT:"+d);process.exit(0)});\n',
+      'utf8',
+    )
+
+    // Act
+    const res = runWrapper(stub, { input: PAYLOAD })
+
+    // Assert: the inner node process inherited sh's stdin — payload intact.
+    expect(res.status).toBe(0)
+    expect(res.stdout).toContain(`GOT:${PAYLOAD}`)
   })
 })
 
