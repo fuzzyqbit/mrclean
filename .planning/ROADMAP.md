@@ -54,10 +54,17 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
 **Plans**: 6 plans
 
 Plans:
+**Wave 1**
 - [ ] 08-01-PLAN.md — `[reversible]` config table + Phase 8 type contracts (TDD; wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 08-02-PLAN.md — SessionEnd no-op routing + installer 5-event widening/migration (wave 2)
 - [ ] 08-03-PLAN.md — Doctor reversible-state reporting + 5-event REQUIRED_EVENTS (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 08-04-PLAN.md — Live contract experiments E1–E5 + interactive rendering checkpoint (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 08-05-PLAN.md — docs/HOOK-CONTRACT.md + shipped-copy honesty + upstream issue filing (wave 4)
 - [ ] 08-06-PLAN.md — THREAT_MODEL reversible section + copy-drift gate + PROJECT/CLAUDE amendment (wave 4)
 
