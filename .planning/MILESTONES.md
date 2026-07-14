@@ -17,3 +17,19 @@
 - Single `sanitizeForOutput()` chokepoint scrubs detected PII from error/diagnostic output (with-context) and emits static safe messages (context-free, D-04); supervisor + failclosed error sinks routed through it; and a two-project leak-grep proof shows no synthetic PII canary reaches audit.jsonl (integration, non-vacuous) or stderr (unit, three forced-failure paths).
 
 ---
+
+## v1.0 MVP (Shipped: 2026-05-14)
+
+> Backfilled 2026-07-14 during phase-archive cleanup — v1.0 shipped before MILESTONES.md existed.
+
+**Phases completed:** 3 phases (1–3), 20 plans
+
+**Key accomplishments:**
+
+- Phase 1 — Wired Skeleton: `npx mrclean install` lands hook + MCP server; "mrclean active" banner; green `mrclean doctor`. Gap-closure 2026-07-13: SC4/HOOK-05 fail-open hole closed with fail-closed POSIX `/bin/sh` wrapper, confirmed via live headless-Claude UAT; code-review warnings WR-01..03 fixed 2026-07-14.
+- Phase 2 — Live Redaction (Layers 1–4 + One-Way): real secrets blocked-with-reason on prompts, `<MRCLEAN:TYPE:NNN>` placeholders in tool calls; `.env`/regex/entropy/word-list detection; hash-only audit log.
+- Phase 3 — MCP Tools, Performance Gate, Public Release: `mrclean_check / mrclean_redact / mrclean_status` tools; CI `<100ms / <200ms` perf budgets; README + THREAT_MODEL; published `mrclean-claude` 1.0.0.
+
+**Phase archives:** `.planning/milestones/v1.0-phases/`
+
+---
