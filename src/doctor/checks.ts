@@ -67,28 +67,44 @@ const REQUIRED_EVENTS = [
  *       args    = [bin, 'hook']
  *     → node = command, bin = args[0]
  *
- * Discriminator: the plain-exec shapes put the mrclean `.js` bin at args[0];
- * the wrapper puts '-c' there. So `args[0].endsWith('.js')` selects the legacy /
- * win32 path; anything else reads the wrapper tail.
+ * Discriminator (structural, not filename-based): the wrapper is exactly
+ * `command === '/bin/sh'` with `args[0] === '-c'`; every other shape is a
+ * plain exec. Keying on the shape (rather than an `args[0].endsWith('.js')`
+ * heuristic) keeps extraction correct even if the bin ever ships as `.mjs`,
+ * an extensionless launcher, or a realpath()-resolved non-`.js` target.
  */
+
+/** Shell used by the POSIX fail-closed wrapper (mirrors buildHookCommand). */
+const POSIX_WRAPPER_SHELL = '/bin/sh'
+
+/**
+ * Minimum arg count for a well-formed wrapper: ['-c', <script>, ..., node, bin].
+ * The node + bin tail can only sit past '-c' and the script when there are at
+ * least 4 entries — fewer means a malformed wrapper we must not mis-extract.
+ */
+const MIN_WRAPPER_ARGS = 4
+
 function extractHookNodeAndBin(
   command: string | undefined,
   args: string[] | undefined,
 ): { nodePath?: string; binPath?: string } {
   if (!Array.isArray(args) || args.length === 0) return {}
 
-  // Legacy plain-exec shape (and the win32 known-gap): bin is args[0].
-  if (typeof args[0] === 'string' && args[0].endsWith('.js')) {
-    return { nodePath: command, binPath: args[0] }
-  }
-
   // Fail-closed wrapper shape: node + bin are the last two positional params.
-  if (args.length >= 2) {
+  const isWrapperShape = command === POSIX_WRAPPER_SHELL && args[0] === '-c'
+  if (isWrapperShape) {
+    if (args.length < MIN_WRAPPER_ARGS) return {}
     const binPath = args[args.length - 1]
     const nodePath = args[args.length - 2]
     if (typeof binPath === 'string' && typeof nodePath === 'string') {
       return { nodePath, binPath }
     }
+    return {}
+  }
+
+  // Legacy plain-exec shape (and the win32 known-gap): node = command, bin = args[0].
+  if (typeof args[0] === 'string') {
+    return { nodePath: command, binPath: args[0] }
   }
 
   return {}
@@ -306,11 +322,20 @@ export async function extractRegisteredPaths(
  *
  * Reads the actual paths from settings.json and claude.json and calls
  * fs.access(path, X_OK) for each. Fails fast on the first non-executable path.
+ *
+ * The FAIL message is platform-aware (WR-01): on POSIX the 01-06 fail-closed
+ * /bin/sh wrapper BLOCKS every tool call (exit 2) while the bin is broken; on
+ * win32 the installed hook is the plain exec form, which fails OPEN — the
+ * message must not falsely reassure a Windows operator that they are protected.
+ *
+ * @param platform - Target platform (defaults to process.platform); injectable
+ *                   for deterministic tests, mirroring buildHookCommand.
  */
 export async function checkBinsExecutable(
   settingsPath: string,
   claudeJsonPath: string,
   projectCwd: string,
+  platform: NodeJS.Platform = process.platform,
 ): Promise<CheckResult> {
   const binPaths = await collectRegisteredBinPaths(settingsPath, claudeJsonPath, projectCwd)
 
@@ -323,6 +348,14 @@ export async function checkBinsExecutable(
     }
   }
 
+  // Post 01-06 the POSIX hook is a fail-closed /bin/sh wrapper: a missing or
+  // non-executable mrclean bin makes the wrapper BLOCK every tool call (exit 2)
+  // until restored. win32 keeps the plain exec form (documented known-gap) and
+  // therefore fails OPEN — tool calls pass through UNPROTECTED. The wording
+  // must match the actual posture per platform; claiming fail-closed on
+  // Windows would falsely reassure the operator in the dangerous direction.
+  const isFailClosedPlatform = platform !== 'win32'
+
   for (const binPath of binPaths) {
     try {
       await access(binPath, constants.X_OK)
@@ -330,11 +363,9 @@ export async function checkBinsExecutable(
       return {
         name: 'bins',
         status: 'FAIL',
-        // Post 01-06 the POSIX hook is a fail-closed /bin/sh wrapper: a missing
-        // or non-executable mrclean bin makes the wrapper BLOCK every tool call
-        // (exit 2) until restored — not a silent fail-open. Point the operator
-        // at the repair path.
-        detail: `registered mrclean binary is missing or not executable: ${binPath} — on POSIX the fail-closed hook wrapper now BLOCKS every tool call (exit 2) until restored; run \`mrclean install\` to repair`,
+        detail: isFailClosedPlatform
+          ? `registered mrclean binary is missing or not executable: ${binPath} — the fail-closed POSIX hook wrapper now BLOCKS every tool call (exit 2) until restored; run \`mrclean install\` to repair`
+          : `registered mrclean binary is missing or not executable: ${binPath} — WARNING: on Windows the hook fails OPEN, so tool calls pass through UNPROTECTED until restored; run \`mrclean install\` to repair`,
         exitCodeOnFail: 3,
       }
     }

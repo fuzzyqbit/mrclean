@@ -13,6 +13,7 @@ import {
   checkMcpRegistered,
   checkBinsExecutable,
   checkConfigLoad,
+  extractRegisteredPaths,
 } from '../../src/doctor/checks.js'
 import { buildHookCommand } from '../../src/install/settings.js'
 import { tmpdir } from 'node:os'
@@ -180,7 +181,7 @@ describe('checkBinsExecutable', () => {
     await rm(tmp, { recursive: true, force: true })
   })
 
-  it('Test 7: FAIL — chmod 644 on a bin → FAIL with exitCodeOnFail=3, names the file', async () => {
+  it('Test 7: FAIL (POSIX) — chmod 644 on a bin → exitCodeOnFail=3, fail-closed BLOCK wording', async () => {
     const tmp = await makeTmpDir()
     const cwd = tmp
 
@@ -195,7 +196,7 @@ describe('checkBinsExecutable', () => {
 
     // Build settings via the shipped wrapper, pointing at the non-executable
     // fake bin — doctor must extract the bin from the wrapper tail.
-    const hookCmd = buildHookCommand(process.execPath, fakeBin)
+    const hookCmd = buildHookCommand(process.execPath, fakeBin, 'linux')
     const settings = {
       hooks: {
         SessionStart: [{ _mrclean: true, matcher: 'startup', hooks: [hookCmd] }],
@@ -207,15 +208,177 @@ describe('checkBinsExecutable', () => {
     await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf8')
     await writeFile(claudeJsonPath, JSON.stringify(buildClaudeJson(cwd, true), null, 2), 'utf8')
 
-    const result = await checkBinsExecutable(settingsPath, claudeJsonPath, cwd)
+    // Explicit POSIX platform → deterministic fail-closed wording regardless
+    // of the host the tests run on.
+    const result = await checkBinsExecutable(settingsPath, claudeJsonPath, cwd, 'linux')
 
     expect(result.status).toBe('FAIL')
     expect(result.exitCodeOnFail).toBe(3)
     expect(result.detail).toContain(fakeBin)
-    // New fail-closed messaging: doctor must state the block-until-reinstall
+    // Fail-closed messaging: doctor must state the block-until-reinstall
     // consequence of a missing/non-executable bin (POSIX wrapper).
-    expect(result.detail).toMatch(/block|exit 2|fail-closed/i)
+    expect(result.detail).toMatch(/BLOCKS every tool call/i)
+    expect(result.detail).toMatch(/exit 2|fail-closed/i)
     expect(result.detail).toMatch(/mrclean install/i)
+    // Must NOT carry the win32 fail-open wording on POSIX.
+    expect(result.detail).not.toMatch(/fails OPEN|UNPROTECTED/i)
+
+    await rm(tmp, { recursive: true, force: true })
+  })
+
+  it('Test 7b: FAIL (win32) — missing bin → honest fail-OPEN warning, no false BLOCK reassurance', async () => {
+    const tmp = await makeTmpDir()
+    const cwd = tmp
+
+    // Copy dist/cli.js to a temp location and chmod it non-executable
+    const fakeBin = join(tmp, 'fake-cli.js')
+    const { copyFile } = await import('node:fs/promises')
+    await copyFile(DIST_CLI, fakeBin)
+    await chmod(fakeBin, 0o644)
+
+    const settingsPath = join(tmp, 'settings.json')
+    const claudeJsonPath = join(tmp, '.claude.json')
+
+    // win32 installs the plain exec form (known-gap, fail-OPEN on spawn
+    // failure) — doctor must mirror that posture in its FAIL wording instead
+    // of claiming the POSIX wrapper blocks tool calls (WR-01).
+    const hookCmd = buildHookCommand(process.execPath, fakeBin, 'win32')
+    const settings = {
+      hooks: {
+        SessionStart: [{ _mrclean: true, matcher: 'startup', hooks: [hookCmd] }],
+        UserPromptSubmit: [{ _mrclean: true, hooks: [hookCmd] }],
+        PreToolUse: [{ _mrclean: true, matcher: '*', hooks: [hookCmd] }],
+        PostToolUse: [{ _mrclean: true, matcher: '*', hooks: [hookCmd] }],
+      },
+    }
+    await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf8')
+    await writeFile(claudeJsonPath, JSON.stringify(buildClaudeJson(cwd, true), null, 2), 'utf8')
+
+    const result = await checkBinsExecutable(settingsPath, claudeJsonPath, cwd, 'win32')
+
+    expect(result.status).toBe('FAIL')
+    expect(result.exitCodeOnFail).toBe(3)
+    expect(result.detail).toContain(fakeBin)
+    // Honest fail-open wording: tool calls pass through unprotected.
+    expect(result.detail).toMatch(/fails OPEN/i)
+    expect(result.detail).toMatch(/UNPROTECTED/i)
+    expect(result.detail).toMatch(/mrclean install/i)
+    // Must NOT falsely claim the fail-closed BLOCK posture on Windows.
+    expect(result.detail).not.toMatch(/BLOCKS every tool call/i)
+    expect(result.detail).not.toMatch(/fail-closed/i)
+
+    await rm(tmp, { recursive: true, force: true })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// extractRegisteredPaths — wrapper vs plain-exec shape discrimination (WR-02)
+// ---------------------------------------------------------------------------
+
+describe('extractRegisteredPaths — hook shape discrimination', () => {
+  /** Write settings.json + empty .claude.json fixtures around one hook command. */
+  async function writeHookFixture(
+    hookCmd: Record<string, unknown>,
+  ): Promise<{ tmp: string; settingsPath: string; claudeJsonPath: string }> {
+    const tmp = await makeTmpDir()
+    const settingsPath = join(tmp, 'settings.json')
+    const claudeJsonPath = join(tmp, '.claude.json')
+    const settings = {
+      hooks: {
+        SessionStart: [{ _mrclean: true, matcher: 'startup', hooks: [hookCmd] }],
+      },
+    }
+    await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf8')
+    await writeFile(claudeJsonPath, '{}', 'utf8')
+    return { tmp, settingsPath, claudeJsonPath }
+  }
+
+  it('plain-exec shape with a .mjs bin extracts bin from args[0], not the wrapper tail', async () => {
+    // Regression for the old `args[0].endsWith('.js')` heuristic: a legacy /
+    // win32 entry with a non-.js bin used to fall into the wrapper branch and
+    // mis-extract nodePath=<bin>, binPath='hook'.
+    const mjsBin = '/opt/mrclean/dist/cli.mjs'
+    const hookCmd = {
+      type: 'command',
+      command: process.execPath,
+      args: [mjsBin, 'hook'],
+      timeout: 10,
+    }
+    const { tmp, settingsPath, claudeJsonPath } = await writeHookFixture(hookCmd)
+
+    const { nodePath, hookBinPath } = await extractRegisteredPaths(settingsPath, claudeJsonPath, tmp)
+
+    expect(nodePath).toBe(process.execPath)
+    expect(hookBinPath).toBe(mjsBin)
+
+    await rm(tmp, { recursive: true, force: true })
+  })
+
+  it('plain-exec shape with an extensionless bin extracts bin from args[0]', async () => {
+    const bareBin = '/usr/local/bin/mrclean-launcher'
+    const hookCmd = {
+      type: 'command',
+      command: process.execPath,
+      args: [bareBin, 'hook'],
+      timeout: 10,
+    }
+    const { tmp, settingsPath, claudeJsonPath } = await writeHookFixture(hookCmd)
+
+    const { nodePath, hookBinPath } = await extractRegisteredPaths(settingsPath, claudeJsonPath, tmp)
+
+    expect(nodePath).toBe(process.execPath)
+    expect(hookBinPath).toBe(bareBin)
+
+    await rm(tmp, { recursive: true, force: true })
+  })
+
+  it('wrapper shape with a non-.js bin still extracts node + bin from the tail', async () => {
+    // The discriminator must key on command === '/bin/sh' && args[0] === '-c',
+    // not on the bin filename — a .mjs bin inside the wrapper tail must extract.
+    const mjsBin = '/opt/mrclean/dist/cli.mjs'
+    const hookCmd = buildHookCommand(process.execPath, mjsBin, 'linux')
+    const { tmp, settingsPath, claudeJsonPath } = await writeHookFixture(
+      hookCmd as unknown as Record<string, unknown>,
+    )
+
+    const { nodePath, hookBinPath } = await extractRegisteredPaths(settingsPath, claudeJsonPath, tmp)
+
+    expect(nodePath).toBe(process.execPath)
+    expect(hookBinPath).toBe(mjsBin)
+
+    await rm(tmp, { recursive: true, force: true })
+  })
+
+  it('wrapper shape built by the shipped installer (.js bin) extracts unchanged', async () => {
+    // Behavior-identical guard for the current real shape.
+    const hookCmd = buildHookCommand(process.execPath, DIST_CLI, 'linux')
+    const { tmp, settingsPath, claudeJsonPath } = await writeHookFixture(
+      hookCmd as unknown as Record<string, unknown>,
+    )
+
+    const { nodePath, hookBinPath } = await extractRegisteredPaths(settingsPath, claudeJsonPath, tmp)
+
+    expect(nodePath).toBe(process.execPath)
+    expect(hookBinPath).toBe(DIST_CLI)
+
+    await rm(tmp, { recursive: true, force: true })
+  })
+
+  it('malformed wrapper (/bin/sh -c with no node/bin tail) extracts nothing instead of garbage', async () => {
+    const hookCmd = {
+      type: 'command',
+      command: '/bin/sh',
+      args: ['-c', '"$1" "$2" hook || exit 2'],
+      timeout: 10,
+    }
+    const { tmp, settingsPath, claudeJsonPath } = await writeHookFixture(hookCmd)
+
+    const { nodePath, hookBinPath } = await extractRegisteredPaths(settingsPath, claudeJsonPath, tmp)
+
+    // Graceful fallbacks: nodePath defaults to process.execPath, bin stays empty —
+    // crucially NOT nodePath='-c' / binPath='<script>'.
+    expect(nodePath).toBe(process.execPath)
+    expect(hookBinPath).toBe('')
 
     await rm(tmp, { recursive: true, force: true })
   })
