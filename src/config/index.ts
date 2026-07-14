@@ -29,13 +29,16 @@ import { homedir } from 'node:os'
 import { parse } from 'smol-toml'
 import type {
   MrcleanConfig,
+  MrcleanConfigLayer,
   MrcleanAllowlist,
   MrcleanEntropyConfig,
   MrcleanRuleOverride,
   MrcleanPiiConfig,
-  MrcleanPiiRegexConfig,
-  MrcleanPiiNerConfig,
+  MrcleanPiiConfigLayer,
+  MrcleanPiiRegexConfigLayer,
+  MrcleanPiiNerConfigLayer,
   MrcleanReversibleConfig,
+  MrcleanReversibleConfigLayer,
   PiiAction,
 } from '../shared/types.js'
 import { DEFAULT_CONFIG } from './defaults.js'
@@ -193,47 +196,43 @@ function validatePiiActionsMap(
 }
 
 /**
- * Validate and narrow a parsed TOML value to MrcleanPiiRegexConfig.
+ * Validate and narrow a parsed TOML value to MrcleanPiiRegexConfigLayer.
  * Mirrors validateEntropyConfig pattern. Throws ConfigReadError on type mismatch.
+ *
+ * Phase 8-07 / CR-01: returns a TRUE partial — absent keys are omitted entirely
+ * (never substituted with DEFAULT_CONFIG values). Default-filling is mergeConfigs' job.
  */
-function validatePiiRegexConfig(raw: unknown, filePath: string): MrcleanPiiRegexConfig {
+function validatePiiRegexConfig(raw: unknown, filePath: string): MrcleanPiiRegexConfigLayer {
   if (!isRecord(raw)) {
     throw new ConfigReadError(filePath, '[pii.regex] must be a TOML sub-table')
   }
 
-  const enabled =
-    'enabled' in raw
-      ? (() => {
-          if (typeof raw['enabled'] !== 'boolean') {
-            throw new ConfigReadError(filePath, '[pii.regex].enabled must be a boolean')
-          }
-          return raw['enabled']
-        })()
-      : DEFAULT_CONFIG.pii.regex.enabled
+  if ('enabled' in raw && typeof raw['enabled'] !== 'boolean') {
+    throw new ConfigReadError(filePath, '[pii.regex].enabled must be a boolean')
+  }
+  if ('entities' in raw && !isStringArray(raw['entities'])) {
+    throw new ConfigReadError(filePath, '[pii.regex].entities must be a string array')
+  }
 
-  const entities =
-    'entities' in raw
-      ? (() => {
-          if (!isStringArray(raw['entities'])) {
-            throw new ConfigReadError(filePath, '[pii.regex].entities must be a string array')
-          }
-          return raw['entities']
-        })()
-      : [...DEFAULT_CONFIG.pii.regex.entities]
-
-  const actions =
-    'actions' in raw
-      ? validatePiiActionsMap(raw['actions'], filePath, '[pii.regex].actions')
-      : { ...DEFAULT_CONFIG.pii.regex.actions }
-
-  return { enabled, entities, actions }
+  // Conditional spreads keep absent keys ABSENT (not assigned undefined) so
+  // toEqual({}) deep-equality holds for a table with no known keys.
+  return {
+    ...('enabled' in raw ? { enabled: raw['enabled'] as boolean } : {}),
+    ...('entities' in raw ? { entities: raw['entities'] as string[] } : {}),
+    ...('actions' in raw
+      ? { actions: validatePiiActionsMap(raw['actions'], filePath, '[pii.regex].actions') }
+      : {}),
+  }
 }
 
 /**
- * Validate and narrow a parsed TOML value to MrcleanPiiNerConfig.
+ * Validate and narrow a parsed TOML value to MrcleanPiiNerConfigLayer.
  * Mirrors validateEntropyConfig pattern. Throws ConfigReadError on type mismatch.
+ *
+ * Phase 8-07 / CR-01: returns a TRUE partial — absent keys are omitted entirely
+ * (never substituted with DEFAULT_CONFIG values). Default-filling is mergeConfigs' job.
  */
-function validatePiiNerConfig(raw: unknown, filePath: string): MrcleanPiiNerConfig {
+function validatePiiNerConfig(raw: unknown, filePath: string): MrcleanPiiNerConfigLayer {
   if (!isRecord(raw)) {
     throw new ConfigReadError(filePath, '[pii.ner] must be a TOML sub-table')
   }
@@ -274,37 +273,34 @@ function validatePiiNerConfig(raw: unknown, filePath: string): MrcleanPiiNerConf
     throw new ConfigReadError(filePath, '[pii.ner].warmOnBoot must be a boolean')
   }
 
-  const actions =
-    'actions' in raw
-      ? validatePiiActionsMap(raw['actions'], filePath, '[pii.ner].actions')
-      : { ...DEFAULT_CONFIG.pii.ner.actions }
-
+  // Conditional spreads keep absent keys ABSENT (not assigned undefined) so
+  // toEqual({ confidence: 0.9 }) deep-equality holds for a confidence-only table.
   return {
-    enabled: 'enabled' in raw ? (raw['enabled'] as boolean) : DEFAULT_CONFIG.pii.ner.enabled,
-    model: 'model' in raw ? (raw['model'] as string) : DEFAULT_CONFIG.pii.ner.model,
-    dtype: 'dtype' in raw ? (raw['dtype'] as string) : DEFAULT_CONFIG.pii.ner.dtype,
-    entities: 'entities' in raw ? (raw['entities'] as string[]) : [...DEFAULT_CONFIG.pii.ner.entities],
-    confidence:
-      'confidence' in raw ? (raw['confidence'] as number) : DEFAULT_CONFIG.pii.ner.confidence,
-    allowDownload:
-      'allowDownload' in raw
-        ? (raw['allowDownload'] as boolean)
-        : DEFAULT_CONFIG.pii.ner.allowDownload,
-    warmOnBoot:
-      'warmOnBoot' in raw ? (raw['warmOnBoot'] as boolean) : DEFAULT_CONFIG.pii.ner.warmOnBoot,
-    actions,
+    ...('enabled' in raw ? { enabled: raw['enabled'] as boolean } : {}),
+    ...('model' in raw ? { model: raw['model'] as string } : {}),
+    ...('dtype' in raw ? { dtype: raw['dtype'] as string } : {}),
+    ...('entities' in raw ? { entities: raw['entities'] as string[] } : {}),
+    ...('confidence' in raw ? { confidence: raw['confidence'] as number } : {}),
+    ...('allowDownload' in raw ? { allowDownload: raw['allowDownload'] as boolean } : {}),
+    ...('warmOnBoot' in raw ? { warmOnBoot: raw['warmOnBoot'] as boolean } : {}),
+    ...('actions' in raw
+      ? { actions: validatePiiActionsMap(raw['actions'], filePath, '[pii.ner].actions') }
+      : {}),
   }
 }
 
 /**
- * Validate and narrow a parsed TOML value to MrcleanPiiConfig.
+ * Validate and narrow a parsed TOML value to MrcleanPiiConfigLayer.
  * Mirrors validateEntropyConfig pattern. Throws ConfigReadError on type mismatch.
  *
  * T-04-02-01: validates the entire [pii] sub-table including nested [pii.regex]
  * and [pii.ner] sub-tables. Invalid operator TOML fails with a structured error
  * rather than silently enabling or corrupting the config.
+ *
+ * Phase 8-07 / CR-01: returns a TRUE partial — absent keys are omitted entirely
+ * (never substituted with DEFAULT_CONFIG values). Default-filling is mergeConfigs' job.
  */
-function validatePiiConfig(raw: unknown, filePath: string): MrcleanPiiConfig {
+function validatePiiConfig(raw: unknown, filePath: string): MrcleanPiiConfigLayer {
   if (!isRecord(raw)) {
     throw new ConfigReadError(filePath, '[pii] must be a TOML sub-table')
   }
@@ -313,32 +309,11 @@ function validatePiiConfig(raw: unknown, filePath: string): MrcleanPiiConfig {
     throw new ConfigReadError(filePath, '[pii].enabled must be a boolean')
   }
 
-  const enabled = 'enabled' in raw ? (raw['enabled'] as boolean) : DEFAULT_CONFIG.pii.enabled
-
-  const regex =
-    'regex' in raw
-      ? validatePiiRegexConfig(raw['regex'], filePath)
-      : {
-          enabled: DEFAULT_CONFIG.pii.regex.enabled,
-          entities: [...DEFAULT_CONFIG.pii.regex.entities],
-          actions: { ...DEFAULT_CONFIG.pii.regex.actions },
-        }
-
-  const ner =
-    'ner' in raw
-      ? validatePiiNerConfig(raw['ner'], filePath)
-      : {
-          enabled: DEFAULT_CONFIG.pii.ner.enabled,
-          model: DEFAULT_CONFIG.pii.ner.model,
-          dtype: DEFAULT_CONFIG.pii.ner.dtype,
-          entities: [...DEFAULT_CONFIG.pii.ner.entities],
-          confidence: DEFAULT_CONFIG.pii.ner.confidence,
-          allowDownload: DEFAULT_CONFIG.pii.ner.allowDownload,
-          warmOnBoot: DEFAULT_CONFIG.pii.ner.warmOnBoot,
-          actions: { ...DEFAULT_CONFIG.pii.ner.actions },
-        }
-
-  return { enabled, regex, ner }
+  return {
+    ...('enabled' in raw ? { enabled: raw['enabled'] as boolean } : {}),
+    ...('regex' in raw ? { regex: validatePiiRegexConfig(raw['regex'], filePath) } : {}),
+    ...('ner' in raw ? { ner: validatePiiNerConfig(raw['ner'], filePath) } : {}),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -346,21 +321,25 @@ function validatePiiConfig(raw: unknown, filePath: string): MrcleanPiiConfig {
 // ---------------------------------------------------------------------------
 
 /**
- * Validate and narrow a parsed TOML value to MrcleanReversibleConfig.
+ * Validate and narrow a parsed TOML value to MrcleanReversibleConfigLayer.
  * Mirrors the validatePii* shape. Throws ConfigReadError on type mismatch.
  *
  * T-08-01: fails closed on any non-boolean `enabled` — never silently coerces.
  * Unknown keys inside [reversible] are silently dropped (matches parseToml
  * tolerance; FAIL-loud on unsupported keys is Phase 10 / REVMODE-12).
+ *
+ * Phase 8-07 / CR-01: returns a TRUE partial — a [reversible] table that omits
+ * `enabled` (e.g. one carrying only future Phase-9 keys) parses to {} so it can
+ * never clear a lower-layer opt-in. Default-filling is mergeConfigs' job.
  */
-function validateReversibleConfig(raw: unknown, filePath: string): MrcleanReversibleConfig {
+function validateReversibleConfig(raw: unknown, filePath: string): MrcleanReversibleConfigLayer {
   if (!isRecord(raw)) {
     throw new ConfigReadError(filePath, '[reversible] must be a TOML sub-table')
   }
   if (raw['enabled'] !== undefined && typeof raw['enabled'] !== 'boolean') {
     throw new ConfigReadError(filePath, '[reversible].enabled must be a boolean')
   }
-  return { enabled: raw['enabled'] === true }
+  return 'enabled' in raw ? { enabled: raw['enabled'] as boolean } : {}
 }
 
 // ---------------------------------------------------------------------------
@@ -370,8 +349,10 @@ function validateReversibleConfig(raw: unknown, filePath: string): MrcleanRevers
 /**
  * Parse a TOML config file using smol-toml.
  *
- * Returns a Partial<MrcleanConfig> containing only the keys present in the file.
+ * Returns a MrcleanConfigLayer containing only the keys present in the file.
  * Missing keys are omitted — mergeConfigs fills gaps from lower-precedence layers.
+ * Phase 8-07 / CR-01: sub-tables ([pii], [pii.*], [reversible]) are themselves
+ * TRUE partials — absent fields inside a present table stay absent too.
  *
  * Schema notes:
  *   - `[secrets_files] paths = [...]` is FLATTENED to `secrets_files: string[]`
@@ -380,7 +361,7 @@ function validateReversibleConfig(raw: unknown, filePath: string): MrcleanRevers
  *   - [[rules]] array-of-tables is validated for id/action/severity shape.
  *   - [entropy] sub-table is validated for threshold/min_length types.
  */
-function parseToml(content: string, filePath: string): Partial<MrcleanConfig> {
+function parseToml(content: string, filePath: string): MrcleanConfigLayer {
   let parsed: Record<string, unknown>
 
   try {
@@ -389,7 +370,7 @@ function parseToml(content: string, filePath: string): Partial<MrcleanConfig> {
     throw new ConfigReadError(filePath, (err as Error).message)
   }
 
-  const result: Partial<MrcleanConfig> = {}
+  const result: MrcleanConfigLayer = {}
 
   // dry_run (top-level boolean)
   if ('dry_run' in parsed) {
@@ -484,10 +465,11 @@ function mergeAllowlists(
  *
  * - Missing file (ENOENT) → resolves to {} (no overrides — this is normal).
  * - Empty / whitespace-only file → resolves to {} (zero bytes ≡ no overrides).
- * - Valid TOML → returns Partial<MrcleanConfig> with only the keys present in the file.
+ * - Valid TOML → returns MrcleanConfigLayer with only the keys present in the file
+ *   (Phase 8-07 / CR-01: sub-table fields are true partials too).
  * - Malformed TOML → throws ConfigReadError with { path, reason }.
  */
-export async function readConfigLayer(filePath: string): Promise<Partial<MrcleanConfig>> {
+export async function readConfigLayer(filePath: string): Promise<MrcleanConfigLayer> {
   let content: string
 
   try {
@@ -513,14 +495,19 @@ export async function readConfigLayer(filePath: string): Promise<Partial<Mrclean
  *   - dry_run, entropy, secrets_files, rules: last layer that defines them wins
  *   - allowlist: each of the 5 string-array axes is CONCATENATED across all layers
  *     (base → user → project → accumulated in order)
- *   - pii (Phase 4-02): LAST-WINS at the sub-table level (distinct from allowlist concat).
- *     Deep-merge: a layer that sets only [pii.regex] does NOT wipe [pii.ner].
- *     Entity arrays themselves replace last-wins, NEVER concat.
- *     See ARCHITECTURE-v2-pii.md §"Config Surface".
- *   - reversible (Phase 8-01): LAST-WINS flat sub-table ({ enabled } only) — same
- *     scalar semantics as pii.enabled; default { enabled: false } when absent.
+ *   - pii (Phase 4-02): field-level LAST-WINS inside each sub-table (distinct from
+ *     allowlist concat). Deep-merge: a layer that sets only [pii.regex] does NOT
+ *     wipe [pii.ner] — true for TOML layers as of the CR-01 fix (plan 08-07),
+ *     because parsed layers are now true Partials. A field ABSENT from a layer
+ *     keeps the ACCUMULATED value (never re-filled from the bundled default);
+ *     a PRESENT field wins, including explicit false. Entity arrays themselves
+ *     replace last-wins, NEVER concat. See ARCHITECTURE-v2-pii.md §"Config Surface".
+ *   - reversible (Phase 8-01, CR-01 fix in 08-07): LAST-WINS on the `enabled`
+ *     field only when a layer actually sets it — a partial [reversible] table
+ *     (unknown/future keys only) leaves the accumulated value untouched;
+ *     default { enabled: false } when no layer sets it.
  */
-export function mergeConfigs(...layers: ReadonlyArray<Partial<MrcleanConfig>>): MrcleanConfig {
+export function mergeConfigs(...layers: ReadonlyArray<MrcleanConfigLayer>): MrcleanConfig {
   let dryRun: boolean = DEFAULT_CONFIG.dry_run
   let entropy: MrcleanEntropyConfig = DEFAULT_CONFIG.entropy
   let secretsFiles: string[] = Array.from(DEFAULT_CONFIG.secrets_files)
@@ -556,38 +543,54 @@ export function mergeConfigs(...layers: ReadonlyArray<Partial<MrcleanConfig>>): 
     if (layer.entropy !== undefined) entropy = layer.entropy
     if (layer.secrets_files !== undefined) secretsFiles = layer.secrets_files
     if (layer.rules !== undefined) rules = layer.rules
-    // reversible (Phase 8-01): LAST-WINS scalar sub-table — replace with a NEW
-    // object (never mutate, never alias the layer object).
-    if (layer.reversible !== undefined) {
+    // reversible (Phase 8-01, CR-01 fix in 08-07): LAST-WINS only when the layer
+    // actually SETS enabled — a partial [reversible] table (unknown/future keys
+    // only) must not touch the accumulated value. New object, never a layer alias.
+    if (layer.reversible?.enabled !== undefined) {
       reversible = { enabled: layer.reversible.enabled }
     }
     if (layer.allowlist !== undefined) {
       allowlist = mergeAllowlists(allowlist, layer.allowlist)
     }
 
-    // pii: deep-merge at sub-table level so a layer that only touches [pii.regex]
-    // does not reset [pii.ner] back to defaults.
+    // pii: field-level deep-merge — every field fills from the ACCUMULATED value
+    // (never the bundled default mid-merge; CR-01 fix, plan 08-07). A layer that
+    // only touches [pii.regex] does not reset [pii.ner]. Present fields LAST-WIN
+    // (?? triggers on undefined only, so explicit false wins); entity arrays and
+    // actions maps replace wholesale when present, never concat.
     if (layer.pii !== undefined) {
       const layerPii = layer.pii
       pii = {
-        enabled: layerPii.enabled,
+        enabled: layerPii.enabled ?? pii.enabled,
         regex: layerPii.regex !== undefined
           ? {
-              enabled: layerPii.regex.enabled,
-              entities: Array.from(layerPii.regex.entities),
-              actions: { ...layerPii.regex.actions },
+              enabled: layerPii.regex.enabled ?? pii.regex.enabled,
+              entities:
+                layerPii.regex.entities !== undefined
+                  ? Array.from(layerPii.regex.entities)
+                  : Array.from(pii.regex.entities),
+              actions:
+                layerPii.regex.actions !== undefined
+                  ? { ...layerPii.regex.actions }
+                  : { ...pii.regex.actions },
             }
           : pii.regex,
         ner: layerPii.ner !== undefined
           ? {
-              enabled: layerPii.ner.enabled,
-              model: layerPii.ner.model,
-              dtype: layerPii.ner.dtype,
-              entities: Array.from(layerPii.ner.entities),
-              confidence: layerPii.ner.confidence,
-              allowDownload: layerPii.ner.allowDownload,
-              warmOnBoot: layerPii.ner.warmOnBoot,
-              actions: { ...layerPii.ner.actions },
+              enabled: layerPii.ner.enabled ?? pii.ner.enabled,
+              model: layerPii.ner.model ?? pii.ner.model,
+              dtype: layerPii.ner.dtype ?? pii.ner.dtype,
+              entities:
+                layerPii.ner.entities !== undefined
+                  ? Array.from(layerPii.ner.entities)
+                  : Array.from(pii.ner.entities),
+              confidence: layerPii.ner.confidence ?? pii.ner.confidence,
+              allowDownload: layerPii.ner.allowDownload ?? pii.ner.allowDownload,
+              warmOnBoot: layerPii.ner.warmOnBoot ?? pii.ner.warmOnBoot,
+              actions:
+                layerPii.ner.actions !== undefined
+                  ? { ...layerPii.ner.actions }
+                  : { ...pii.ner.actions },
             }
           : pii.ner,
       }

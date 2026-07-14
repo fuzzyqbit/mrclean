@@ -252,6 +252,17 @@ export interface MrcleanPiiRegexConfig {
 }
 
 /**
+ * Parsed-TOML layer shape for [pii.regex] (Phase 8-07 / CR-01 fix).
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ */
+export interface MrcleanPiiRegexConfigLayer {
+  enabled?: boolean
+  entities?: string[]
+  actions?: Record<string, PiiAction>
+}
+
+/**
  * NER sub-lane configuration ([pii.ner] in TOML).
  * MCP-server-only — warm singleton, perf-exempt. NEVER runs in the hook process.
  */
@@ -281,6 +292,22 @@ export interface MrcleanPiiNerConfig {
 }
 
 /**
+ * Parsed-TOML layer shape for [pii.ner] (Phase 8-07 / CR-01 fix).
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ */
+export interface MrcleanPiiNerConfigLayer {
+  enabled?: boolean
+  model?: string
+  dtype?: string
+  entities?: string[]
+  confidence?: number
+  allowDownload?: boolean
+  warmOnBoot?: boolean
+  actions?: Record<string, PiiAction>
+}
+
+/**
  * Top-level PII configuration ([pii] in TOML).
  * Phase 4-02 contract: defines the config surface for Phases 5-7.
  * PII-03: OFF by default; secrets remain mrclean's core hard gate.
@@ -305,6 +332,17 @@ export interface MrcleanPiiConfig {
 }
 
 /**
+ * Parsed-TOML layer shape for [pii] (Phase 8-07 / CR-01 fix).
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ */
+export interface MrcleanPiiConfigLayer {
+  enabled?: boolean
+  regex?: MrcleanPiiRegexConfigLayer
+  ner?: MrcleanPiiNerConfigLayer
+}
+
+/**
  * Reversible-mode configuration ([reversible] in TOML).
  * Phase 8-01 contract: REVMODE-02 groundwork — the config table only.
  * The session state adapter that consumes it lands in Phase 9.
@@ -320,6 +358,17 @@ export interface MrcleanReversibleConfig {
    * absent-[reversible] == shipped one-way guarantee.
    */
   enabled: boolean
+}
+
+/**
+ * Parsed-TOML layer shape for [reversible] (Phase 8-07 / CR-01 fix).
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ * A `[reversible]` table carrying only unknown/future keys parses to {} so it
+ * cannot clear a lower-layer opt-in.
+ */
+export interface MrcleanReversibleConfigLayer {
+  enabled?: boolean
 }
 
 /**
@@ -363,4 +412,25 @@ export interface MrcleanConfig {
    * one-way guarantee. REVMODE-02 groundwork; Phase 9 consumes it.
    */
   reversible: MrcleanReversibleConfig
+}
+
+/**
+ * One parsed config layer (Phase 8-07 / CR-01 fix). Replaces Partial<MrcleanConfig>
+ * as the layer currency: pii/reversible sub-tables are themselves partial-shaped,
+ * which Partial<MrcleanConfig> cannot express (its pii? is a FULL MrcleanPiiConfig).
+ *
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ *
+ * Design invariant: every full config type is structurally assignable to its layer
+ * type, so DEFAULT_CONFIG (MrcleanConfig) remains passable as layer 1 of mergeConfigs.
+ */
+export interface MrcleanConfigLayer {
+  dry_run?: boolean
+  allowlist?: MrcleanAllowlist
+  entropy?: MrcleanEntropyConfig
+  secrets_files?: string[]
+  rules?: MrcleanRuleOverride[]
+  pii?: MrcleanPiiConfigLayer
+  reversible?: MrcleanReversibleConfigLayer
 }

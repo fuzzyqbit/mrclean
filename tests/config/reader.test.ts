@@ -174,4 +174,38 @@ describe('readConfigLayer', () => {
     // Assert
     expect(result.reversible).toEqual({ enabled: true })
   })
+
+  // Test I (Phase 8-07, CR-01): a [reversible] table with only unknown/future keys parses
+  // to a true Partial — no baked `enabled` default. Default-filling is mergeConfigs' job.
+  it('returns reversible {} (no baked enabled default) when [reversible] has only unknown keys', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nfuture_key = 1\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toEqual({})
+  })
+
+  // Test J (Phase 8-07, CR-01): [pii]/[pii.ner] tables parse to true Partials — absent
+  // fields are absent keys, never substituted with bundled defaults.
+  // (Structural cast: the partial layer types land in the GREEN step; this keeps the
+  // RED commit compiling under the differential typecheck gate.)
+  it('returns a partial pii layer (absent fields omitted) when [pii.ner] sets only confidence', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[pii]\n[pii.ner]\nconfidence = 0.9\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    const pii = (result as { pii?: { enabled?: boolean; regex?: unknown; ner?: unknown } }).pii
+    expect(pii).toBeDefined()
+    expect(pii?.enabled).toBeUndefined()
+    expect(pii?.regex).toBeUndefined()
+    expect(pii?.ner).toEqual({ confidence: 0.9 })
+  })
 })
