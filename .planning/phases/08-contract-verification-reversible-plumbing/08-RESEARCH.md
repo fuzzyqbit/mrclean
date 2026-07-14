@@ -468,19 +468,15 @@ exit 0
 | A4 | SessionEnd fires at the end of headless `-p` sessions (reason likely `other`) | E5 | Medium — if it never fires headlessly, SC3's "no exit-2 noise" is verified interactively instead, and Phase 9's janitor leans harder on the TTL sweep (already mandatory) |
 | A5 | `bypass_permissions_disabled` should be treated as delete-class by the Phase 9 janitor | Pattern 4 / THREAT_MODEL | Low for Phase 8 (no-op); flag to Phase 9 planning explicitly |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Is `updatedToolOutput` honored for ANY tool on 2.1.209?**
+1. **Is `updatedToolOutput` honored for ANY tool on 2.1.209?** — RESOLVED: answered by experiment design — E1 per-tool matrix is the phase's first experiment (deliberately empirical; REVMODE-10 deliverable). Every downstream doc (THREAT_MODEL §3, doctor copy, upstream issue) consumes its verdict. Adopted in 08-04.
    - What we know: broken for Bash through 2.1.207; unknown for Read/MCP tools; no fix in changelog through 2.1.209.
    - What's unclear: per-tool matrix on the current version.
-   - Recommendation: E1 matrix is the phase's first experiment; every downstream doc (THREAT_MODEL §3, doctor copy, upstream issue) consumes it.
-2. **Does E4 have a testable substrate?**
+2. **Does E4 have a testable substrate?** — RESOLVED: answered by experiment design — E4 runs with an honest fallback: "unanswerable on vX — blocked by #68951" is a legitimate documented verdict (SC1 requires documented answers, not positive ones). Adopted in 08-04.
    - If E1 shows the field ignored for all built-in tools, the 10K-cap question can't be answered for `updatedToolOutput` on this version.
-   - Recommendation: record "unanswerable on vX — blocked by #68951" as a legitimate documented verdict; SC1 says answers must be documented, not that every answer is positive.
-3. **Doctor exit code for enabled-but-unsupported reversible config** (Pitfall 7).
-   - Recommendation: reuse exit 1 (config domain) to avoid extending the LOCKED map this phase; revisit in Phase 10 (REVMODE-12) where FAIL-loud semantics are the requirement.
-4. **Where the experiment harness lives long-term.**
-   - Recommendation: `tests/uat/contract-verification.test.ts` under the existing `uat` project (opt-in, never CI) so it can be rerun on CC upgrades; findings doc is the durable artifact.
+3. **Doctor exit code for enabled-but-unsupported reversible config** (Pitfall 7). — RESOLVED: reporting-only this phase; exit 1 (config domain) reserved, LOCKED map untouched. Pinned as planner decision in 08-03 Task 2; FAIL-loud semantics deferred to Phase 10 (REVMODE-12).
+4. **Where the experiment harness lives long-term.** — RESOLVED: `tests/uat/contract-verification.test.ts` under the existing `uat` project (opt-in, never CI), rerunnable on CC upgrades; findings artifact `tests/uat/artifacts/contract-findings.json` is the durable output. Adopted in 08-04.
 
 ## Environment Availability
 
