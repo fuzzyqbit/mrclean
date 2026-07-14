@@ -9,10 +9,10 @@
       "method": "live headless -p sessions; fixture PostToolUse rewrite hook; signals: model quote, transcript jsonl tool_result, stream-json tool_result",
       "claude_version": "2.1.209 (Claude Code)",
       "date": "2026-07-14",
-      "verdict": "Bash: ignored (original output reached the model unchanged); Read: ignored (original output reached the model unchanged); MCP: honored",
+      "verdict": "Bash: ignored (original output reached the model unchanged); Read: ignored (original output reached the model unchanged); MCP: honored (see E1_shape_validation: 'ignored' = string-form rejected by per-tool output-shape validation; object shape HONORED for Bash)",
       "tools": {
         "Bash": {
-          "verdict": "ignored (original output reached the model unchanged)",
+          "verdict": "ignored (original output reached the model unchanged) (see E1_shape_validation: string form rejected by shape validation; object shape honored)",
           "signals": {
             "model_reply_excerpt": "ORIGINAL_E1_MARKER_q7v4",
             "model_reply_contains_rewritten": false,
@@ -29,7 +29,7 @@
           ]
         },
         "Read": {
-          "verdict": "ignored (original output reached the model unchanged)",
+          "verdict": "ignored (original output reached the model unchanged) (see E1_shape_validation: string form rejected; object shape for Read untested — open follow-up for 08-05)",
           "signals": {
             "model_reply_excerpt": "File contents:\n\n```\nORIGINAL_E1_MARKER_q7v4\n```",
             "model_reply_contains_rewritten": false,
@@ -63,7 +63,54 @@
           ]
         }
       },
-      "rendering": "pending-interactive"
+      "rendering": {
+        "verdict": "honored rewrite (object shape) → terminal renders REWRITTEN output; rejected rewrite (string shape) → terminal renders 'PostToolUse:Bash hook warning' and no output line; display follows the model-facing value",
+        "claude_version": "2.1.209 (Claude Code)",
+        "date": "2026-07-14",
+        "method": "operator-directed automated PTY observation (tmux capture-pane); operator delegated the interactive observation — NOT the committed harness",
+        "evidence": {
+          "string_shape_session_id": "79b56324-4cc2-4817-8ea9-c8e604bb18c5",
+          "string_shape_rendered": "Tool-result block (both collapsed and ctrl+o expanded modes): 'Bash(echo ORIGINAL_E1_MARKER_q7v4)' / '⎿  PostToolUse:Bash hook warning' — NEITHER marker was displayed as tool output; transcript tool_result content was 'ORIGINAL_E1_MARKER_q7v4' and the model replied 'Output: ORIGINAL_E1_MARKER_q7v4'",
+          "object_shape_session_id": "e244a7f9-6296-4413-a636-efea169636e2",
+          "object_shape_rendered": "Expanded tool-result block: 'Bash(echo ORIGINAL_E1_MARKER_q7v4)' / '⎿  REWRITTEN_E1_MARKER_x9k2' — the terminal DISPLAYS THE REWRITTEN output when the rewrite is honored; model also saw REWRITTEN",
+          "conclusion": "display follows the model-facing value: honored rewrite → rewritten shown; rejected rewrite → hook warning shown (not the output line); no case renders the original alongside a successful rewrite",
+          "evidence_paths": [
+            "/Users/me/.claude/projects/-Users-me--claude-jobs-32889d1e-tmp-e1-sandbox/79b56324-4cc2-4817-8ea9-c8e604bb18c5.jsonl",
+            "/Users/me/.claude/projects/-Users-me--claude-jobs-32889d1e-tmp-e1-probe2/e244a7f9-6296-4413-a636-efea169636e2.jsonl"
+          ]
+        }
+      }
+    },
+    "E1_shape_validation": {
+      "question": "Discovery behind the E1 'ignored for Bash/Read' verdicts: does Claude Code shape-validate updatedToolOutput per tool?",
+      "method": "interactive string-shape transcript inspection (hook_error_during_execution attachment) + headless -p probe with OBJECT-shaped updatedToolOutput fixture (tests/uat/fixtures/e1-object-rewrite-hook.sh)",
+      "claude_version": "2.1.209 (Claude Code)",
+      "date": "2026-07-14",
+      "verdict": "Claude Code 2.1.209 SHAPE-VALIDATES updatedToolOutput per tool: STRING payloads are REJECTED for Bash (zod invalid_type, expected object) with a warning and the original output is used; OBJECT-shaped payloads ({stdout, stderr, interrupted, isImage}) are HONORED for Bash. The channel is NOT dead for built-ins.",
+      "verbatim_hook_error": "PostToolUse hook returned updatedToolOutput that does not match Bash's output shape; using original output. [\n  {\n    \"expected\": \"object\",\n    \"code\": \"invalid_type\",\n    \"path\": [],\n    \"message\": \"Invalid input: expected object, received string\"\n  }\n]",
+      "fixture_path": "tests/uat/fixtures/e1-object-rewrite-hook.sh",
+      "signals": {
+        "string_shape_session_id": "79b56324-4cc2-4817-8ea9-c8e604bb18c5",
+        "string_shape_rejected": true,
+        "string_shape_hook_error_attachment_observed": true,
+        "object_probe_session_id": "e244a7f9-6296-4413-a636-efea169636e2",
+        "object_probe_payload": "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"updatedToolOutput\":{\"stdout\":\"REWRITTEN_E1_MARKER_x9k2\",\"stderr\":\"\",\"interrupted\":false,\"isImage\":false}}}",
+        "object_probe_honored": true,
+        "object_probe_hook_error_attachments": 0,
+        "object_probe_transcript_tool_result": "REWRITTEN_E1_MARKER_x9k2",
+        "object_probe_model_reply_excerpt": "Output: `REWRITTEN_E1_MARKER_x9k2`"
+      },
+      "evidence_paths": [
+        "/Users/me/.claude/projects/-Users-me--claude-jobs-32889d1e-tmp-e1-sandbox/79b56324-4cc2-4817-8ea9-c8e604bb18c5.jsonl",
+        "/Users/me/.claude/projects/-Users-me--claude-jobs-32889d1e-tmp-e1-probe2/e244a7f9-6296-4413-a636-efea169636e2.jsonl"
+      ],
+      "reinterpretation_notes": {
+        "E1_bash_read_verdicts": "E1 Bash/Read 'ignored' verdicts mean 'string-form rejected by per-tool output-shape validation' — not 'channel dead'",
+        "issue_68951": "#68951 likely reports the string form",
+        "mcp_honored": "MCP honored because MCP accepts string content",
+        "E4": "E4 (10K cap) potentially answerable via object-shaped Bash payload — rerun deferred to a follow-up",
+        "read_object_shape": "Read with OBJECT-shaped payload NOT tested (expected object shape for Read unknown) — open follow-up for 08-05"
+      }
     },
     "E2": {
       "question": "Does PreToolUse hookSpecificOutput.updatedInput echo into the transcript / model context, or is the original preserved?",
@@ -146,7 +193,7 @@
       "method": "gated on E1: requires a built-in tool where updatedToolOutput is honored",
       "claude_version": "2.1.209 (Claude Code)",
       "date": "2026-07-14",
-      "verdict": "unanswerable for built-in tools on this CC version — updatedToolOutput ignored for Bash and Read (#68951); honored only for MCP, which this harness does not exercise for the cap question",
+      "verdict": "unanswerable for built-in tools on this CC version — updatedToolOutput ignored for Bash and Read (#68951); honored only for MCP, which this harness does not exercise for the cap question (see E1_shape_validation: potentially answerable via object-shaped Bash payload — rerun deferred to a follow-up)",
       "signals": {
         "e1_bash_verdict": "ignored (original output reached the model unchanged)",
         "e1_read_verdict": "ignored (original output reached the model unchanged)",
