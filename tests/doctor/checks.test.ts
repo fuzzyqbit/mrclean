@@ -13,6 +13,7 @@ import {
   checkMcpRegistered,
   checkBinsExecutable,
   checkConfigLoad,
+  checkReversibleState,
   extractRegisteredPaths,
 } from '../../src/doctor/checks.js'
 import { buildHookCommand } from '../../src/install/settings.js'
@@ -467,6 +468,80 @@ describe('checkConfigLoad', () => {
     expect(result.status).toBe('FAIL')
     expect(result.exitCodeOnFail).toBe(1)
     expect(result.detail).toMatch(/malformed|config/i)
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// checkReversibleState — REPORTING-ONLY in Phase 8 (08-03, REVMODE-12 groundwork)
+// ---------------------------------------------------------------------------
+
+describe('checkReversibleState', () => {
+  it('Test 15: PASS — no [reversible] table → disabled (default one-way)', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const configDir = join(cwd, '.mrclean')
+    await mkdir(configDir, { recursive: true })
+    // Valid config with NO [reversible] table — the shipped default surface.
+    await writeFile(join(configDir, 'config.toml'), 'dry_run = false\n', 'utf8')
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    // Exact detail string: state only — never config values, paths, or map
+    // contents (T-08-08 mitigation).
+    expect(result).toEqual({
+      name: 'reversible',
+      status: 'PASS',
+      detail: 'reversible mode: disabled (default one-way)',
+      exitCodeOnFail: 1,
+    })
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+
+  it('Test 16: PASS — [reversible] enabled = true → enabled, plumbing only', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const configDir = join(cwd, '.mrclean')
+    await mkdir(configDir, { recursive: true })
+    await writeFile(join(configDir, 'config.toml'), '[reversible]\nenabled = true\n', 'utf8')
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    expect(result).toEqual({
+      name: 'reversible',
+      status: 'PASS',
+      detail: 'reversible mode: enabled — plumbing only (session state adapter lands in Phase 9)',
+      exitCodeOnFail: 1,
+    })
+    expect(result.detail).toMatch(/enabled/)
+    expect(result.detail).toMatch(/Phase 9/)
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+
+  it('Test 17: SKIP — malformed config.toml → defers to the config check (no double-FAIL)', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const configDir = join(cwd, '.mrclean')
+    await mkdir(configDir, { recursive: true })
+    await writeFile(join(configDir, 'config.toml'), 'this is = = = malformed\n', 'utf8')
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    // checkConfigLoad owns the FAIL for this root cause (T-08-10): the
+    // reversible check must SKIP — never FAIL, never crash doctor.
+    expect(result).toEqual({
+      name: 'reversible',
+      status: 'SKIP',
+      detail: 'config unreadable — see config check',
+      exitCodeOnFail: 1,
+    })
+    expect(result.detail).toMatch(/config/)
 
     await rm(homeDir, { recursive: true, force: true })
     await rm(cwd, { recursive: true, force: true })
