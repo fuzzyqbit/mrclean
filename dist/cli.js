@@ -3639,9 +3639,12 @@ var init_settings = __esm({
     "use strict";
     init_atomic_json();
     init_markers();
-    HOOK_EVENTS = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse"];
+    HOOK_EVENTS = ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse"];
     HOOK_MATCHERS = {
-      SessionStart: "startup",
+      SessionStart: "startup|resume|clear|compact",
+      // regex alternation — re-init on resume/clear/compact
+      "SessionEnd": void 0,
+      // no matcher — SessionEnd matchers filter on `reason`; the handler must see ALL reasons
       UserPromptSubmit: void 0,
       // No matcher support per RESEARCH §1.1
       PreToolUse: "*",
