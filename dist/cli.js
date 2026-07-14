@@ -3639,9 +3639,12 @@ var init_settings = __esm({
     "use strict";
     init_atomic_json();
     init_markers();
-    HOOK_EVENTS = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse"];
+    HOOK_EVENTS = ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse"];
     HOOK_MATCHERS = {
-      SessionStart: "startup",
+      SessionStart: "startup|resume|clear|compact",
+      // regex alternation — re-init on resume/clear/compact
+      "SessionEnd": void 0,
+      // no matcher — SessionEnd matchers filter on `reason`; the handler must see ALL reasons
       UserPromptSubmit: void 0,
       // No matcher support per RESEARCH §1.1
       PreToolUse: "*",
@@ -18109,6 +18112,16 @@ var init_session_start = __esm({
   }
 });
 
+// src/hook/handlers/session-end.ts
+async function handleSessionEnd(_input) {
+  return null;
+}
+var init_session_end = __esm({
+  "src/hook/handlers/session-end.ts"() {
+    "use strict";
+  }
+});
+
 // src/detect/layer2-entropy.ts
 function shannonEntropy2(s) {
   if (s.length === 0) return 0;
@@ -19399,6 +19412,8 @@ async function dispatch(input) {
   switch (input.hook_event_name) {
     case "SessionStart":
       return await handleSessionStart(input);
+    case "SessionEnd":
+      return await handleSessionEnd(input);
     case "UserPromptSubmit":
       return await handleUserPromptSubmit(input);
     case "PreToolUse":
@@ -19415,6 +19430,7 @@ var init_dispatcher = __esm({
   "src/hook/dispatcher.ts"() {
     "use strict";
     init_session_start();
+    init_session_end();
     init_user_prompt_submit();
     init_pre_tool_use();
     init_post_tool_use();

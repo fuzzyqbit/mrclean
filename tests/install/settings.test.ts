@@ -1,9 +1,11 @@
 /**
  * Tests for src/install/settings.ts
  *
- * Validates: hook entries written for all four events, idempotency,
- * preservation of user hooks, removeHookEntries strips only mrclean entries.
+ * Validates: hook entries written for all five events, idempotency,
+ * preservation of user hooks, removeHookEntries strips only mrclean entries,
+ * v2.0 (4-event) → v3.0 (5-event) migration.
  * RESEARCH.md §1.5 (hook registration shape), §3.2 (idempotency), OQ-3.
+ * Phase 8 (08-02): SessionEnd registration + widened SessionStart matcher.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -32,9 +34,9 @@ afterEach(async () => {
   await rm(testDir, { recursive: true, force: true })
 })
 
-// Test 1: writeHookEntries produces hook entries for all four events
+// Test 1: writeHookEntries produces hook entries for all five events
 describe('writeHookEntries', () => {
-  it('writes hooks for all four event types from an empty settings.json', async () => {
+  it('writes hooks for all five event types from an empty settings.json', async () => {
     await copyFile(FIXTURE_EMPTY, settingsPath)
 
     await writeHookEntries(settingsPath, '/usr/bin/node', '/path/to/mrclean', '0.1.0')
@@ -43,7 +45,7 @@ describe('writeHookEntries', () => {
 
     expect(data.hooks).toBeDefined()
 
-    const events = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']
+    const events = ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']
     for (const event of events) {
       expect(Array.isArray(data.hooks[event])).toBe(true)
 
@@ -65,14 +67,14 @@ describe('writeHookEntries', () => {
     }
   })
 
-  it('SessionStart entry has matcher "startup"', async () => {
+  it('SessionStart entry has widened matcher "startup|resume|clear|compact"', async () => {
     await copyFile(FIXTURE_EMPTY, settingsPath)
 
     await writeHookEntries(settingsPath, '/usr/bin/node', '/path/to/mrclean', '0.1.0')
 
     const data = JSON.parse(await readFile(settingsPath, 'utf8'))
     const entry = data.hooks.SessionStart.find((e: Record<string, unknown>) => e._mrclean)
-    expect(entry.matcher).toBe('startup')
+    expect(entry.matcher).toBe('startup|resume|clear|compact')
   })
 
   it('PreToolUse and PostToolUse entries have matcher "*"', async () => {
@@ -94,6 +96,17 @@ describe('writeHookEntries', () => {
 
     const data = JSON.parse(await readFile(settingsPath, 'utf8'))
     const entry = data.hooks.UserPromptSubmit.find((e: Record<string, unknown>) => e._mrclean)
+    expect(entry.matcher).toBeUndefined()
+  })
+
+  it('SessionEnd entry has no matcher property (matcher would filter on `reason`; handler must see ALL reasons)', async () => {
+    await copyFile(FIXTURE_EMPTY, settingsPath)
+
+    await writeHookEntries(settingsPath, '/usr/bin/node', '/path/to/mrclean', '0.1.0')
+
+    const data = JSON.parse(await readFile(settingsPath, 'utf8'))
+    const entry = data.hooks.SessionEnd.find((e: Record<string, unknown>) => e._mrclean)
+    expect(entry).toBeDefined()
     expect(entry.matcher).toBeUndefined()
   })
 
@@ -124,7 +137,7 @@ describe('writeHookEntries', () => {
 
     const data = JSON.parse(await readFile(settingsPath, 'utf8'))
 
-    for (const event of ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
+    for (const event of ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
       const mrcleanEntries = data.hooks[event].filter((e: Record<string, unknown>) => e._mrclean)
       expect(mrcleanEntries).toHaveLength(1)
     }
@@ -167,7 +180,7 @@ describe('writeHookEntries', () => {
     await writeHookEntries(settingsPath, '/usr/bin/node', '/new/install/dist/cli.js', '0.1.0')
 
     const data = JSON.parse(await readFile(settingsPath, 'utf8'))
-    for (const event of ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
+    for (const event of ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
       const mrcleanEntries = data.hooks[event].filter((e: Record<string, unknown>) => e._mrclean === true)
       // Exactly one entry per event — old shape replaced, not duplicated.
       expect(mrcleanEntries).toHaveLength(1)
@@ -176,6 +189,82 @@ describe('writeHookEntries', () => {
       const args = mrcleanEntries[0].hooks[0].args as string[]
       expect(args[args.length - 1]).toBe('/new/install/dist/cli.js')
     }
+  })
+
+  // Migration: a v2.0 install (4 events, SessionStart matcher 'startup', POSIX
+  // wrapper shape) must converge on the v3.0 5-event surface via the existing
+  // idempotent filter-and-replace loop — no duplicates, foreign hooks untouched.
+  it('migrates a v2.0 4-event install to the 5-event v3.0 surface (no duplicates, foreign hooks byte-identical)', async () => {
+    const v2Cmd = buildHookCommand('/usr/bin/node', '/v2/install/dist/cli.js', 'linux')
+    const foreignEntry = {
+      matcher: 'Bash',
+      hooks: [{ type: 'command', command: '/usr/local/bin/my-hook', args: [], timeout: 5 }],
+    }
+    const seed = {
+      hooks: {
+        SessionStart: [{ _mrclean: true, matcher: 'startup', hooks: [v2Cmd] }],
+        UserPromptSubmit: [{ _mrclean: true, hooks: [v2Cmd] }],
+        PreToolUse: [foreignEntry, { _mrclean: true, matcher: '*', hooks: [v2Cmd] }],
+        PostToolUse: [{ _mrclean: true, matcher: '*', hooks: [v2Cmd] }],
+      },
+    }
+    await writeFile(settingsPath, JSON.stringify(seed, null, 2), 'utf8')
+
+    await writeHookEntries(settingsPath, '/usr/bin/node', '/new/install/dist/cli.js', '0.1.0')
+
+    const data = JSON.parse(await readFile(settingsPath, 'utf8'))
+
+    // All 5 events present, exactly ONE _mrclean entry per event.
+    for (const event of ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
+      expect(Array.isArray(data.hooks[event])).toBe(true)
+      const mrcleanEntries = data.hooks[event].filter((e: Record<string, unknown>) => e._mrclean === true)
+      expect(mrcleanEntries).toHaveLength(1)
+    }
+
+    // SessionStart matcher widened.
+    const sessionStart = data.hooks.SessionStart.find((e: Record<string, unknown>) => e._mrclean)
+    expect(sessionStart.matcher).toBe('startup|resume|clear|compact')
+
+    // SessionEnd matcherless.
+    const sessionEnd = data.hooks.SessionEnd.find((e: Record<string, unknown>) => e._mrclean)
+    expect(sessionEnd.matcher).toBeUndefined()
+
+    // Foreign user hook byte-identical.
+    const foreign = data.hooks.PreToolUse.find((e: Record<string, unknown>) => !e._mrclean)
+    expect(foreign).toEqual(foreignEntry)
+  })
+
+  it('uninstall after v2.0→v3.0 migration removes all 5 mrclean entries, leaves the foreign entry', async () => {
+    const v2Cmd = buildHookCommand('/usr/bin/node', '/v2/install/dist/cli.js', 'linux')
+    const foreignEntry = {
+      matcher: 'Bash',
+      hooks: [{ type: 'command', command: '/usr/local/bin/my-hook', args: [], timeout: 5 }],
+    }
+    const seed = {
+      hooks: {
+        SessionStart: [{ _mrclean: true, matcher: 'startup', hooks: [v2Cmd] }],
+        UserPromptSubmit: [{ _mrclean: true, hooks: [v2Cmd] }],
+        PreToolUse: [foreignEntry, { _mrclean: true, matcher: '*', hooks: [v2Cmd] }],
+        PostToolUse: [{ _mrclean: true, matcher: '*', hooks: [v2Cmd] }],
+      },
+    }
+    await writeFile(settingsPath, JSON.stringify(seed, null, 2), 'utf8')
+
+    await writeHookEntries(settingsPath, '/usr/bin/node', '/new/install/dist/cli.js', '0.1.0')
+    await removeHookEntries(settingsPath)
+
+    const data = JSON.parse(await readFile(settingsPath, 'utf8'))
+
+    // All 5 event arrays exist and carry zero mrclean entries.
+    for (const event of ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
+      expect(Array.isArray(data.hooks[event])).toBe(true)
+      const mrcleanEntries = data.hooks[event].filter((e: Record<string, unknown>) => e._mrclean === true)
+      expect(mrcleanEntries).toHaveLength(0)
+    }
+
+    // Foreign user hook survives uninstall byte-identical.
+    const foreign = data.hooks.PreToolUse.find((e: Record<string, unknown>) => !e._mrclean)
+    expect(foreign).toEqual(foreignEntry)
   })
 })
 
@@ -366,7 +455,7 @@ describe('removeHookEntries', () => {
 
     const data = JSON.parse(await readFile(settingsPath, 'utf8'))
 
-    for (const event of ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
+    for (const event of ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
       expect(Array.isArray(data.hooks[event])).toBe(true)
       expect(data.hooks[event]).toHaveLength(0)
     }

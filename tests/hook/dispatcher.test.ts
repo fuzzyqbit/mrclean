@@ -53,6 +53,7 @@ vi.mock('../../src/detect/layer1-regex/index.js', () => ({
 import { dispatch } from '../../src/hook/dispatcher.js'
 import type {
   SessionStartInput,
+  SessionEndInput,
   UserPromptSubmitInput,
   PreToolUseInput,
   PostToolUseInput,
@@ -107,6 +108,32 @@ describe('dispatch', () => {
       tool_input: { command: 'ls' },
       tool_response: 'ok',
       tool_use_id: 'x',
+    }
+    const output = await dispatch(input)
+    expect(output).toBeNull()
+  })
+
+  it('Test 11f: routes SessionEnd to handleSessionEnd → returns null (pure no-op)', async () => {
+    const input: SessionEndInput = { ...base, hook_event_name: 'SessionEnd', reason: 'other' }
+    const output = await dispatch(input)
+    expect(output).toBeNull()
+  })
+
+  it('Test 11g: SessionEnd with reason bypass_permissions_disabled → returns null', async () => {
+    const input: SessionEndInput = {
+      ...base,
+      hook_event_name: 'SessionEnd',
+      reason: 'bypass_permissions_disabled',
+    }
+    const output = await dispatch(input)
+    expect(output).toBeNull()
+  })
+
+  it('Test 11h: SessionEnd tolerates any future reason string → returns null', async () => {
+    const input: SessionEndInput = {
+      ...base,
+      hook_event_name: 'SessionEnd',
+      reason: 'some_future_reason_xyz',
     }
     const output = await dispatch(input)
     expect(output).toBeNull()
