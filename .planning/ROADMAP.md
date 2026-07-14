@@ -51,7 +51,7 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
   2. Operator can set the `[reversible]` config table (default OFF) and `mrclean doctor` reports reversible-mode state; with the table absent, all shipped v1/v2 behavior is byte-identical (existing suites pass unchanged)
   3. A fresh `npx mrclean install` registers SessionEnd routing and the widened SessionStart matcher (`startup|resume|clear|compact`); re-running install on an existing v2.0 install migrates the matcher without duplicating entries, and session start/end events produce no exit-2 noise
   4. Operator can read a THREAT_MODEL.md reversible-mode section covering map blast radius, the structural secret floor, wire re-entry analysis (why in-session restore is deferred: `updatedToolOutput` is model-facing and the transcript ratchet is permanent), key-custody honesty, and accepted residual risks — and PROJECT.md's stale "restore MCP tool stub" wording is amended
-**Plans**: 6 plans
+**Plans**: 9 plans (6 executed + 3 gap-closure)
 
 Plans:
 **Wave 1**
@@ -67,6 +67,13 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 - [x] 08-05-PLAN.md — docs/HOOK-CONTRACT.md + shipped-copy honesty + upstream issue filing (wave 4)
 - [x] 08-06-PLAN.md — THREAT_MODEL reversible section + copy-drift gate + PROJECT/CLAUDE amendment (wave 4)
+
+**Wave 5 — gap closure** *(from 08-VERIFICATION.md, 2026-07-14)*
+- [ ] 08-07-PLAN.md — CR-01 fix: Partial-shaped config layers + merge-time default filling + cross-layer tests (TDD; wave 5)
+- [ ] 08-08-PLAN.md — Harness durability: guarded findings writer + object-shape legs wired (E1/Bash-object, E1/Read-object, object-gated E4) (wave 5)
+
+**Wave 6 — gap closure** *(blocked on 08-08)*
+- [ ] 08-09-PLAN.md — Live E4 rerun via object-shaped Bash payload + HOOK-CONTRACT/THREAT_MODEL refresh (wave 6)
 
 **Research flag**: `--research-phase` recommended — live headless contract experiments (UAT-2b harness precedent); the answers feed Phase 9's resume/rehydration design (T5) and Phase 10's input-restore scope fence
 **Note**: This phase lays REVMODE-07's installer/dispatcher groundwork (no-op handlers, matcher widening + migration); the janitor requirement itself completes in Phase 9. The Phase 11 canary/chaos/stress gates are named in Phases 8–10 criteria so implementations are built against them, not retrofitted.
@@ -121,7 +128,7 @@ Plans:
 | 5. Regex PII Hot-Path (L6a) + Model | v2.0 | 2/2 | Complete | 2026-06-03 |
 | 6. NER Inference (L6b) + MCP Wiring | v2.0 | 4/4 | Complete | 2026-06-03 |
 | 7. PII Security Hardening & Framing | v2.0 | 3/3 | Complete | 2026-06-03 |
-| 8. Contract Verification & Reversible Plumbing | v3.0 | 0/6 | Planned | - |
+| 8. Contract Verification & Reversible Plumbing | v3.0 | 6/9 | Gap closure | - |
 | 9. Session State Adapter | v3.0 | 0/TBD | Not started | - |
 | 10. Operator Restore | v3.0 | 0/TBD | Not started | - |
 | 11. Wire-Safety Verification & Hardening | v3.0 | 0/TBD | Not started | - |
@@ -129,4 +136,4 @@ Plans:
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
 
 ---
-*Last updated: 2026-07-14 — Phase 8 planned (6 plans, waves 1–4). Next: `/gsd-execute-phase 8`.*
+*Last updated: 2026-07-14 — Phase 8 gap-closure planned (08-07..08-09, waves 5–6; from 08-VERIFICATION.md). Next: `/gsd-execute-phase 8 --gaps-only`.*
