@@ -21,7 +21,7 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** All phases complete — Phase 01 gap-closure (SC4/HOOK-05) resolved 2026-07-13
+**Current Focus:** Milestone v3.0 Reversible Redact Mode — defining requirements
 **Project Mode:** mvp (vertical slices)
 **Granularity:** coarse (3-5 phases)
 
@@ -211,14 +211,14 @@ Last activity: 2026-07-14 — Milestone v3.0 started
 
 ## Deferred Items
 
-Items acknowledged and deferred at v2.0 milestone close on 2026-06-03 (pre-close artifact audit found 5 open):
+Items acknowledged and deferred at v2.0 milestone close on 2026-06-03 (pre-close artifact audit found 5 open). **Re-audited 2026-07-14 — 4 of 5 resolved:**
 
 | Category | Item | Status |
 |----------|------|--------|
-| debug | stub-dead-keys-issue | unknown |
-| quick_task | 260601-0e1-fix-install-stub-dead-keys | missing |
-| quick_task | 260601-1sw-mrclean-init-command | missing |
-| quick_task | 260601-2fj-uninstall-surgical | missing |
-| verification_gap | (1 open verification/UAT item) | human_needed |
+| debug | stub-dead-keys-issue | resolved (fix shipped in 1afefec) |
+| quick_task | 260601-0e1-fix-install-stub-dead-keys | shipped 2026-06-01 (1afefec; dir + SUMMARY present) |
+| quick_task | 260601-1sw-mrclean-init-command | shipped 2026-06-01 (0d12c88; later fixed in rc.9 a76d0ed) |
+| quick_task | 260601-2fj-uninstall-surgical | shipped 2026-06-01 (ca2891a; roundtrip test asserts surgical removal) |
+| verification_gap | Phase 01 SC4/HOOK-05 UAT item | resolved 2026-07-13 (fail-closed wrapper 01-06 + live UAT 01-07) |
 
-These are v1-era (2026-06-01) install/init/uninstall tasks, not v2.0 PII work. Carried into the next milestone as Active candidates (see PROJECT.md). Surfaced in `/gsd:progress` and `/gsd:audit-uat`.
+The 2026-06-03 audit's "missing" statuses were stale — the quick-task directories exist at `.planning/quick/` with PLAN + SUMMARY, and all three commits are in history.
