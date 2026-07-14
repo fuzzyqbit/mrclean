@@ -9,6 +9,7 @@
 
 import type { HookInput, HookOutput } from '../shared/types.js'
 import { handleSessionStart } from './handlers/session-start.js'
+import { handleSessionEnd } from './handlers/session-end.js'
 import { handleUserPromptSubmit } from './handlers/user-prompt-submit.js'
 import { handlePreToolUse } from './handlers/pre-tool-use.js'
 import { handlePostToolUse } from './handlers/post-tool-use.js'
@@ -32,6 +33,9 @@ export async function dispatch(input: HookInput): Promise<HookOutput> {
   switch (input.hook_event_name) {
     case 'SessionStart':
       return await handleSessionStart(input)
+
+    case 'SessionEnd':
+      return await handleSessionEnd(input)
 
     case 'UserPromptSubmit':
       return await handleUserPromptSubmit(input)
