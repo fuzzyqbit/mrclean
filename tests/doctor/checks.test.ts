@@ -13,6 +13,7 @@ import {
   checkMcpRegistered,
   checkBinsExecutable,
   checkConfigLoad,
+  checkReversibleState,
   extractRegisteredPaths,
 } from '../../src/doctor/checks.js'
 import { buildHookCommand } from '../../src/install/settings.js'
@@ -43,13 +44,28 @@ function buildSettings(events: string[]): Record<string, unknown> {
     if (event === 'UserPromptSubmit') {
       hooks[event] = [{ _mrclean: true, hooks: [hookCmd] }]
     } else if (event === 'SessionStart') {
-      hooks[event] = [{ _mrclean: true, matcher: 'startup', hooks: [hookCmd] }]
+      hooks[event] = [
+        { _mrclean: true, matcher: 'startup|resume|clear|compact', hooks: [hookCmd] },
+      ]
+    } else if (event === 'SessionEnd') {
+      // SessionEnd matchers filter on `reason` — the installer registers it
+      // with NO matcher key so the handler sees ALL reasons (08-02).
+      hooks[event] = [{ _mrclean: true, hooks: [hookCmd] }]
     } else {
       hooks[event] = [{ _mrclean: true, matcher: '*', hooks: [hookCmd] }]
     }
   }
   return { hooks }
 }
+
+/** The full 5-event hook surface required by doctor as of Phase 8 (08-03). */
+const ALL_EVENTS = [
+  'SessionStart',
+  'SessionEnd',
+  'UserPromptSubmit',
+  'PreToolUse',
+  'PostToolUse',
+]
 
 function buildClaudeJson(projectCwd: string, includeMrclean = true): Record<string, unknown> {
   if (!includeMrclean) {
@@ -75,17 +91,16 @@ function buildClaudeJson(projectCwd: string, includeMrclean = true): Record<stri
 // ---------------------------------------------------------------------------
 
 describe('checkHooksRegistered', () => {
-  it('Test 1: PASS — settings.json has mrclean entries for all 4 events', async () => {
+  it('Test 1: PASS — settings.json has mrclean entries for all 5 events', async () => {
     const tmp = await makeTmpDir()
     const settingsPath = join(tmp, 'settings.json')
-    const allEvents = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']
-    await writeFile(settingsPath, JSON.stringify(buildSettings(allEvents), null, 2), 'utf8')
+    await writeFile(settingsPath, JSON.stringify(buildSettings(ALL_EVENTS), null, 2), 'utf8')
 
     const result = await checkHooksRegistered(settingsPath)
 
     expect(result.status).toBe('PASS')
     expect(result.name).toBe('hooks')
-    expect(result.detail).toMatch(/4/)
+    expect(result.detail).toMatch(/5 hook events registered/)
     expect(typeof result.exitCodeOnFail).toBe('number')
 
     await rm(tmp, { recursive: true, force: true })
@@ -105,7 +120,7 @@ describe('checkHooksRegistered', () => {
     await rm(tmp, { recursive: true, force: true })
   })
 
-  it('Test 3: FAIL — partial settings (only 2 of 4 events) → mentions missing events', async () => {
+  it('Test 3: FAIL — partial settings (only 2 of 5 events) → mentions missing events', async () => {
     const tmp = await makeTmpDir()
     const settingsPath = join(tmp, 'settings.json')
     const partialEvents = ['SessionStart', 'UserPromptSubmit']
@@ -117,6 +132,23 @@ describe('checkHooksRegistered', () => {
     expect(result.exitCodeOnFail).toBe(1)
     // Should mention the missing events
     expect(result.detail).toMatch(/PreToolUse|PostToolUse/i)
+
+    await rm(tmp, { recursive: true, force: true })
+  })
+
+  it('Test 3b: FAIL — legacy 4-event install (missing SessionEnd) → mentions SessionEnd', async () => {
+    const tmp = await makeTmpDir()
+    const settingsPath = join(tmp, 'settings.json')
+    // The pre-Phase-8 installer surface: everything except SessionEnd.
+    const legacyEvents = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']
+    await writeFile(settingsPath, JSON.stringify(buildSettings(legacyEvents), null, 2), 'utf8')
+
+    const result = await checkHooksRegistered(settingsPath)
+
+    expect(result.status).toBe('FAIL')
+    expect(result.exitCodeOnFail).toBe(1)
+    expect(result.detail).toMatch(/SessionEnd/)
+    expect(result.detail).toMatch(/mrclean install/i)
 
     await rm(tmp, { recursive: true, force: true })
   })
@@ -168,8 +200,7 @@ describe('checkBinsExecutable', () => {
     const settingsPath = join(tmp, 'settings.json')
     const claudeJsonPath = join(tmp, '.claude.json')
 
-    const allEvents = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']
-    await writeFile(settingsPath, JSON.stringify(buildSettings(allEvents), null, 2), 'utf8')
+    await writeFile(settingsPath, JSON.stringify(buildSettings(ALL_EVENTS), null, 2), 'utf8')
     await writeFile(claudeJsonPath, JSON.stringify(buildClaudeJson(cwd, true), null, 2), 'utf8')
 
     const result = await checkBinsExecutable(settingsPath, claudeJsonPath, cwd)
@@ -199,7 +230,10 @@ describe('checkBinsExecutable', () => {
     const hookCmd = buildHookCommand(process.execPath, fakeBin, 'linux')
     const settings = {
       hooks: {
-        SessionStart: [{ _mrclean: true, matcher: 'startup', hooks: [hookCmd] }],
+        SessionStart: [
+          { _mrclean: true, matcher: 'startup|resume|clear|compact', hooks: [hookCmd] },
+        ],
+        SessionEnd: [{ _mrclean: true, hooks: [hookCmd] }],
         UserPromptSubmit: [{ _mrclean: true, hooks: [hookCmd] }],
         PreToolUse: [{ _mrclean: true, matcher: '*', hooks: [hookCmd] }],
         PostToolUse: [{ _mrclean: true, matcher: '*', hooks: [hookCmd] }],
@@ -245,7 +279,10 @@ describe('checkBinsExecutable', () => {
     const hookCmd = buildHookCommand(process.execPath, fakeBin, 'win32')
     const settings = {
       hooks: {
-        SessionStart: [{ _mrclean: true, matcher: 'startup', hooks: [hookCmd] }],
+        SessionStart: [
+          { _mrclean: true, matcher: 'startup|resume|clear|compact', hooks: [hookCmd] },
+        ],
+        SessionEnd: [{ _mrclean: true, hooks: [hookCmd] }],
         UserPromptSubmit: [{ _mrclean: true, hooks: [hookCmd] }],
         PreToolUse: [{ _mrclean: true, matcher: '*', hooks: [hookCmd] }],
         PostToolUse: [{ _mrclean: true, matcher: '*', hooks: [hookCmd] }],
@@ -431,6 +468,80 @@ describe('checkConfigLoad', () => {
     expect(result.status).toBe('FAIL')
     expect(result.exitCodeOnFail).toBe(1)
     expect(result.detail).toMatch(/malformed|config/i)
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// checkReversibleState — REPORTING-ONLY in Phase 8 (08-03, REVMODE-12 groundwork)
+// ---------------------------------------------------------------------------
+
+describe('checkReversibleState', () => {
+  it('Test 15: PASS — no [reversible] table → disabled (default one-way)', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const configDir = join(cwd, '.mrclean')
+    await mkdir(configDir, { recursive: true })
+    // Valid config with NO [reversible] table — the shipped default surface.
+    await writeFile(join(configDir, 'config.toml'), 'dry_run = false\n', 'utf8')
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    // Exact detail string: state only — never config values, paths, or map
+    // contents (T-08-08 mitigation).
+    expect(result).toEqual({
+      name: 'reversible',
+      status: 'PASS',
+      detail: 'reversible mode: disabled (default one-way)',
+      exitCodeOnFail: 1,
+    })
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+
+  it('Test 16: PASS — [reversible] enabled = true → enabled, plumbing only', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const configDir = join(cwd, '.mrclean')
+    await mkdir(configDir, { recursive: true })
+    await writeFile(join(configDir, 'config.toml'), '[reversible]\nenabled = true\n', 'utf8')
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    expect(result).toEqual({
+      name: 'reversible',
+      status: 'PASS',
+      detail: 'reversible mode: enabled — plumbing only (session state adapter lands in Phase 9)',
+      exitCodeOnFail: 1,
+    })
+    expect(result.detail).toMatch(/enabled/)
+    expect(result.detail).toMatch(/Phase 9/)
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+
+  it('Test 17: SKIP — malformed config.toml → defers to the config check (no double-FAIL)', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const configDir = join(cwd, '.mrclean')
+    await mkdir(configDir, { recursive: true })
+    await writeFile(join(configDir, 'config.toml'), 'this is = = = malformed\n', 'utf8')
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    // checkConfigLoad owns the FAIL for this root cause (T-08-10): the
+    // reversible check must SKIP — never FAIL, never crash doctor.
+    expect(result).toEqual({
+      name: 'reversible',
+      status: 'SKIP',
+      detail: 'config unreadable — see config check',
+      exitCodeOnFail: 1,
+    })
+    expect(result.detail).toMatch(/config/)
 
     await rm(homeDir, { recursive: true, force: true })
     await rm(cwd, { recursive: true, force: true })
