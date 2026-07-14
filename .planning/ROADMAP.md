@@ -51,7 +51,16 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
   2. Operator can set the `[reversible]` config table (default OFF) and `mrclean doctor` reports reversible-mode state; with the table absent, all shipped v1/v2 behavior is byte-identical (existing suites pass unchanged)
   3. A fresh `npx mrclean install` registers SessionEnd routing and the widened SessionStart matcher (`startup|resume|clear|compact`); re-running install on an existing v2.0 install migrates the matcher without duplicating entries, and session start/end events produce no exit-2 noise
   4. Operator can read a THREAT_MODEL.md reversible-mode section covering map blast radius, the structural secret floor, wire re-entry analysis (why in-session restore is deferred: `updatedToolOutput` is model-facing and the transcript ratchet is permanent), key-custody honesty, and accepted residual risks — and PROJECT.md's stale "restore MCP tool stub" wording is amended
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — `[reversible]` config table + Phase 8 type contracts (TDD; wave 1)
+- [ ] 08-02-PLAN.md — SessionEnd no-op routing + installer 5-event widening/migration (wave 2)
+- [ ] 08-03-PLAN.md — Doctor reversible-state reporting + 5-event REQUIRED_EVENTS (wave 2)
+- [ ] 08-04-PLAN.md — Live contract experiments E1–E5 + interactive rendering checkpoint (wave 3)
+- [ ] 08-05-PLAN.md — docs/HOOK-CONTRACT.md + shipped-copy honesty + upstream issue filing (wave 4)
+- [ ] 08-06-PLAN.md — THREAT_MODEL reversible section + copy-drift gate + PROJECT/CLAUDE amendment (wave 4)
+
 **Research flag**: `--research-phase` recommended — live headless contract experiments (UAT-2b harness precedent); the answers feed Phase 9's resume/rehydration design (T5) and Phase 10's input-restore scope fence
 **Note**: This phase lays REVMODE-07's installer/dispatcher groundwork (no-op handlers, matcher widening + migration); the janitor requirement itself completes in Phase 9. The Phase 11 canary/chaos/stress gates are named in Phases 8–10 criteria so implementations are built against them, not retrofitted.
 
@@ -105,7 +114,7 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
 | 5. Regex PII Hot-Path (L6a) + Model | v2.0 | 2/2 | Complete | 2026-06-03 |
 | 6. NER Inference (L6b) + MCP Wiring | v2.0 | 4/4 | Complete | 2026-06-03 |
 | 7. PII Security Hardening & Framing | v2.0 | 3/3 | Complete | 2026-06-03 |
-| 8. Contract Verification & Reversible Plumbing | v3.0 | 0/TBD | Not started | - |
+| 8. Contract Verification & Reversible Plumbing | v3.0 | 0/6 | Planned | - |
 | 9. Session State Adapter | v3.0 | 0/TBD | Not started | - |
 | 10. Operator Restore | v3.0 | 0/TBD | Not started | - |
 | 11. Wire-Safety Verification & Hardening | v3.0 | 0/TBD | Not started | - |
@@ -113,4 +122,4 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
 
 ---
-*Last updated: 2026-07-14 — v3.0 roadmap created (Phases 8–11 appended; numbering continued from v2.0). Next: `/gsd-plan-phase 8` (research-phase recommended).*
+*Last updated: 2026-07-14 — Phase 8 planned (6 plans, waves 1–4). Next: `/gsd-execute-phase 8`.*
