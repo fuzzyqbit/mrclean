@@ -37,6 +37,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { buildHookCommand } from '../../src/install/settings.js'
+import { runClaude, assertSessionRan } from './harness.js'
 
 const UAT_ENABLED = process.env.MRCLEAN_UAT === '1'
 
@@ -44,54 +45,11 @@ const REPO_ROOT = process.cwd()
 const DIST_CLI = path.resolve(REPO_ROOT, 'dist/cli.js')
 const DIST_MCP = path.resolve(REPO_ROOT, 'dist/mcp.js')
 
-/** Model + turn caps keep a full run at a few cents of Haiku usage. */
-const CLAUDE_MODEL = 'claude-haiku-4-5'
-const MAX_TURNS = 4
-const CLAUDE_TIMEOUT_MS = 150_000
-
 /** File name the model must never see when the hook chain is broken. */
 const CANARY_FILE = 'UAT_CANARY_7Q3X.txt'
 
 const BANNER_RE =
   /mrclean active v\d+\.\d+\.\d+\S* \(rules: \d+, allowlist: \d+, mode: (active|dry-run)\)/
-
-interface StreamEvent {
-  type: string
-  subtype?: string
-  result?: string
-  is_error?: boolean
-  mcp_servers?: Array<{ name: string; status: string }>
-}
-
-interface ClaudeRun {
-  status: number | null
-  events: StreamEvent[]
-  init: StreamEvent | undefined
-  resultEvent: StreamEvent | undefined
-  resultText: string
-  rawStdout: string
-  rawStderr: string
-}
-
-/**
- * Guard against vacuous passes: a run that never produced a model turn (auth
- * failure, CLI error) must abort the test loudly instead of letting negative
- * assertions ("canary absent") pass on an empty transcript.
- */
-function assertSessionRan(run: ClaudeRun): void {
-  if (run.resultText.includes('Failed to authenticate')) {
-    throw new Error(
-      'BLOCKER: nested claude CLI could not authenticate (OAuth expired and headless refresh failed). ' +
-        'Refresh credentials (run `claude` in a fresh terminal or `claude login`), then rerun npm run test:uat.\n' +
-        `result: ${run.resultText}`,
-    )
-  }
-  if (run.resultEvent === undefined) {
-    throw new Error(
-      `BLOCKER: claude produced no result event — session never ran.\nstderr:\n${run.rawStderr}\nstdout tail:\n${run.rawStdout.slice(-1000)}`,
-    )
-  }
-}
 
 let sandbox: string
 let projectDir: string
@@ -113,59 +71,6 @@ function buildHookSettings(binPath: string): object {
       PreToolUse: [{ matcher: '*', hooks: [hookCommand] }],
       PostToolUse: [{ matcher: '*', hooks: [hookCommand] }],
     },
-  }
-}
-
-/** Run `claude -p` in the sandbox project and parse its stream-json output. */
-function runClaude(prompt: string, settingsPath: string, extraArgs: string[] = []): ClaudeRun {
-  const proc = spawnSync(
-    'claude',
-    [
-      '-p',
-      prompt,
-      '--model',
-      CLAUDE_MODEL,
-      '--max-turns',
-      String(MAX_TURNS),
-      '--settings',
-      settingsPath,
-      '--mcp-config',
-      mcpConfigPath,
-      '--strict-mcp-config',
-      '--output-format',
-      'stream-json',
-      '--verbose',
-      ...extraArgs,
-    ],
-    {
-      cwd: projectDir,
-      encoding: 'utf8',
-      timeout: CLAUDE_TIMEOUT_MS,
-      env: { ...process.env },
-    },
-  )
-
-  const events: StreamEvent[] = []
-  for (const line of (proc.stdout ?? '').split('\n')) {
-    const trimmed = line.trim()
-    if (trimmed === '') continue
-    try {
-      events.push(JSON.parse(trimmed) as StreamEvent)
-    } catch {
-      // Non-JSON noise on stdout is tolerated (never expected from stream-json).
-    }
-  }
-
-  const init = events.find((e) => e.type === 'system' && e.subtype === 'init')
-  const resultEvent = events.find((e) => e.type === 'result')
-  return {
-    status: proc.status,
-    events,
-    init,
-    resultEvent,
-    resultText: resultEvent?.result ?? '',
-    rawStdout: proc.stdout ?? '',
-    rawStderr: proc.stderr ?? '',
   }
 }
 
@@ -233,7 +138,7 @@ describe.skipIf(!UAT_ENABLED)('@uat live claude session (phase 01 human items)',
       'Reply with that exact line verbatim and nothing else.'
 
     // Act — real headless session; SessionStart + UserPromptSubmit hooks fire.
-    const run = runClaude(prompt, settingsOkPath)
+    const run = runClaude(prompt, settingsOkPath, { cwd: projectDir, mcpConfigPath })
 
     // Assert — session ran, banner was injected and quoted back, MCP connected.
     assertSessionRan(run)
@@ -260,7 +165,7 @@ describe.skipIf(!UAT_ENABLED)('@uat live claude session (phase 01 human items)',
       const run = runClaude(
         'Run the bash command `ls` in the current directory and report the exact file names you see.',
         settingsOkPath,
-        ['--allowedTools', 'Bash'],
+        { cwd: projectDir, mcpConfigPath, extraArgs: ['--allowedTools', 'Bash'] },
       )
 
       // Assert — fail-closed means the canary name never appears anywhere in
@@ -289,7 +194,7 @@ describe.skipIf(!UAT_ENABLED)('@uat live claude session (phase 01 human items)',
     const run = runClaude(
       'Run the bash command `ls` in the current directory and report the exact file names you see.',
       settingsBrokenPath,
-      ['--allowedTools', 'Bash'],
+      { cwd: projectDir, mcpConfigPath, extraArgs: ['--allowedTools', 'Bash'] },
     )
 
     // Assert — no silent pass-through of the tool result.
