@@ -58,8 +58,8 @@ Plans:
 - [x] 08-01-PLAN.md — `[reversible]` config table + Phase 8 type contracts (TDD; wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 08-02-PLAN.md — SessionEnd no-op routing + installer 5-event widening/migration (wave 2)
-- [ ] 08-03-PLAN.md — Doctor reversible-state reporting + 5-event REQUIRED_EVENTS (wave 2)
+- [x] 08-02-PLAN.md — SessionEnd no-op routing + installer 5-event widening/migration (wave 2)
+- [x] 08-03-PLAN.md — Doctor reversible-state reporting + 5-event REQUIRED_EVENTS (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 08-04-PLAN.md — Live contract experiments E1–E5 + interactive rendering checkpoint (wave 3)
