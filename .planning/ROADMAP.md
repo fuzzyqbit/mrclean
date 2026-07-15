@@ -76,8 +76,8 @@ Plans:
 - [x] 08-09-PLAN.md — Live E4 rerun via object-shaped Bash payload + HOOK-CONTRACT/THREAT_MODEL refresh (wave 6)
 
 **Wave 7 — gap closure round 2** *(from 08-VERIFICATION.md re-verification 14/16, 2026-07-14; offline-only, zero live tokens)*
-- [ ] 08-10-PLAN.md — E1 per-tool carry-forward in the findings builder + partial-rerun unit tests (TDD; closes CR-01 evidence destruction) (wave 7)
-- [ ] 08-11-PLAN.md — E4/Read-object record-nothing gating + HOOK-CONTRACT citation refresh + UUID traceability gate (WR-01/WR-03) (wave 7)
+- [x] 08-10-PLAN.md — E1 per-tool carry-forward in the findings builder + partial-rerun unit tests (TDD; closes CR-01 evidence destruction) (wave 7)
+- [x] 08-11-PLAN.md — E4/Read-object record-nothing gating + HOOK-CONTRACT citation refresh + UUID traceability gate (WR-01/WR-03) (wave 7)
 
 **Research flag**: `--research-phase` recommended — live headless contract experiments (UAT-2b harness precedent); the answers feed Phase 9's resume/rehydration design (T5) and Phase 10's input-restore scope fence
 **Note**: This phase lays REVMODE-07's installer/dispatcher groundwork (no-op handlers, matcher widening + migration); the janitor requirement itself completes in Phase 9. The Phase 11 canary/chaos/stress gates are named in Phases 8–10 criteria so implementations are built against them, not retrofitted.
