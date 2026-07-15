@@ -507,6 +507,12 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
 
     // Both object legs have run — assemble the E1_shape_validation record.
     const objectHonored = e1ObjectBash?.verdict === 'honored'
+    // Round-2 WR-01: "rejection excerpt not found" only means "string form not
+    // rejected" when the E1/Bash string leg actually ran in THIS process and
+    // stashed its transcript. A filtered `vitest -t 'object'` rerun (both
+    // object legs ran, string leg did not) must not flip the committed
+    // string_shape_rejected: true to an unmeasured false.
+    const stringLegObserved = e1BashTranscriptPath !== null
     const stringRejected = stringShapeHookError !== undefined
 
     let shapeVerdict: string
@@ -535,7 +541,12 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
         object_probe_session_id: bashObjectSessionId ?? null,
         object_probe_payload:
           '{"hookSpecificOutput":{"hookEventName":"PostToolUse","updatedToolOutput":{"stdout":"REWRITTEN_E1_MARKER_x9k2","stderr":"","interrupted":false,"isImage":false}}}',
-        string_shape_rejected: stringRejected,
+        // Honest about observation state (WR-01): only a run that scanned the
+        // string-leg transcript may claim a boolean; corroborated by the
+        // string leg's own verdict (catches error-wording drift where the
+        // excerpt regex misses but the leg still observed rejection).
+        string_shape_rejected: stringLegObserved ? stringRejected : 'not-observed-this-run',
+        string_leg_verdict: e1Tools['Bash']?.verdict ?? 'not-run',
         read_object_verdict: readObjectVerdict,
         read_object_hook_error: readObjectHookError ?? null,
       },
