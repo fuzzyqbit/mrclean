@@ -753,15 +753,17 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
     const stringHonored = objectLeg ? undefined : (['Bash', 'Read'] as const).find((t) => e1Tools[t]?.verdict === 'honored')
 
     if (!objectLeg && stringHonored === undefined) {
-      // Record-nothing gate (08-11, WR-01): distinguish ran-and-not-honored
-      // (genuine drift — record it below) from not-run-in-this-process (no new
-      // gate information). In a filtered rerun (`vitest -t 'E4'`) or an upgrade
-      // run where the E1 legs fail at assertSessionRan, e1ObjectBash and
-      // e1Tools are simply never set — fabricating "unanswerable" here would
+      // Record-nothing gate (08-11 WR-01, round-2 CR-01): distinguish
+      // ran-and-not-honored (genuine drift — record it below) from
+      // not-run-in-this-process (no new gate information). In a filtered rerun
+      // (`vitest -t 'E4'`), an upgrade run where the E1 legs fail at
+      // assertSessionRan, or a mixed run where ONLY the Bash-object leg flaked,
+      // e1ObjectBash is never set — fabricating "unanswerable" here would
       // define run.e4 and run-wins would destroy the committed E4 answer
-      // (T-08-08-01). Leaving e4Record undefined lets buildE4's carry-forward
-      // preserve the committed verdict intact.
-      if (e1ObjectBash === undefined && Object.keys(e1Tools).length === 0) {
+      // (T-08-08-01). Gate on the object leg alone: e1Tools being non-empty
+      // says nothing about whether the GATE leg ran. Leaving e4Record
+      // undefined lets buildE4's carry-forward preserve the committed verdict.
+      if (e1ObjectBash === undefined) {
         return
       }
       const mcpHonored = e1Tools['MCP']?.verdict === 'honored'
