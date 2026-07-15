@@ -38,6 +38,48 @@ function bashVerdict(): ToolVerdict {
   }
 }
 
+/**
+ * Mirrors the committed tests/uat/artifacts/contract-findings.json E1.tools:
+ * populated per-tool records whose destruction by a partial rerun is the
+ * CR-01 / T-08-08-01 evidence-tampering scenario. Non-stub signals and
+ * evidence_paths matter — they are what a regression would erase.
+ */
+const COMMITTED_E1_VERDICT =
+  'Bash: ignored (original output reached the model unchanged); Read: ignored (original output reached the model unchanged); MCP: honored'
+
+function previousE1Tools(): Record<string, ToolVerdict> {
+  return {
+    Bash: {
+      verdict: 'ignored (original output reached the model unchanged)',
+      signals: { stream_tool_result_contains_rewritten: false, transcript_tool_result_contains_original: true },
+      evidence_paths: ['/tmp/prev-e1-bash-transcript.jsonl'],
+    },
+    Read: {
+      verdict: 'ignored (original output reached the model unchanged)',
+      signals: { stream_tool_result_contains_rewritten: false, transcript_tool_result_contains_original: true },
+      evidence_paths: ['/tmp/prev-e1-read-transcript.jsonl'],
+    },
+    MCP: {
+      verdict: 'honored',
+      signals: { stream_tool_result_contains_rewritten: true },
+      evidence_paths: ['/tmp/prev-e1-mcp-transcript.jsonl'],
+    },
+  }
+}
+
+/** Minimal fresh E2 record so a run passes the zero-verdict guard without touching E1. */
+function freshE2(): ExperimentRecord {
+  return {
+    question: 'Does the PreToolUse updatedInput rewrite reach the tool? (fresh partial-rerun record)',
+    verdict: 'honored — rewritten input reached the tool',
+    method: 'live headless session',
+    claude_version: '2.1.209 (Claude Code)',
+    date: '2026-07-14',
+    signals: { rewritten_input_observed: true },
+    evidence_paths: ['/tmp/fresh-e2-transcript.jsonl'],
+  }
+}
+
 function previousRendering(): Record<string, unknown> {
   return {
     verdict:
@@ -78,8 +120,8 @@ function previousArtifact(): Record<string, unknown> {
     experiments: {
       E1: {
         question: 'Is PostToolUse hookSpecificOutput.updatedToolOutput honored, per tool?',
-        verdict: 'Bash: ignored; Read: ignored; MCP: honored',
-        tools: {},
+        verdict: COMMITTED_E1_VERDICT,
+        tools: previousE1Tools(),
         rendering: previousRendering(),
       },
       E1_shape_validation: previousShapeValidation(),
@@ -193,5 +235,69 @@ describe('buildFindingsArtifact', () => {
     // Assert
     const e1 = experiments['E1'] as Record<string, unknown>
     expect(e1['rendering']).toBe('pending-interactive')
+  })
+
+  test('carries forward committed E1 per-tool verdicts when a partial rerun records only E2', () => {
+    // Arrange — disjoint rerun: zero E1 verdicts, one fresh E2 verdict passes the guard.
+    const run: RunRecords = { ...emptyRun(), e2: freshE2() }
+    const previous = previousArtifact()
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert — committed per-tool evidence survives byte-identical; nothing is stubbed.
+    const e1 = experiments['E1'] as Record<string, unknown>
+    expect(e1['tools']).toEqual(previousE1Tools())
+    expect(e1['verdict']).toBe(COMMITTED_E1_VERDICT)
+  })
+
+  test('merges a fresh per-tool verdict over previous and derives the verdict string from the merged map', () => {
+    // Arrange — run records a fresh Bash verdict only; Read/MCP must come from previous.
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() } }
+    const previous = previousArtifact()
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert — run wins per tool; verdict string reads the MERGED map, not run.e1Tools.
+    const e1 = experiments['E1'] as Record<string, unknown>
+    const tools = e1['tools'] as Record<string, unknown>
+    expect(tools['Bash']).toEqual(bashVerdict())
+    expect(tools['Read']).toEqual(previousE1Tools()['Read'])
+    expect(tools['MCP']).toEqual(previousE1Tools()['MCP'])
+    expect(e1['verdict']).toBe(
+      'Bash: honored; Read: ignored (original output reached the model unchanged); MCP: honored',
+    )
+  })
+
+  test('stubs a per-tool record only when NEITHER previous nor run has it', () => {
+    // Arrange — previous E1.tools carries only Bash and MCP (no Read entry); run records only E2.
+    const toolsWithoutRead = Object.fromEntries(
+      Object.entries(previousE1Tools()).filter(([tool]) => tool !== 'Read'),
+    )
+    const base = previousArtifact()
+    const baseExperiments = base['experiments'] as Record<string, unknown>
+    const baseE1 = baseExperiments['E1'] as Record<string, unknown>
+    const previous = {
+      ...base,
+      experiments: {
+        ...baseExperiments,
+        E1: { ...baseE1, tools: toolsWithoutRead },
+      },
+    }
+    const run: RunRecords = { ...emptyRun(), e2: freshE2() }
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert — Read stubs (neither side has it); Bash/MCP are carried from previous.
+    const e1 = experiments['E1'] as Record<string, unknown>
+    const tools = e1['tools'] as Record<string, unknown>
+    expect(tools['Read']).toEqual({ verdict: 'not-run', signals: {}, evidence_paths: [] })
+    expect(tools['Bash']).toEqual(previousE1Tools()['Bash'])
+    expect(tools['MCP']).toEqual(previousE1Tools()['MCP'])
+    expect(e1['verdict']).toBe(
+      'Bash: ignored (original output reached the model unchanged); Read: not-run; MCP: honored',
+    )
   })
 })
