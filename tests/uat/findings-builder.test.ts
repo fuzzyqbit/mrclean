@@ -281,6 +281,41 @@ describe('buildFindingsArtifact', () => {
     )
   })
 
+  test('preserves per-tool records outside the canonical {Bash, Read, MCP} set, appended after the canonical order', () => {
+    // Arrange — previous E1.tools carries an extra 'Edit' record (a future
+    // harness leg / tool addition); run records a fresh Bash verdict (merge
+    // path). Round-2 WR-03: key-set truncation must be impossible.
+    const editVerdict: ToolVerdict = {
+      verdict: 'ignored (original output reached the model unchanged)',
+      signals: { stream_tool_result_contains_rewritten: false },
+      evidence_paths: ['/tmp/prev-e1-edit-transcript.jsonl'],
+    }
+    const base = previousArtifact()
+    const baseExperiments = base['experiments'] as Record<string, unknown>
+    const baseE1 = baseExperiments['E1'] as Record<string, unknown>
+    const previous = {
+      ...base,
+      experiments: {
+        ...baseExperiments,
+        E1: { ...baseE1, tools: { ...previousE1Tools(), Edit: editVerdict } },
+      },
+    }
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() } }
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert — the unknown key survives verbatim, ordered after the canonical
+    // tools, and the verdict string derives from the full union.
+    const e1 = experiments['E1'] as Record<string, unknown>
+    const tools = e1['tools'] as Record<string, unknown>
+    expect(Object.keys(tools)).toEqual(['Bash', 'Read', 'MCP', 'Edit'])
+    expect(tools['Edit']).toEqual(editVerdict)
+    expect(e1['verdict']).toBe(
+      'Bash: honored; Read: ignored (original output reached the model unchanged); MCP: honored; Edit: ignored (original output reached the model unchanged)',
+    )
+  })
+
   test('stubs a per-tool record only when NEITHER previous nor run has it (merge path)', () => {
     // Arrange — previous E1.tools carries only Bash and MCP (no Read entry);
     // run records a FRESH Bash verdict so the merge path (not the CR-02

@@ -125,7 +125,11 @@ function buildE1(run: RunRecords, prevExperiments: Record<string, unknown>): Rec
     if (prev !== undefined) return { ...prev }
     return { verdict: 'not-run', signals: {}, evidence_paths: [] }
   }
-  const toolEntries = E1_TOOL_ORDER.map((tool) => [tool, toolRecord(tool)] as const)
+  // Round-2 WR-03: iterate the UNION of canonical + fresh + previous keys —
+  // key-set truncation of per-tool evidence must be impossible by
+  // construction. Unknown tools append after the canonical order (stable).
+  const toolNames = [...new Set<string>([...E1_TOOL_ORDER, ...Object.keys(run.e1Tools), ...Object.keys(prevTools)])]
+  const toolEntries = toolNames.map((tool) => [tool, toolRecord(tool)] as const)
   const tools = Object.fromEntries(toolEntries)
   // Verdict string derives from the MERGED map — a partial rerun can never
   // rewrite committed per-tool verdicts it did not re-measure (T-08-08-01).
