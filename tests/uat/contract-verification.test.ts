@@ -362,8 +362,16 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
       let previous: unknown
       try {
         if (existsSync(FINDINGS_PATH)) previous = JSON.parse(readFileSync(FINDINGS_PATH, 'utf8'))
-      } catch {
-        previous = undefined // malformed committed artifact → treat as absent
+      } catch (error) {
+        // Round-2 WR-04: a present-but-unparseable committed artifact (merge
+        // conflict markers, truncated write) must fail LOUD — treating it as
+        // absent would disable the entire carry-forward substrate and re-arm
+        // wholesale stub overwrite of committed evidence on the next run with
+        // >=1 verdict. Refuse to write; the operator fixes or deletes first.
+        console.error(
+          `mrclean findings: committed artifact at ${FINDINGS_PATH} is unparseable — refusing to overwrite; fix or delete it first (${String(error)})`,
+        )
+        return
       }
 
       const findings = buildFindingsArtifact(previous, {
