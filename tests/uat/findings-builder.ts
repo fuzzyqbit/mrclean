@@ -110,6 +110,12 @@ function missingRecord(name: string, run: RunRecords): ExperimentRecord {
 
 function buildE1(run: RunRecords, prevExperiments: Record<string, unknown>): Record<string, unknown> {
   const prevE1 = recordAt(prevExperiments, 'E1')
+  // Run contributed no E1 tool verdicts → re-emit previous E1 verbatim —
+  // provenance stamps (claude_version/date) and question/method literals
+  // intact (mirrors buildE5; round-2 CR-02). Re-stamping wholly
+  // carried-forward evidence with the fresh run's stamps would claim the
+  // per-tool verdicts were verified on a version where no E1 leg ran.
+  if (Object.keys(run.e1Tools).length === 0 && prevE1 !== undefined) return { ...prevE1 }
   const prevTools = recordAt(prevE1 ?? {}, 'tools') ?? {}
   // Per-tool carry-forward: fresh run record -> previous artifact record -> stub.
   const toolRecord = (tool: string): Record<string, unknown> => {
