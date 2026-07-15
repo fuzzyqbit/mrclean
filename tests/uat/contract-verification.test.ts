@@ -30,7 +30,10 @@
  * contract answer (e.g. updatedToolOutput ignored) is a FINDING, not a test
  * failure. Only harness integrity is hard-asserted (session ran, fixture hook
  * fired, side file written, no mrclean hook noise). The harness is rerunnable
- * on Claude Code upgrades and reports drift instead of breaking CI.
+ * on Claude Code upgrades and reports drift instead of breaking CI. Filtered
+ * reruns (e.g. `vitest -t 'E4'`): legs gated on module state set by the
+ * E1/Bash-object leg record NOTHING when that gate leg did not run in this
+ * process — builder carry-forward preserves the committed evidence (WR-01).
  *
  * OPT-IN ONLY: self-skips unless MRCLEAN_UAT=1 (authenticated `claude` binary
  * required; ~10–20 Haiku calls, cents). Never wired into CI.
@@ -486,6 +489,22 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
           : 'indeterminate'
     }
 
+    // Record-nothing gate (08-11, WR-01): the E1_shape_validation record is
+    // only assemblable when the Bash-object gate leg ran in THIS process.
+    // When it did not (filtered rerun, or an upgrade run where E1 legs failed
+    // before recording), every field the record would carry —
+    // object_probe_honored: false, string_shape_rejected from an unstashed
+    // transcript, the "NOT reproduced this run" verdict — would be fabricated,
+    // and run-wins would overwrite the committed shape-validation answer.
+    // Record nothing; buildShapeValidation's carry-forward preserves the
+    // committed record verbatim. This leg's own readObjectVerdict observation
+    // is intentionally dropped in this degenerate case because its host record
+    // would otherwise be fabricated. Contrast: ran-and-not-honored falls
+    // through and IS recorded below (genuine drift finding).
+    if (e1ObjectBash === undefined) {
+      return
+    }
+
     // Both object legs have run — assemble the E1_shape_validation record.
     const objectHonored = e1ObjectBash?.verdict === 'honored'
     const stringRejected = stringShapeHookError !== undefined
@@ -734,6 +753,17 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
     const stringHonored = objectLeg ? undefined : (['Bash', 'Read'] as const).find((t) => e1Tools[t]?.verdict === 'honored')
 
     if (!objectLeg && stringHonored === undefined) {
+      // Record-nothing gate (08-11, WR-01): distinguish ran-and-not-honored
+      // (genuine drift — record it below) from not-run-in-this-process (no new
+      // gate information). In a filtered rerun (`vitest -t 'E4'`) or an upgrade
+      // run where the E1 legs fail at assertSessionRan, e1ObjectBash and
+      // e1Tools are simply never set — fabricating "unanswerable" here would
+      // define run.e4 and run-wins would destroy the committed E4 answer
+      // (T-08-08-01). Leaving e4Record undefined lets buildE4's carry-forward
+      // preserve the committed verdict intact.
+      if (e1ObjectBash === undefined && Object.keys(e1Tools).length === 0) {
+        return
+      }
       const mcpHonored = e1Tools['MCP']?.verdict === 'honored'
       e4Record = {
         ...baseRecord(
