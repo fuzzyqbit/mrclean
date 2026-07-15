@@ -499,9 +499,15 @@ describe.skipIf(!UAT_ENABLED)('@uat contract verification (E1–E5, REVMODE-10)'
     // Record nothing; buildShapeValidation's carry-forward preserves the
     // committed record verbatim. This leg's own readObjectVerdict observation
     // is intentionally dropped in this degenerate case because its host record
-    // would otherwise be fabricated. Contrast: ran-and-not-honored falls
-    // through and IS recorded below (genuine drift finding).
+    // would otherwise be fabricated — but never SILENTLY (round-2 WR-02): the
+    // leg DID run and may have observed genuine drift (e.g. Bash-style object
+    // newly honored for Read), so the operator gets an explicit signal.
+    // Contrast: ran-and-not-honored falls through and IS recorded below
+    // (genuine drift finding).
     if (e1ObjectBash === undefined) {
+      console.warn(
+        `mrclean findings: Read-object observation DROPPED (Bash-object gate leg absent this process): ${readObjectVerdict} — rerun the full E1 suite to record it`,
+      )
       return
     }
 
