@@ -167,3 +167,50 @@ describe('THREAT_MODEL reversible-mode presence gate (08-06, REVMODE-03)', () =>
     expect(readThreatModel()).toContain('design commitment')
   })
 })
+
+/**
+ * HOOK-CONTRACT session-UUID traceability gate — Plan 08-11 Task 3 (WR-03).
+ *
+ * The 08-09 regeneration replaced the findings artifact's evidence while
+ * docs/HOOK-CONTRACT.md kept quoting the destroyed run's session ids
+ * (08-VERIFICATION gap 2). This gate makes the doc's opening claim — "every
+ * verdict traces to a recorded entry" — build-enforced: every session UUID
+ * quoted in the doc must appear in tests/uat/artifacts/contract-findings.json,
+ * so future regenerations that orphan a citation fail the offline unit suite.
+ */
+const SESSION_UUID_RX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g
+
+/** Extract deduplicated session UUIDs from a body of text (new array — no mutation). */
+function extractSessionUuids(content: string): string[] {
+  return Array.from(new Set(content.match(SESSION_UUID_RX) ?? []))
+}
+
+describe('HOOK-CONTRACT session-UUID traceability gate (08-11, WR-03)', () => {
+  it('every session UUID quoted in HOOK-CONTRACT.md exists in contract-findings.json', () => {
+    const doc = readFileSync(path.join(repoRoot, 'docs/HOOK-CONTRACT.md'), 'utf8')
+    const artifact = readFileSync(path.join(repoRoot, 'tests/uat/artifacts/contract-findings.json'), 'utf8')
+
+    const quotedUuids = extractSessionUuids(doc)
+    // Non-vacuous guard: the doc must actually quote evidence sessions — an
+    // empty extraction may not silently pass the membership check below.
+    expect(quotedUuids.length).toBeGreaterThanOrEqual(1)
+
+    const untraced = quotedUuids.filter((uuid) => !artifact.includes(uuid))
+    expect(
+      untraced,
+      `HOOK-CONTRACT.md quotes session UUIDs with no entry in contract-findings.json:\n${untraced
+        .map((uuid) => `  ${uuid}`)
+        .join('\n')}`,
+    ).toEqual([])
+  })
+
+  it('is non-vacuous: a fabricated UUID is flagged as untraced (positive control)', () => {
+    const artifact = readFileSync(path.join(repoRoot, 'tests/uat/artifacts/contract-findings.json'), 'utf8')
+    const synthetic = 'evidence from probe session 00000000-0000-4000-8000-000000000000 (fabricated)'
+    const quotedUuids = extractSessionUuids(synthetic)
+    const untraced = quotedUuids.filter((uuid) => !artifact.includes(uuid))
+    // Proves the gate actually fires when a citation does not trace.
+    expect(untraced).toEqual(quotedUuids)
+    expect(untraced).toHaveLength(1)
+  })
+})
