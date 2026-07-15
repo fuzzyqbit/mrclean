@@ -32,7 +32,7 @@ MCP tool results accept string content and are honored.
 | Tool | String payload | Object payload |
 |------|----------------|----------------|
 | Bash (built-in) | **REJECTED** — zod shape validation; hook warning; original output used | **HONORED** — `{stdout, stderr, interrupted, isImage}` (probe session `e244a7f9-6296-4413-a636-efea169636e2`; fixture `tests/uat/fixtures/e1-object-rewrite-hook.sh`) |
-| Read (built-in) | **REJECTED** (string form; original output used) | **REJECTED** — Bash-style object refused: "rejected — zod error names Read's expected output shape (see verbatim excerpt)" (zod `invalid_union`, "No matching discriminator", path `["type"]`; probe session `df4534f2-190a-4060-8d50-0dbf94cfba94`, `experiments.E1_shape_validation.signals.read_object_verdict`/`read_object_hook_error`) |
+| Read (built-in) | **REJECTED** (string form; original output used) | **REJECTED** — Bash-style object refused: "rejected — zod error names Read's expected output shape (see verbatim excerpt)" (zod `invalid_union`, "No matching discriminator", path `["type"]`; probe session `8ba19558-500c-4deb-b068-d4903006bb34`, `experiments.E1_shape_validation.signals.read_object_verdict`/`read_object_hook_error`) |
 | MCP tools | **HONORED** — MCP content is string-shaped (model quoted the REWRITTEN marker) | n/a |
 
 ### Evidence excerpt
@@ -114,9 +114,9 @@ Transcript signals: `tool_use` input contains original (not updated);
 
 ### Evidence excerpt
 
-`experiments.E3.signals`: `sid_run1 = 8f87d5ac-b7b7-43bc-95e0-192352a6e416`,
+`experiments.E3.signals`: `sid_run1 = 184c5b4a-7a93-4bec-a81e-40d5b3bbe717`,
 reused verbatim by the resume run's init event and hook payloads;
-fork-session control minted `e08e5d75-0cdf-4226-bd02-a4f0027a8bff`.
+fork-session control minted `e1036ad1-9ea3-40f1-bf93-e1b461223979`.
 
 ### Downstream implication
 
