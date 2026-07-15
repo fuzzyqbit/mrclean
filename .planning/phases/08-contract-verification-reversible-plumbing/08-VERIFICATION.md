@@ -1,9 +1,15 @@
 ---
 phase: 08-contract-verification-reversible-plumbing
 verified: 2026-07-15T01:25:43Z
-status: human_needed
-score: 15/16 must-haves verified
-overrides_applied: 0
+status: passed
+score: 16/16 must-haves verified (15 direct + 1 accepted override)
+overrides_applied: 1
+overrides:
+  - must_have: "The interactive terminal-rendering half of E1 has a human-observed verdict"
+    reason: "Operator explicitly delegated the observation ('you run it') at the Task 3 checkpoint; one-off automated PTY capture recorded with honest method stamp; committed harness gained no PTY automation"
+    accepted_by: "operator"
+    accepted_at: "2026-07-15T01:34:11Z"
+    method: "delegated-tmux-pty (accepted via AskUserQuestion gate)"
 re_verification:
   previous_status: gaps_found
   previous_score: 14/16
