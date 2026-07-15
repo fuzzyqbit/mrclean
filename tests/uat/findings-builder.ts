@@ -13,7 +13,9 @@
  *   - GUARD: returns null when the run recorded ZERO verdicts — the caller
  *     must then leave the committed artifact untouched (beforeAll-throw safe).
  *   - CARRY-FORWARD: for any experiment the run did not produce, the previous
- *     artifact's record is re-emitted verbatim; stubs appear only when
+ *     artifact's record is re-emitted verbatim — including E1 per-tool records,
+ *     which are carried individually (fresh -> previous -> stub) with the E1
+ *     verdict string derived from the MERGED tool map; stubs appear only when
  *     NEITHER side has the record.
  *   - FIELD FALLBACK: E1_shape_validation.verbatim_hook_error (the one
  *     interactively-sourced field) is filled from the previous artifact when
@@ -108,10 +110,20 @@ function missingRecord(name: string, run: RunRecords): ExperimentRecord {
 
 function buildE1(run: RunRecords, prevExperiments: Record<string, unknown>): Record<string, unknown> {
   const prevE1 = recordAt(prevExperiments, 'E1')
-  const tools = Object.fromEntries(
-    E1_TOOL_ORDER.map((tool) => [tool, run.e1Tools[tool] ?? { verdict: 'not-run', signals: {}, evidence_paths: [] }]),
-  )
-  const verdict = E1_TOOL_ORDER.map((tool) => `${tool}: ${run.e1Tools[tool]?.verdict ?? 'not-run'}`).join('; ')
+  const prevTools = recordAt(prevE1 ?? {}, 'tools') ?? {}
+  // Per-tool carry-forward: fresh run record -> previous artifact record -> stub.
+  const toolRecord = (tool: string): Record<string, unknown> => {
+    const fresh = run.e1Tools[tool]
+    if (fresh !== undefined) return { ...fresh }
+    const prev = recordAt(prevTools, tool)
+    if (prev !== undefined) return { ...prev }
+    return { verdict: 'not-run', signals: {}, evidence_paths: [] }
+  }
+  const toolEntries = E1_TOOL_ORDER.map((tool) => [tool, toolRecord(tool)] as const)
+  const tools = Object.fromEntries(toolEntries)
+  // Verdict string derives from the MERGED map — a partial rerun can never
+  // rewrite committed per-tool verdicts it did not re-measure (T-08-08-01).
+  const verdict = toolEntries.map(([tool, record]) => `${tool}: ${String(record['verdict'])}`).join('; ')
   // The harness never produces a rendering record (interactively sourced) —
   // carry the previous artifact's; the literal is strictly a last resort.
   const rendering = prevE1?.['rendering'] ?? RENDERING_FALLBACK
