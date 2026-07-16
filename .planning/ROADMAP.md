@@ -51,7 +51,7 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
   2. Operator can set the `[reversible]` config table (default OFF) and `mrclean doctor` reports reversible-mode state; with the table absent, all shipped v1/v2 behavior is byte-identical (existing suites pass unchanged)
   3. A fresh `npx mrclean install` registers SessionEnd routing and the widened SessionStart matcher (`startup|resume|clear|compact`); re-running install on an existing v2.0 install migrates the matcher without duplicating entries, and session start/end events produce no exit-2 noise
   4. Operator can read a THREAT_MODEL.md reversible-mode section covering map blast radius, the structural secret floor, wire re-entry analysis (why in-session restore is deferred: `updatedToolOutput` is model-facing and the transcript ratchet is permanent), key-custody honesty, and accepted residual risks — and PROJECT.md's stale "restore MCP tool stub" wording is amended
-**Plans**: 11 plans (9 executed + 2 gap-closure round 2)
+**Plans**: 12 plans (11 executed + 1 gap-closure round 3)
 
 Plans:
 **Wave 1**
@@ -78,6 +78,9 @@ Plans:
 **Wave 7 — gap closure round 2** *(from 08-VERIFICATION.md re-verification 14/16, 2026-07-14; offline-only, zero live tokens)*
 - [x] 08-10-PLAN.md — E1 per-tool carry-forward in the findings builder + partial-rerun unit tests (TDD; closes CR-01 evidence destruction) (wave 7)
 - [x] 08-11-PLAN.md — E4/Read-object record-nothing gating + HOOK-CONTRACT citation refresh + UUID traceability gate (WR-01/WR-03) (wave 7)
+
+**Wave 8 — gap closure round 3** *(from 08-UAT.md diagnosed gaps, 2026-07-16; UAT test 2 — fresh-HOME zero-config install)*
+- [ ] 08-12-PLAN.md — Fresh-HOME install mkdir defense + banner count derived from HOOK_EVENTS.length (TDD; closes UAT gaps 1–2) (wave 8)
 
 **Research flag**: `--research-phase` recommended — live headless contract experiments (UAT-2b harness precedent); the answers feed Phase 9's resume/rehydration design (T5) and Phase 10's input-restore scope fence
 **Note**: This phase lays REVMODE-07's installer/dispatcher groundwork (no-op handlers, matcher widening + migration); the janitor requirement itself completes in Phase 9. The Phase 11 canary/chaos/stress gates are named in Phases 8–10 criteria so implementations are built against them, not retrofitted.
@@ -132,7 +135,7 @@ Plans:
 | 5. Regex PII Hot-Path (L6a) + Model | v2.0 | 2/2 | Complete | 2026-06-03 |
 | 6. NER Inference (L6b) + MCP Wiring | v2.0 | 4/4 | Complete | 2026-06-03 |
 | 7. PII Security Hardening & Framing | v2.0 | 3/3 | Complete | 2026-06-03 |
-| 8. Contract Verification & Reversible Plumbing | v3.0 | 9/11 | Gap closure (round 2) | - |
+| 8. Contract Verification & Reversible Plumbing | v3.0 | 11/12 | Gap closure (round 3) | - |
 | 9. Session State Adapter | v3.0 | 0/TBD | Not started | - |
 | 10. Operator Restore | v3.0 | 0/TBD | Not started | - |
 | 11. Wire-Safety Verification & Hardening | v3.0 | 0/TBD | Not started | - |
@@ -140,4 +143,4 @@ Plans:
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
 
 ---
-*Last updated: 2026-07-14 — Phase 8 gap-closure round 2 planned (08-10..08-11, wave 7; from 08-VERIFICATION.md re-verification 14/16). Next: `/gsd-execute-phase 8 --gaps-only`.*
+*Last updated: 2026-07-16 — Phase 8 gap-closure round 3 planned (08-12, wave 8; from 08-UAT.md diagnosed gaps, UAT test 2). Next: `/gsd-execute-phase 8 --gaps-only`.*
