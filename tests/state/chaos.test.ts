@@ -22,6 +22,12 @@
  * (os.homedir() reads $HOME on POSIX — 08-12 fresh-HOME precedent) plus a
  * minimal user config.toml enabling [reversible] in the enabled home.
  *
+ * WIN32 DOCUMENTED GAP (09 review WR-04): os.homedir() resolves USERPROFILE
+ * on win32 and IGNORES $HOME, so the HOME stub cannot redirect the enabled
+ * run there — it would run against (and write reversible state into) the
+ * developer's REAL home. The whole suite is skipIf(IS_WIN32) with a visible
+ * placeholder, consistent with the repo's other win32 skips (Pitfall 8).
+ *
  * Corruption fixtures duplicate the envelope offsets pinned by
  * tests/state/map-store.test.ts (RESEARCH Pattern 1) — duplicated, not
  * re-derived: magic(8) | version(1) | IV(12) | tag(16) | ct(N).
@@ -141,7 +147,10 @@ function stripNonceTails(output: PostToolUseOutput | null): unknown {
 // Suite
 // ---------------------------------------------------------------------------
 
-describe('chaos one-way parity (handler level, real state modules)', () => {
+// WR-04: on win32, os.homedir() reads USERPROFILE — the HOME stub below
+// would silently miss and every enabled run would hit the REAL user home
+// (unreliable assertions at best, real ~/.mrclean writes at worst).
+describe.skipIf(IS_WIN32)('chaos one-way parity (handler level, real state modules)', () => {
   const cleanupDirs: string[] = []
 
   beforeEach(() => {
@@ -300,5 +309,13 @@ describe('chaos one-way parity (handler level, real state modules)', () => {
       // 17 ASCII bytes — not a valid AES-256 key; decrypt AND re-encrypt fail.
       await writeFile(keyPathFor(base, sid), Buffer.from('garbage-not-a-key'), { mode: 0o600 })
     })
+  })
+})
+
+describe.skipIf(!IS_WIN32)('chaos parity — win32 documented gap (WR-04)', () => {
+  it('suite skipped: vi.stubEnv("HOME") cannot redirect os.homedir() on win32 (USERPROFILE)', () => {
+    // Placeholder so the win32 skip is VISIBLE in reporter output rather
+    // than silently absent (inspection.test.ts documented-gap precedent).
+    expect(IS_WIN32).toBe(true)
   })
 })
