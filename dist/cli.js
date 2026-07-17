@@ -3414,7 +3414,9 @@ var init_package = __esm({
         dotenv: "^17.4.2",
         "fast-glob": "^3.3.3",
         picocolors: "^1.1.1",
+        "proper-lockfile": "^4.1.2",
         "smol-toml": "^1.6.1",
+        "write-file-atomic": "^7.0.1",
         zod: "^4.4.3"
       },
       optionalDependencies: {
@@ -3424,6 +3426,7 @@ var init_package = __esm({
       devDependencies: {
         "@changesets/cli": "^2.31.0",
         "@types/node": "^20.18.0",
+        "@types/proper-lockfile": "^4.1.4",
         "@vitest/coverage-v8": "^4.1.6",
         tsup: "^8.5.1",
         tsx: "^4.20.0",
@@ -5114,8 +5117,10 @@ var init_defaults = __esm({
         })
       }),
       reversible: Object.freeze({
-        enabled: false
+        enabled: false,
         // master switch OFF; absent-[reversible] == shipped one-way guarantee
+        ttl_hours: 24
+        // orphan-sweep TTL in hours; integer >= 1 — the ONLY new [reversible] key in Phase 9 (D-09)
       })
     });
   }
@@ -5333,7 +5338,16 @@ function validateReversibleConfig(raw, filePath) {
   if (raw["enabled"] !== void 0 && typeof raw["enabled"] !== "boolean") {
     throw new ConfigReadError(filePath, "[reversible].enabled must be a boolean");
   }
-  return "enabled" in raw ? { enabled: raw["enabled"] } : {};
+  if (raw["ttl_hours"] !== void 0) {
+    const v = raw["ttl_hours"];
+    if (typeof v !== "number" || !Number.isInteger(v) || v < 1) {
+      throw new ConfigReadError(filePath, "[reversible].ttl_hours must be an integer >= 1");
+    }
+  }
+  return {
+    ..."enabled" in raw ? { enabled: raw["enabled"] } : {},
+    ..."ttl_hours" in raw ? { ttl_hours: raw["ttl_hours"] } : {}
+  };
 }
 function parseToml(content, filePath) {
   let parsed;
@@ -5428,14 +5442,20 @@ function mergeConfigs(...layers) {
       actions: { ...DEFAULT_CONFIG.pii.ner.actions }
     }
   };
-  let reversible = { enabled: DEFAULT_CONFIG.reversible.enabled };
+  let reversible = {
+    enabled: DEFAULT_CONFIG.reversible.enabled,
+    ttl_hours: DEFAULT_CONFIG.reversible.ttl_hours
+  };
   for (const layer of layers) {
     if (layer.dry_run !== void 0) dryRun = layer.dry_run;
     if (layer.entropy !== void 0) entropy = layer.entropy;
     if (layer.secrets_files !== void 0) secretsFiles = layer.secrets_files;
     if (layer.rules !== void 0) rules2 = layer.rules;
-    if (layer.reversible?.enabled !== void 0) {
-      reversible = { enabled: layer.reversible.enabled };
+    if (layer.reversible !== void 0) {
+      reversible = {
+        enabled: layer.reversible.enabled ?? reversible.enabled,
+        ttl_hours: layer.reversible.ttl_hours ?? reversible.ttl_hours
+      };
     }
     if (layer.allowlist !== void 0) {
       allowlist = mergeAllowlists(allowlist, layer.allowlist);
