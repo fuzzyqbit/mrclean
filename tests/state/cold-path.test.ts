@@ -228,3 +228,164 @@ describe('cold-path import-graph fence (state/lockfile/wfa unreachable one-way, 
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// Phase 10 (Plan 10-07) — restore trust-boundary fences.
+//
+// STATE.md pins the trust direction: src/restore/ INTRODUCES sensitive data
+// (decrypted originals cross into operator-visible output) — the opposite
+// direction from src/placeholder/. These fences make that direction a build
+// failure instead of a convention:
+//
+//   Rule 1 (INBOUND, hook set): no hook-reachable module contains the
+//     substring '/restore/' in stripped source AT ALL — runtime, type-only,
+//     or dynamic (REVMODE-01 zero-model-facing-surface).
+//   Rule 2 (INBOUND, full src/): '/restore/' import specifiers are confined
+//     to src/cli.ts's ONE sanctioned dynamic `.action()` site — every other
+//     module (mcp, detect, config, install, doctor, ...) is an offender.
+//   Rule 3 (OUTBOUND allowlist): src/restore/ imports ONLY node: builtins,
+//     intra-restore siblings, ../state/, ../detect/findings.js, and
+//     ../audit/restore-log.js. A '../config/' or '../hook/' edge would create
+//     exactly the shared kill switch REVMODE-08 bans — structural proof that
+//     restore failures cannot couple into redaction (Pitfall 6).
+//
+// Each rule collects offenders (asserted toEqual([])) and carries an
+// anti-vacuity positive control so a broken walk can never pass silently.
+// ---------------------------------------------------------------------------
+
+/** The restore-import specifier fragment banned outside the sanctioned site. */
+const RESTORE_SPEC = '/restore/'
+
+/** The ONE sanctioned importer of src/restore/ (dynamic import in the CLI). */
+const SANCTIONED_RESTORE_IMPORTER = 'cli.ts'
+
+/** The exact specifier the CLI's dynamic `.action()` site must use. */
+const SANCTIONED_RESTORE_IMPORT = './restore/cli.js'
+
+/**
+ * src/restore/ outbound import allowlist (REVMODE-08 no-shared-kill-switch).
+ * Exactly five patterns — a new import of e.g. '../config/index.js' or
+ * '../hook/index.js' turns CI red by design.
+ */
+const RESTORE_IMPORT_ALLOWLIST: readonly RegExp[] = [
+  /^node:/, // platform builtins only
+  /^\.\//, // intra-restore siblings
+  /^\.\.\/state\//, // read-side store surface (decrypt chokepoint stays in src/state/)
+  /^\.\.\/detect\/findings\.js$/, // redactedHash ONLY (hash-at-the-boundary)
+  /^\.\.\/audit\/restore-log\.js$/, // hash-only audit sink
+]
+
+/**
+ * Every import specifier in stripped source: static runtime imports, type-only
+ * imports, side-effect imports, re-exports, and dynamic import() expressions.
+ * The rule-2/rule-3 fences must see the TOTAL module-graph edge set — a
+ * type-only or re-export edge is still an edge.
+ */
+function allImportSpecifiers(src: string): string[] {
+  const code = stripComments(src)
+  const specs: string[] = []
+  const patterns = [
+    /\bimport\s+[^;'"]*?\s+from\s+['"]([^'"]+)['"]/g, // import ... from '...' (incl. import type)
+    /\bexport\s+[^;'"]*?\s+from\s+['"]([^'"]+)['"]/g, // export ... from '...' (re-export edge)
+    /\bimport\s+['"]([^'"]+)['"]/g, // side-effect import '...'
+    /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g, // dynamic import('...')
+  ]
+  for (const re of patterns) {
+    let m: RegExpExecArray | null
+    while ((m = re.exec(code)) !== null) {
+      specs.push(m[1]!)
+    }
+  }
+  return specs
+}
+
+describe('restore trust-boundary fences (Phase 10)', () => {
+  // -------------------------------------------------------------------------
+  // Rule 1: total '/restore/' ban on the hook-reachable set — stricter than
+  // the import-specifier scan below: not even a string mention survives
+  // comment-stripping in a hook path.
+  // -------------------------------------------------------------------------
+  it("no hook-reachable module contains '/restore/' in stripped source (runtime, type-only, or dynamic)", () => {
+    const offenders: string[] = []
+    for (const rel of HOOK_REACHABLE) {
+      if (stripComments(read(rel)).includes(RESTORE_SPEC)) {
+        offenders.push(`${rel} references ${RESTORE_SPEC}`)
+      }
+    }
+    expect(
+      offenders,
+      'src/restore/ must be structurally unreachable from every hook path — restore INTRODUCES sensitive data (REVMODE-01)',
+    ).toEqual([])
+  })
+
+  // -------------------------------------------------------------------------
+  // Rule 2: full-src inbound confinement — the ONLY '/restore/' import
+  // specifier outside src/restore/ is cli.ts's sanctioned dynamic site.
+  // -------------------------------------------------------------------------
+  it("no module outside src/restore/ imports '/restore/' except the sanctioned cli.ts dynamic site", () => {
+    const files = walkTsFiles(SRC)
+    // Positive control 1: the walk covers the real tree, not an empty dir.
+    expect(files.length, 'src/ walk must find a realistic module count').toBeGreaterThanOrEqual(60)
+
+    const offenders: string[] = []
+    for (const file of files) {
+      const rel = relative(SRC, file)
+      if (rel.startsWith(`restore${'/'}`) || rel.startsWith(`restore${'\\'}`)) continue
+      if (rel === SANCTIONED_RESTORE_IMPORTER) continue
+      for (const spec of allImportSpecifiers(readFileSync(file, 'utf8'))) {
+        if (spec.includes(RESTORE_SPEC)) {
+          offenders.push(`${rel} imports ${spec}`)
+        }
+      }
+    }
+    expect(
+      offenders,
+      "src/restore/ may be imported ONLY from src/cli.ts's dynamic .action() site — any other importer puts restore on a model-facing or shared path",
+    ).toEqual([])
+
+    // Positive control 2: the sanctioned site EXISTS, is dynamic, and is the
+    // ONLY restore edge in cli.ts — exactly one await import of exactly the
+    // sanctioned specifier, zero static imports.
+    const cliSrc = read(SANCTIONED_RESTORE_IMPORTER)
+    expect(
+      allImportSpecifiers(cliSrc).filter((spec) => spec.includes(RESTORE_SPEC)),
+      `cli.ts's restore edge set must be exactly ['${SANCTIONED_RESTORE_IMPORT}']`,
+    ).toEqual([SANCTIONED_RESTORE_IMPORT])
+    expect(
+      countAwaitImports(cliSrc, SANCTIONED_RESTORE_IMPORT),
+      `cli.ts must reach restore via EXACTLY ONE await import('${SANCTIONED_RESTORE_IMPORT}')`,
+    ).toBe(1)
+    expect(
+      hasRuntimeStaticImport(cliSrc, RESTORE_SPEC),
+      'cli.ts must never STATICALLY import restore — dynamic-only cold-path discipline',
+    ).toBe(false)
+  })
+
+  // -------------------------------------------------------------------------
+  // Rule 3: outbound allowlist — restore reaches NOTHING that could couple
+  // its failures to redaction (no config, no hook, no detect engine, no mcp:
+  // the REVMODE-08 no-shared-kill-switch structural proof).
+  // -------------------------------------------------------------------------
+  it('src/restore/ imports ONLY node: builtins, intra-restore siblings, ../state/, ../detect/findings.js, ../audit/restore-log.js', () => {
+    const restoreFiles = walkTsFiles(join(SRC, 'restore'))
+    // Positive control 3: the shipped restore module set is really walked.
+    expect(
+      restoreFiles.length,
+      'src/restore/ walk must find the shipped module set (index, session-index, cli)',
+    ).toBeGreaterThanOrEqual(3)
+
+    const offenders: string[] = []
+    for (const file of restoreFiles) {
+      const rel = relative(SRC, file)
+      for (const spec of allImportSpecifiers(readFileSync(file, 'utf8'))) {
+        if (!RESTORE_IMPORT_ALLOWLIST.some((re) => re.test(spec))) {
+          offenders.push(`${rel} imports ${spec}`)
+        }
+      }
+    }
+    expect(
+      offenders,
+      'src/restore/ import outside the five-pattern allowlist — a config/hook/detect-engine/mcp edge would couple the REVMODE-08 error domains (shared kill switch)',
+    ).toEqual([])
+  })
+})
