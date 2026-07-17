@@ -29,10 +29,30 @@ import {
   initSessionState,
   setCachedSessionState,
 } from '../../detect/session-state.js'
-import { runDetection } from '../../detect/index.js'
+import {
+  runDetection,
+  hydrateSessionManager,
+  drainSessionAllocations,
+} from '../../detect/index.js'
 import type { PreToolUseInput, PreToolUseOutput, MrcleanConfig } from '../../shared/types.js'
 import type { SessionState } from '../../detect/session-state.js'
 import type { DetectionContext, ResolvedFinding } from '../../detect/index.js'
+
+/**
+ * Reversible-mode capability handle (Phase 9, Plan 09-07 — REVMODE-02).
+ *
+ * Non-null ONLY when [reversible] is enabled AND the sid passed the strict
+ * UUID allowlist AND store hydration succeeded. Carries the lazily-imported
+ * state facade namespace so the whole event uses EXACTLY ONE dynamic import
+ * site — the cold-path import-graph fence (tests/state/cold-path.test.ts)
+ * bans every static form of `src/state/` from this module (Pitfall 7).
+ * `typeof import(...)` below is a TYPE position — erased at compile, loads
+ * nothing.
+ */
+interface ReversibleHandle {
+  facade: typeof import('../../state/index.js')
+  deadlineMs: number
+}
 
 /** Maximum recursion depth for deep-substitute to prevent infinite loops (T-02-05-09). */
 const MAX_DEPTH = 32
@@ -153,6 +173,32 @@ export async function handlePreToolUse(input: PreToolUseInput): Promise<PreToolU
     setCachedSessionState(state)
   }
 
+  // Step 2b: Reversible hydrate (Plan 09-07, REVMODE-02) — gate order matters:
+  // the config master switch is OUTERMOST (a disabled session allocates zero
+  // promises and never touches src/state/), then the strict UUID sid allowlist
+  // (the facade re-checks internally — defense in depth). The state facade is
+  // reachable ONLY via this one dynamic import (cold-path fence, Pitfall 7).
+  // The WHOLE block is a try/catch wall: ANY facade error means one-way
+  // fallback — no new throw may reach installCrashGuards' exit-2 (Pitfall 6).
+  let reversible: ReversibleHandle | null = null
+  if (config.reversible.enabled) {
+    try {
+      const facade = await import('../../state/index.js')
+      if (facade.isValidSessionId(input.session_id)) {
+        const hydration = await facade.readSessionMapForHydration({
+          sessionId: input.session_id,
+        })
+        if (hydration) {
+          hydrateSessionManager(input.session_id, hydration)
+          const { POST_LOCK_DEADLINE_MS } = await import('../../state/lock.js')
+          reversible = { facade, deadlineMs: POST_LOCK_DEADLINE_MS }
+        }
+      }
+    } catch {
+      // One-way fallback: reversible stays null; detection runs unchanged.
+    }
+  }
+
   const ctx: DetectionContext = {
     sessionId: input.session_id,
     hookEvent: 'PreToolUse',
@@ -175,6 +221,15 @@ export async function handlePreToolUse(input: PreToolUseInput): Promise<PreToolU
 
   // Step 4: Budget exhausted → deny (PreToolUse uses permissionDecision here — correct)
   if (budgetSignal.exhausted) {
+    // Reversible drain-DISCARD (T-09-07-04): the deny path emits nothing, so
+    // persisting would orphan store entries for values that never shipped.
+    if (reversible) {
+      try {
+        drainSessionAllocations(input.session_id)
+      } catch {
+        // One-way fallback (Pitfall 6) — the deny response below is unchanged.
+      }
+    }
     return {
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
@@ -187,6 +242,15 @@ export async function handlePreToolUse(input: PreToolUseInput): Promise<PreToolU
 
   // Step 5: dry_run=true → allow but log only (no substitution sent)
   if (config.dry_run) {
+    // Reversible drain-DISCARD (T-09-07-04): dry_run substitutes nothing, so
+    // a persisted entry would be an orphan the operator could never restore to.
+    if (reversible) {
+      try {
+        drainSessionAllocations(input.session_id)
+      } catch {
+        // One-way fallback (Pitfall 6) — the dry-run response below is unchanged.
+      }
+    }
     const dryRunMsg =
       allFindings.length > 0
         ? `[mrclean] dry_run: ${allFindings.length} detection(s) logged, no substitution`
@@ -202,12 +266,39 @@ export async function handlePreToolUse(input: PreToolUseInput): Promise<PreToolU
 
   // Step 6: Any findings → return updatedInput with substitutions
   if (allFindings.length > 0) {
+    let emittedInput = updatedToolInput
+
+    // Step 6b: Reversible drain → SINGLE locked persist → reconcile renames
+    // (Plan 09-07). The drain batches allocations across ALL string leaves of
+    // this event (RESEARCH Pattern 2) — exactly one transaction per event.
+    // Renames swap provisional tokens that lost the store race for the
+    // authoritative ones BEFORE emission (both placeholder-shaped — the wire
+    // only ever carries placeholders, T-09-07-01). 'degraded'/'noop' emit
+    // as-is: provisional tokens stand, the facade already warned once.
+    if (reversible) {
+      try {
+        const pending = drainSessionAllocations(input.session_id)
+        if (pending.length > 0) {
+          const persisted = await reversible.facade.persistAllocations({
+            sessionId: input.session_id,
+            pending,
+            deadlineMs: reversible.deadlineMs,
+          })
+          if (persisted.status === 'ok' && persisted.renames.length > 0) {
+            emittedInput = reversible.facade.applyRenamesDeep(emittedInput, persisted.renames)
+          }
+        }
+      } catch {
+        // One-way emission — provisional tokens stand; never throw (Pitfall 6).
+      }
+    }
+
     return {
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
         permissionDecision: 'allow',
         permissionDecisionReason: `[mrclean] substituted ${allFindings.length} secret(s)`,
-        updatedInput: updatedToolInput as Record<string, unknown>,
+        updatedInput: emittedInput as Record<string, unknown>,
       },
     }
   }
