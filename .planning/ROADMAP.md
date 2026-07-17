@@ -107,8 +107,8 @@ Plans:
 - [x] 09-04-PLAN.md — v2 token layer on PlaceholderManager: hydrate seam + drainable pending; v1 byte-identical (TDD; wave 2)
 
 **Wave 3** *(blocked on Wave 2)*
-- [ ] 09-05-PLAN.md — Lock recipe + deadline-degrade wrapper + locked allocate-and-persist transaction with reconcile/renames (TDD; wave 3)
-- [ ] 09-06-PLAN.md — Reason-aware SessionEnd janitor + TTL sweep at SessionStart/MCP boot (TDD; wave 3)
+- [x] 09-05-PLAN.md — Lock recipe + deadline-degrade wrapper + locked allocate-and-persist transaction with reconcile/renames (TDD; wave 3)
+- [x] 09-06-PLAN.md — Reason-aware SessionEnd janitor + TTL sweep at SessionStart/MCP boot (TDD; wave 3)
 
 **Wave 4** *(blocked on Wave 3)*
 - [ ] 09-07-PLAN.md — PreToolUse/PostToolUse reversible branches (hydrate→detect→persist→rename) + cold-path import-graph fence (wave 4)
