@@ -405,16 +405,18 @@ if (raw['ttl_hours'] !== undefined) {
 
 All other load-bearing claims in this document are `[VERIFIED]` (live probes, installed-copy inspection, npm view, Context7) or `[CITED]` (shipped source lines, HOOK-CONTRACT.md, planning docs).
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **mrclean_status counters scope (Claude's discretion, D-11 tail)**
    - What we know: CONTEXT says "entry-count-by-class counters (never values) if in scope per plan"; the MCP server can enumerate `~/.mrclean/sessions/` and decrypt with on-disk keys.
    - What's unclear: whether counting across ALL sessions (vs none) is worth the decrypt work this phase.
    - Recommendation: minimal honest counters — session-file count + per-class entry counts for decryptable maps, computed on demand in `status.ts`; or defer entirely to Phase 10 (REVMODE-12 owns status honesty). Planner picks; neither blocks SC1–SC5.
+   - **RESOLVED (plan-phase, 2026-07-17):** status counters deferred to Phase 10 (sanctioned option; no plan touches src/mcp/tools/status.ts).
 2. **Deadline constants (50/100 ms) as named config-free constants**
    - What we know: measured contention envelope fits comfortably; budgets differ per event class.
    - What's unclear: exact values are judgment calls inside verified-safe ranges.
    - Recommendation: `UPPER_LOCK_DEADLINE_MS = 50` (UserPromptSubmit-class — though UPS doesn't substitute today) and `POST_LOCK_DEADLINE_MS = 100` (PreToolUse/PostToolUse) as exported constants with the benchmark numbers in a comment; tune only on perf-gate evidence.
+   - **RESOLVED (plan-phase, 2026-07-17):** constants pinned in 09-05-PLAN (UPS_LOCK_DEADLINE_MS=50 / POST_LOCK_DEADLINE_MS=100, exported).
 
 ## Environment Availability
 
