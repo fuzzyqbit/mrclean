@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 08-contract-verification-reversible-plumbing
 source: [08-01-SUMMARY.md, 08-02-SUMMARY.md, 08-03-SUMMARY.md, 08-04-SUMMARY.md, 08-05-SUMMARY.md, 08-06-SUMMARY.md, 08-07-SUMMARY.md, 08-08-SUMMARY.md, 08-09-SUMMARY.md, 08-10-SUMMARY.md, 08-11-SUMMARY.md]
 started: 2026-07-16T19:48:55Z
-updated: 2026-07-16T19:58:30Z
+updated: 2026-07-17T01:15:59Z
 method: delegated-cli-observation (operator said "you run it" at test 1 — all tests executed by orchestrator via sandboxed CLI/file observation; sandbox HOME + cwd under $CLAUDE_JOB_DIR/tmp)
 ---
 
@@ -86,7 +86,7 @@ blocked: 0
 ## Gaps
 
 - truth: "mrclean install completes with a friendly result on a machine where ~/.claude does not exist yet (zero-config first run)"
-  status: failed
+  status: resolved  # closed by 08-12 (feat 73e006f — mkdir in atomicWriteJson); verified live in 08-VERIFICATION.md (sandboxed fresh-HOME install exit 0, 5 events)
   reason: "User reported (delegated observation): install crashes with raw Node ENOENT stack when $HOME/.claude is absent — tmp file write into missing directory; works once the directory exists"
   severity: major
   test: 2
@@ -98,7 +98,7 @@ blocked: 0
     - "Recursive mkdir of dirname(target) before the tmp write in writeJsonAtomic (or at the settings-write call site), plus a test for fresh-HOME install"
   debug_session: ""
 - truth: "Install success banner reports the real registered hook-event count"
-  status: failed
+  status: resolved  # closed by 08-12 (feat 73e006f — banner derives from HOOK_EVENTS.length); verified live: "(hooks: 5, MCP server: mrclean)"
   reason: "User reported (delegated observation): banner prints '(hooks: 4, MCP server: mrclean)' while 5 events are registered"
   severity: cosmetic
   test: 2
