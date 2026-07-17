@@ -37818,7 +37818,7 @@ var require_async = __commonJS({
           callSuccessCallback(callback, lstat);
           return;
         }
-        settings.fs.stat(path2, (statError, stat2) => {
+        settings.fs.stat(path2, (statError, stat3) => {
           if (statError !== null) {
             if (settings.throwErrorOnBrokenSymbolicLink) {
               callFailureCallback(callback, statError);
@@ -37828,9 +37828,9 @@ var require_async = __commonJS({
             return;
           }
           if (settings.markSymbolicLink) {
-            stat2.isSymbolicLink = () => true;
+            stat3.isSymbolicLink = () => true;
           }
-          callSuccessCallback(callback, stat2);
+          callSuccessCallback(callback, stat3);
         });
       });
     }
@@ -37856,11 +37856,11 @@ var require_sync = __commonJS({
         return lstat;
       }
       try {
-        const stat2 = settings.fs.statSync(path2);
+        const stat3 = settings.fs.statSync(path2);
         if (settings.markSymbolicLink) {
-          stat2.isSymbolicLink = () => true;
+          stat3.isSymbolicLink = () => true;
         }
-        return stat2;
+        return stat3;
       } catch (error51) {
         if (!settings.throwErrorOnBrokenSymbolicLink) {
           return lstat;
@@ -37927,14 +37927,14 @@ var require_out = __commonJS({
     var sync = require_sync();
     var settings_1 = require_settings();
     exports.Settings = settings_1.default;
-    function stat2(path2, optionsOrSettingsOrCallback, callback) {
+    function stat3(path2, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
         async.read(path2, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
       async.read(path2, getSettings(optionsOrSettingsOrCallback), callback);
     }
-    exports.stat = stat2;
+    exports.stat = stat3;
     function statSync(path2, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
       return sync.read(path2, settings);
@@ -38099,7 +38099,7 @@ var require_async2 = __commonJS({
         readdirWithFileTypes(directory, settings, callback);
         return;
       }
-      readdir(directory, settings, callback);
+      readdir2(directory, settings, callback);
     }
     exports.read = read;
     function readdirWithFileTypes(directory, settings, callback) {
@@ -38148,7 +38148,7 @@ var require_async2 = __commonJS({
         });
       };
     }
-    function readdir(directory, settings, callback) {
+    function readdir2(directory, settings, callback) {
       settings.fs.readdir(directory, (readdirError, names) => {
         if (readdirError !== null) {
           callFailureCallback(callback, readdirError);
@@ -38183,7 +38183,7 @@ var require_async2 = __commonJS({
         });
       });
     }
-    exports.readdir = readdir;
+    exports.readdir = readdir2;
     function callFailureCallback(callback, error51) {
       callback(error51);
     }
@@ -38207,7 +38207,7 @@ var require_sync2 = __commonJS({
       if (!settings.stats && constants_1.IS_SUPPORT_READDIR_WITH_FILE_TYPES) {
         return readdirWithFileTypes(directory, settings);
       }
-      return readdir(directory, settings);
+      return readdir2(directory, settings);
     }
     exports.read = read;
     function readdirWithFileTypes(directory, settings) {
@@ -38232,7 +38232,7 @@ var require_sync2 = __commonJS({
       });
     }
     exports.readdirWithFileTypes = readdirWithFileTypes;
-    function readdir(directory, settings) {
+    function readdir2(directory, settings) {
       const names = settings.fs.readdirSync(directory);
       return names.map((name) => {
         const entryPath = common.joinPathSegments(directory, name, settings.pathSegmentSeparator);
@@ -38248,7 +38248,7 @@ var require_sync2 = __commonJS({
         return entry;
       });
     }
-    exports.readdir = readdir;
+    exports.readdir = readdir2;
   }
 });
 
@@ -40374,24 +40374,493 @@ var init_session_state = __esm({
   }
 });
 
-// src/detect/allowlist.ts
-function isAllowlisted(finding, config2) {
-  const al = config2.allowlist;
-  if (al.rules.includes(finding.ruleId)) return true;
-  if (al.fingerprints.includes(finding.fingerprint)) return true;
-  if (al.regexes.some((pattern) => {
-    try {
-      return new RegExp(pattern).test(finding.value);
-    } catch {
+// node_modules/signal-exit/dist/cjs/signals.js
+var require_signals = __commonJS({
+  "node_modules/signal-exit/dist/cjs/signals.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.signals = void 0;
+    exports.signals = [];
+    exports.signals.push("SIGHUP", "SIGINT", "SIGTERM");
+    if (process.platform !== "win32") {
+      exports.signals.push(
+        "SIGALRM",
+        "SIGABRT",
+        "SIGVTALRM",
+        "SIGXCPU",
+        "SIGXFSZ",
+        "SIGUSR2",
+        "SIGTRAP",
+        "SIGSYS",
+        "SIGQUIT",
+        "SIGIOT"
+        // should detect profiler and enable/disable accordingly.
+        // see #21
+        // 'SIGPROF'
+      );
+    }
+    if (process.platform === "linux") {
+      exports.signals.push("SIGIO", "SIGPOLL", "SIGPWR", "SIGSTKFLT");
+    }
+  }
+});
+
+// node_modules/signal-exit/dist/cjs/index.js
+var require_cjs = __commonJS({
+  "node_modules/signal-exit/dist/cjs/index.js"(exports) {
+    "use strict";
+    var _a3;
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.unload = exports.load = exports.onExit = exports.signals = void 0;
+    var signals_js_1 = require_signals();
+    Object.defineProperty(exports, "signals", { enumerable: true, get: function() {
+      return signals_js_1.signals;
+    } });
+    var processOk = (process5) => !!process5 && typeof process5 === "object" && typeof process5.removeListener === "function" && typeof process5.emit === "function" && typeof process5.reallyExit === "function" && typeof process5.listeners === "function" && typeof process5.kill === "function" && typeof process5.pid === "number" && typeof process5.on === "function";
+    var kExitEmitter = /* @__PURE__ */ Symbol.for("signal-exit emitter");
+    var global2 = globalThis;
+    var ObjectDefineProperty = Object.defineProperty.bind(Object);
+    var Emitter = class {
+      emitted = {
+        afterExit: false,
+        exit: false
+      };
+      listeners = {
+        afterExit: [],
+        exit: []
+      };
+      count = 0;
+      id = Math.random();
+      constructor() {
+        if (global2[kExitEmitter]) {
+          return global2[kExitEmitter];
+        }
+        ObjectDefineProperty(global2, kExitEmitter, {
+          value: this,
+          writable: false,
+          enumerable: false,
+          configurable: false
+        });
+      }
+      on(ev, fn) {
+        this.listeners[ev].push(fn);
+      }
+      removeListener(ev, fn) {
+        const list = this.listeners[ev];
+        const i = list.indexOf(fn);
+        if (i === -1) {
+          return;
+        }
+        if (i === 0 && list.length === 1) {
+          list.length = 0;
+        } else {
+          list.splice(i, 1);
+        }
+      }
+      emit(ev, code, signal) {
+        if (this.emitted[ev]) {
+          return false;
+        }
+        this.emitted[ev] = true;
+        let ret = false;
+        for (const fn of this.listeners[ev]) {
+          ret = fn(code, signal) === true || ret;
+        }
+        if (ev === "exit") {
+          ret = this.emit("afterExit", code, signal) || ret;
+        }
+        return ret;
+      }
+    };
+    var SignalExitBase = class {
+    };
+    var signalExitWrap = (handler) => {
+      return {
+        onExit(cb, opts) {
+          return handler.onExit(cb, opts);
+        },
+        load() {
+          return handler.load();
+        },
+        unload() {
+          return handler.unload();
+        }
+      };
+    };
+    var SignalExitFallback = class extends SignalExitBase {
+      onExit() {
+        return () => {
+        };
+      }
+      load() {
+      }
+      unload() {
+      }
+    };
+    var SignalExit = class extends SignalExitBase {
+      // "SIGHUP" throws an `ENOSYS` error on Windows,
+      // so use a supported signal instead
+      /* c8 ignore start */
+      #hupSig = process4.platform === "win32" ? "SIGINT" : "SIGHUP";
+      /* c8 ignore stop */
+      #emitter = new Emitter();
+      #process;
+      #originalProcessEmit;
+      #originalProcessReallyExit;
+      #sigListeners = {};
+      #loaded = false;
+      constructor(process5) {
+        super();
+        this.#process = process5;
+        this.#sigListeners = {};
+        for (const sig of signals_js_1.signals) {
+          this.#sigListeners[sig] = () => {
+            const listeners = this.#process.listeners(sig);
+            let { count } = this.#emitter;
+            const p = process5;
+            if (typeof p.__signal_exit_emitter__ === "object" && typeof p.__signal_exit_emitter__.count === "number") {
+              count += p.__signal_exit_emitter__.count;
+            }
+            if (listeners.length === count) {
+              this.unload();
+              const ret = this.#emitter.emit("exit", null, sig);
+              const s = sig === "SIGHUP" ? this.#hupSig : sig;
+              if (!ret)
+                process5.kill(process5.pid, s);
+            }
+          };
+        }
+        this.#originalProcessReallyExit = process5.reallyExit;
+        this.#originalProcessEmit = process5.emit;
+      }
+      onExit(cb, opts) {
+        if (!processOk(this.#process)) {
+          return () => {
+          };
+        }
+        if (this.#loaded === false) {
+          this.load();
+        }
+        const ev = opts?.alwaysLast ? "afterExit" : "exit";
+        this.#emitter.on(ev, cb);
+        return () => {
+          this.#emitter.removeListener(ev, cb);
+          if (this.#emitter.listeners["exit"].length === 0 && this.#emitter.listeners["afterExit"].length === 0) {
+            this.unload();
+          }
+        };
+      }
+      load() {
+        if (this.#loaded) {
+          return;
+        }
+        this.#loaded = true;
+        this.#emitter.count += 1;
+        for (const sig of signals_js_1.signals) {
+          try {
+            const fn = this.#sigListeners[sig];
+            if (fn)
+              this.#process.on(sig, fn);
+          } catch (_) {
+          }
+        }
+        this.#process.emit = (ev, ...a) => {
+          return this.#processEmit(ev, ...a);
+        };
+        this.#process.reallyExit = (code) => {
+          return this.#processReallyExit(code);
+        };
+      }
+      unload() {
+        if (!this.#loaded) {
+          return;
+        }
+        this.#loaded = false;
+        signals_js_1.signals.forEach((sig) => {
+          const listener = this.#sigListeners[sig];
+          if (!listener) {
+            throw new Error("Listener not defined for signal: " + sig);
+          }
+          try {
+            this.#process.removeListener(sig, listener);
+          } catch (_) {
+          }
+        });
+        this.#process.emit = this.#originalProcessEmit;
+        this.#process.reallyExit = this.#originalProcessReallyExit;
+        this.#emitter.count -= 1;
+      }
+      #processReallyExit(code) {
+        if (!processOk(this.#process)) {
+          return 0;
+        }
+        this.#process.exitCode = code || 0;
+        this.#emitter.emit("exit", this.#process.exitCode, null);
+        return this.#originalProcessReallyExit.call(this.#process, this.#process.exitCode);
+      }
+      #processEmit(ev, ...args) {
+        const og = this.#originalProcessEmit;
+        if (ev === "exit" && processOk(this.#process)) {
+          if (typeof args[0] === "number") {
+            this.#process.exitCode = args[0];
+          }
+          const ret = og.call(this.#process, ev, ...args);
+          this.#emitter.emit("exit", this.#process.exitCode, null);
+          return ret;
+        } else {
+          return og.call(this.#process, ev, ...args);
+        }
+      }
+    };
+    var process4 = globalThis.process;
+    _a3 = signalExitWrap(processOk(process4) ? new SignalExit(process4) : new SignalExitFallback()), /**
+     * Called when the process is exiting, whether via signal, explicit
+     * exit, or running out of stuff to do.
+     *
+     * If the global process object is not suitable for instrumentation,
+     * then this will be a no-op.
+     *
+     * Returns a function that may be used to unload signal-exit.
+     */
+    exports.onExit = _a3.onExit, /**
+     * Load the listeners.  Likely you never need to call this, unless
+     * doing a rather deep integration with signal-exit functionality.
+     * Mostly exposed for the benefit of testing.
+     *
+     * @internal
+     */
+    exports.load = _a3.load, /**
+     * Unload the listeners.  Likely you never need to call this, unless
+     * doing a rather deep integration with signal-exit functionality.
+     * Mostly exposed for the benefit of testing.
+     *
+     * @internal
+     */
+    exports.unload = _a3.unload;
+  }
+});
+
+// node_modules/write-file-atomic/lib/index.js
+var require_lib = __commonJS({
+  "node_modules/write-file-atomic/lib/index.js"(exports, module) {
+    "use strict";
+    module.exports = writeFile2;
+    module.exports.sync = writeFileSync;
+    module.exports._getTmpname = getTmpname;
+    module.exports._cleanupOnExit = cleanupOnExit;
+    var fs = __require("fs");
+    var crypto = __require("crypto");
+    var { onExit } = require_cjs();
+    var path2 = __require("path");
+    var { promisify } = __require("util");
+    var activeFiles = {};
+    var threadId = (function getId() {
+      try {
+        const workerThreads = __require("worker_threads");
+        return workerThreads.threadId;
+      } catch (e) {
+        return 0;
+      }
+    })();
+    var invocations = 0;
+    function getTmpname(filename) {
+      return filename + "." + crypto.createHash("sha1").update(__filename).update(String(process.pid)).update(String(threadId)).update(String(++invocations)).digest().readUInt32BE(0);
+    }
+    function cleanupOnExit(tmpfile) {
+      return () => {
+        try {
+          fs.unlinkSync(typeof tmpfile === "function" ? tmpfile() : tmpfile);
+        } catch {
+        }
+      };
+    }
+    function serializeActiveFile(absoluteName) {
+      return new Promise((resolve3) => {
+        if (!activeFiles[absoluteName]) {
+          activeFiles[absoluteName] = [];
+        }
+        activeFiles[absoluteName].push(resolve3);
+        if (activeFiles[absoluteName].length === 1) {
+          resolve3();
+        }
+      });
+    }
+    function isChownErrOk(err) {
+      if (err.code === "ENOSYS") {
+        return true;
+      }
+      const nonroot = !process.getuid || process.getuid() !== 0;
+      if (nonroot) {
+        if (err.code === "EINVAL" || err.code === "EPERM") {
+          return true;
+        }
+      }
       return false;
     }
-  })) return true;
-  if (al.stopwords.some((sw) => finding.value.includes(sw))) return true;
-  return false;
-}
-var init_allowlist = __esm({
-  "src/detect/allowlist.ts"() {
-    "use strict";
+    async function writeFileAsync(filename, data, options = {}) {
+      if (typeof options === "string") {
+        options = { encoding: options };
+      }
+      let fd;
+      let tmpfile;
+      const removeOnExitHandler = onExit(cleanupOnExit(() => tmpfile));
+      const absoluteName = path2.resolve(filename);
+      try {
+        await serializeActiveFile(absoluteName);
+        const truename = await promisify(fs.realpath)(filename).catch(() => filename);
+        tmpfile = getTmpname(truename);
+        if (!options.mode || !options.chown) {
+          const stats = await promisify(fs.stat)(truename).catch(() => {
+          });
+          if (stats) {
+            if (options.mode == null) {
+              options.mode = stats.mode;
+            }
+            if (options.chown == null && process.getuid) {
+              options.chown = { uid: stats.uid, gid: stats.gid };
+            }
+          }
+        }
+        fd = await promisify(fs.open)(tmpfile, "w", options.mode);
+        if (options.tmpfileCreated) {
+          await options.tmpfileCreated(tmpfile);
+        }
+        if (ArrayBuffer.isView(data)) {
+          await promisify(fs.write)(fd, data, 0, data.length, 0);
+        } else if (data != null) {
+          await promisify(fs.write)(fd, String(data), 0, String(options.encoding || "utf8"));
+        }
+        if (options.fsync !== false) {
+          await promisify(fs.fsync)(fd);
+        }
+        await promisify(fs.close)(fd);
+        fd = null;
+        if (options.chown) {
+          await promisify(fs.chown)(tmpfile, options.chown.uid, options.chown.gid).catch((err) => {
+            if (!isChownErrOk(err)) {
+              throw err;
+            }
+          });
+        }
+        if (options.mode) {
+          await promisify(fs.chmod)(tmpfile, options.mode).catch((err) => {
+            if (!isChownErrOk(err)) {
+              throw err;
+            }
+          });
+        }
+        await promisify(fs.rename)(tmpfile, truename);
+      } finally {
+        if (fd) {
+          await promisify(fs.close)(fd).catch(
+            /* istanbul ignore next */
+            () => {
+            }
+          );
+        }
+        removeOnExitHandler();
+        await promisify(fs.unlink)(tmpfile).catch(() => {
+        });
+        activeFiles[absoluteName].shift();
+        if (activeFiles[absoluteName].length > 0) {
+          activeFiles[absoluteName][0]();
+        } else {
+          delete activeFiles[absoluteName];
+        }
+      }
+    }
+    async function writeFile2(filename, data, options, callback) {
+      if (options instanceof Function) {
+        callback = options;
+        options = {};
+      }
+      const promise2 = writeFileAsync(filename, data, options);
+      if (callback) {
+        try {
+          const result = await promise2;
+          return callback(result);
+        } catch (err) {
+          return callback(err);
+        }
+      }
+      return promise2;
+    }
+    function writeFileSync(filename, data, options) {
+      if (typeof options === "string") {
+        options = { encoding: options };
+      } else if (!options) {
+        options = {};
+      }
+      try {
+        filename = fs.realpathSync(filename);
+      } catch (ex) {
+      }
+      const tmpfile = getTmpname(filename);
+      if (!options.mode || !options.chown) {
+        try {
+          const stats = fs.statSync(filename);
+          options = Object.assign({}, options);
+          if (!options.mode) {
+            options.mode = stats.mode;
+          }
+          if (!options.chown && process.getuid) {
+            options.chown = { uid: stats.uid, gid: stats.gid };
+          }
+        } catch (ex) {
+        }
+      }
+      let fd;
+      const cleanup = cleanupOnExit(tmpfile);
+      const removeOnExitHandler = onExit(cleanup);
+      let threw = true;
+      try {
+        fd = fs.openSync(tmpfile, "w", options.mode || 438);
+        if (options.tmpfileCreated) {
+          options.tmpfileCreated(tmpfile);
+        }
+        if (ArrayBuffer.isView(data)) {
+          fs.writeSync(fd, data, 0, data.length, 0);
+        } else if (data != null) {
+          fs.writeSync(fd, String(data), 0, String(options.encoding || "utf8"));
+        }
+        if (options.fsync !== false) {
+          fs.fsyncSync(fd);
+        }
+        fs.closeSync(fd);
+        fd = null;
+        if (options.chown) {
+          try {
+            fs.chownSync(tmpfile, options.chown.uid, options.chown.gid);
+          } catch (err) {
+            if (!isChownErrOk(err)) {
+              throw err;
+            }
+          }
+        }
+        if (options.mode) {
+          try {
+            fs.chmodSync(tmpfile, options.mode);
+          } catch (err) {
+            if (!isChownErrOk(err)) {
+              throw err;
+            }
+          }
+        }
+        fs.renameSync(tmpfile, filename);
+        threw = false;
+      } finally {
+        if (fd) {
+          try {
+            fs.closeSync(fd);
+          } catch (ex) {
+          }
+        }
+        removeOnExitHandler();
+        if (threw) {
+          cleanup();
+        }
+      }
+    }
   }
 });
 
@@ -40535,8 +41004,236 @@ var init_type_map = __esm({
   }
 });
 
+// src/state/session-map.ts
+import { createHmac, randomBytes } from "crypto";
+function isValidSessionId(sid) {
+  return SESSION_ID_RE.test(sid);
+}
+var RESTORABLE_TYPES, RESTORABLE_SET, NEVER_RESTORABLE_TYPES, SESSION_ID_RE;
+var init_session_map = __esm({
+  "src/state/session-map.ts"() {
+    "use strict";
+    init_type_map();
+    RESTORABLE_TYPES = Object.freeze([
+      "WORD",
+      "PII_EMAIL",
+      "PII_PHONE",
+      "PII_IP",
+      "PII_PERSON",
+      "PII_ORG",
+      "PII_LOC"
+    ]);
+    RESTORABLE_SET = new Set(RESTORABLE_TYPES);
+    NEVER_RESTORABLE_TYPES = Object.freeze(
+      TYPE_VOCABULARY.filter((type) => !RESTORABLE_SET.has(type))
+    );
+    SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  }
+});
+
+// src/state/map-store.ts
+import { createCipheriv, createDecipheriv, randomBytes as randomBytes2 } from "crypto";
+import { mkdir as mkdir2, readFile as readFile4, writeFile } from "fs/promises";
+import { join as join5 } from "path";
+function statePaths(baseDir) {
+  return { keysDir: join5(baseDir, "keys"), sessionsDir: join5(baseDir, "sessions") };
+}
+function keyPathFor(baseDir, sid) {
+  return join5(statePaths(baseDir).keysDir, `${sid}.key`);
+}
+function mapPathFor(baseDir, sid) {
+  return join5(statePaths(baseDir).sessionsDir, `${sid}.map`);
+}
+var import_write_file_atomic, ENVELOPE_MAGIC, VERSION_OFFSET, IV_LENGTH, IV_OFFSET, TAG_LENGTH, TAG_OFFSET, CIPHERTEXT_OFFSET, MIN_ENVELOPE;
+var init_map_store = __esm({
+  "src/state/map-store.ts"() {
+    "use strict";
+    import_write_file_atomic = __toESM(require_lib(), 1);
+    init_session_map();
+    ENVELOPE_MAGIC = Buffer.from("MRCLNMAP");
+    VERSION_OFFSET = 8;
+    IV_LENGTH = 12;
+    IV_OFFSET = VERSION_OFFSET + 1;
+    TAG_LENGTH = 16;
+    TAG_OFFSET = IV_OFFSET + IV_LENGTH;
+    CIPHERTEXT_OFFSET = TAG_OFFSET + TAG_LENGTH;
+    MIN_ENVELOPE = ENVELOPE_MAGIC.length + 1 + IV_LENGTH + TAG_LENGTH + 1;
+  }
+});
+
+// src/state/janitor.ts
+var janitor_exports = {};
+__export(janitor_exports, {
+  ORPHAN_GRACE_MS: () => ORPHAN_GRACE_MS,
+  runSessionEndJanitor: () => runSessionEndJanitor,
+  runTtlSweep: () => runTtlSweep
+});
+import { readdir, stat as stat2, unlink as unlink2 } from "fs/promises";
+import { homedir as homedir3 } from "os";
+import { join as join6 } from "path";
+function defaultBaseDir() {
+  return join6(homedir3(), ".mrclean");
+}
+function warnJanitor(message, sessionId) {
+  try {
+    const payload = sessionId === void 0 ? { warn: message } : { warn: message, sessionId };
+    process.stderr.write(JSON.stringify(payload) + "\n");
+  } catch {
+  }
+}
+async function deleteQuietly(path2, sessionId) {
+  try {
+    await unlink2(path2);
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      warnJanitor("mrclean janitor delete failed", sessionId);
+    }
+  }
+}
+async function readDirSafe(dir) {
+  try {
+    return await readdir(dir);
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      warnJanitor("mrclean janitor sweep readdir failed");
+    }
+    return null;
+  }
+}
+async function ageOf(path2, now) {
+  try {
+    return now - (await stat2(path2)).mtimeMs;
+  } catch {
+    return null;
+  }
+}
+async function runSessionEndJanitor(sid, reason, opts) {
+  if (!isValidSessionId(sid)) {
+    return;
+  }
+  if (reason === "resume") {
+    return;
+  }
+  const baseDir = opts?.baseDir ?? defaultBaseDir();
+  await deleteQuietly(keyPathFor(baseDir, sid), sid);
+  await deleteQuietly(mapPathFor(baseDir, sid), sid);
+}
+function sidFromName(name, ext) {
+  if (!name.endsWith(ext)) {
+    return null;
+  }
+  const sid = name.slice(0, -ext.length);
+  return SESSION_ID_RE.test(sid) ? sid : null;
+}
+function classifySweepEntries(keyNames, sessionNames) {
+  const keySids = /* @__PURE__ */ new Set();
+  for (const name of keyNames) {
+    const sid = sidFromName(name, ".key");
+    if (sid !== null) {
+      keySids.add(sid);
+    }
+  }
+  const paired = [];
+  const orphanMaps = [];
+  const tmps = [];
+  const mapSids = /* @__PURE__ */ new Set();
+  for (const name of sessionNames) {
+    if (name.endsWith(".tmp")) {
+      tmps.push(name);
+      continue;
+    }
+    const sid = sidFromName(name, ".map");
+    if (sid === null) {
+      continue;
+    }
+    mapSids.add(sid);
+    if (keySids.has(sid)) {
+      paired.push(sid);
+    } else {
+      orphanMaps.push(sid);
+    }
+  }
+  const orphanKeys = [...keySids].filter((sid) => !mapSids.has(sid));
+  return { paired, orphanMaps, orphanKeys, tmps };
+}
+async function runTtlSweep(opts) {
+  const baseDir = opts.baseDir ?? defaultBaseDir();
+  const now = opts.now?.() ?? Date.now();
+  const ttlMs = opts.ttlHours * MS_PER_HOUR;
+  const { keysDir, sessionsDir } = statePaths(baseDir);
+  const keyNames = await readDirSafe(keysDir);
+  if (keyNames === null) {
+    return;
+  }
+  const sessionNames = await readDirSafe(sessionsDir);
+  if (sessionNames === null) {
+    return;
+  }
+  const { paired, orphanMaps, orphanKeys, tmps } = classifySweepEntries(keyNames, sessionNames);
+  for (const sid of paired) {
+    const mapPath = mapPathFor(baseDir, sid);
+    const age = await ageOf(mapPath, now);
+    if (age !== null && age > ttlMs) {
+      await deleteQuietly(keyPathFor(baseDir, sid), sid);
+      await deleteQuietly(mapPath, sid);
+    }
+  }
+  for (const sid of orphanMaps) {
+    const mapPath = mapPathFor(baseDir, sid);
+    const age = await ageOf(mapPath, now);
+    if (age !== null && age > ORPHAN_GRACE_MS) {
+      await deleteQuietly(mapPath, sid);
+    }
+  }
+  for (const sid of orphanKeys) {
+    const keyPath = keyPathFor(baseDir, sid);
+    const age = await ageOf(keyPath, now);
+    if (age !== null && age > ORPHAN_GRACE_MS) {
+      await deleteQuietly(keyPath, sid);
+    }
+  }
+  for (const name of tmps) {
+    const tmpPath = join6(sessionsDir, name);
+    const age = await ageOf(tmpPath, now);
+    if (age !== null && age > ORPHAN_GRACE_MS) {
+      await deleteQuietly(tmpPath);
+    }
+  }
+}
+var ORPHAN_GRACE_MS, MS_PER_HOUR;
+var init_janitor = __esm({
+  "src/state/janitor.ts"() {
+    "use strict";
+    init_map_store();
+    init_session_map();
+    ORPHAN_GRACE_MS = 6e4;
+    MS_PER_HOUR = 36e5;
+  }
+});
+
+// src/detect/allowlist.ts
+function isAllowlisted(finding, config2) {
+  const al = config2.allowlist;
+  if (al.rules.includes(finding.ruleId)) return true;
+  if (al.fingerprints.includes(finding.fingerprint)) return true;
+  if (al.regexes.some((pattern) => {
+    try {
+      return new RegExp(pattern).test(finding.value);
+    } catch {
+      return false;
+    }
+  })) return true;
+  if (al.stopwords.some((sw) => finding.value.includes(sw))) return true;
+  return false;
+}
+var init_allowlist = __esm({
+  "src/detect/allowlist.ts"() {
+    "use strict";
+  }
+});
+
 // node_modules/boundary/lib/index.js
-var require_lib = __commonJS({
+var require_lib2 = __commonJS({
   "node_modules/boundary/lib/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -40591,7 +41288,7 @@ var require_structured_source = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.StructuredSource = void 0;
-    var boundary_1 = require_lib();
+    var boundary_1 = require_lib2();
     var StructuredSource2 = class {
       /**
        * @constructs StructuredSource
@@ -46308,7 +47005,7 @@ var init_secretlint_engine = __esm({
 
 // src/detect/layer1-regex/gitleaks-adapter.ts
 import { readFileSync } from "fs";
-import { join as join5, dirname as dirname2 } from "path";
+import { join as join7, dirname as dirname2 } from "path";
 import { fileURLToPath } from "url";
 import { existsSync as _existsSync } from "fs";
 function adaptGitleaksPattern(rawRegex) {
@@ -46322,11 +47019,11 @@ function resolveVendorPathSync() {
   const thisFile = fileURLToPath(import.meta.url);
   const thisDir = dirname2(thisFile);
   const candidates = [
-    join5(thisDir, "..", "..", "..", "vendor", "gitleaks-rules.toml"),
+    join7(thisDir, "..", "..", "..", "vendor", "gitleaks-rules.toml"),
     // tsx: src/detect/layer1-regex/
-    join5(thisDir, "..", "vendor", "gitleaks-rules.toml"),
+    join7(thisDir, "..", "vendor", "gitleaks-rules.toml"),
     // bundle: dist/
-    join5(thisDir, "vendor", "gitleaks-rules.toml")
+    join7(thisDir, "vendor", "gitleaks-rules.toml")
     // bundle: if dist/ is at root
   ];
   for (const candidate of candidates) {
@@ -47096,9 +47793,9 @@ var init_substitute = __esm({
 
 // src/audit/log.ts
 import { appendFile } from "fs/promises";
-import { join as join6 } from "path";
+import { join as join8 } from "path";
 async function writeAuditRecord(cwd, record2) {
-  const logPath = join6(cwd, ".mrclean", "audit.jsonl");
+  const logPath = join8(cwd, ".mrclean", "audit.jsonl");
   const line = JSON.stringify(record2) + "\n";
   try {
     await appendFile(logPath, line, { flag: "a", encoding: "utf8" });
@@ -47767,7 +48464,7 @@ var status_exports = {};
 __export(status_exports, {
   registerStatusTool: () => registerStatusTool
 });
-import { join as join7 } from "path";
+import { join as join9 } from "path";
 function registerStatusTool(server, getConfig, _getSessionState, getCwd) {
   server.registerTool(
     "mrclean_status",
@@ -47784,7 +48481,7 @@ function registerStatusTool(server, getConfig, _getSessionState, getCwd) {
       const ruleCount = ruleCountResult.total;
       const allowlistCount = computeAllowlistCount(config2);
       const mode = config2.dry_run ? "dry-run" : "active";
-      const auditLogPath = join7(getCwd(), ".mrclean", "audit.jsonl");
+      const auditLogPath = join9(getCwd(), ".mrclean", "audit.jsonl");
       const status = {
         version: VERSION,
         rule_count: ruleCount,
@@ -47851,6 +48548,13 @@ async function runMcpServer() {
   const { initSessionState: initSessionState2 } = await Promise.resolve().then(() => (init_session_state(), session_state_exports));
   const cwd = process.cwd();
   const config2 = await loadEffectiveConfig2({ cwd });
+  if (config2.reversible.enabled) {
+    try {
+      const { runTtlSweep: runTtlSweep2 } = await Promise.resolve().then(() => (init_janitor(), janitor_exports));
+      await runTtlSweep2({ ttlHours: config2.reversible.ttl_hours });
+    } catch {
+    }
+  }
   const sessionState = await initSessionState2({
     sessionId: "mcp-server",
     homeDir: process.env["HOME"] ?? cwd,
