@@ -10,7 +10,7 @@
 - [ ] **REVMODE-04**: Concurrent hook processes in a reversible session allocate collision-free, stable placeholders — content-addressed allocation under the shared session store (same original → same placeholder across processes), closing the latent per-process counter-collision gap for reversible sessions
 - [ ] **REVMODE-05**: Reversible sessions issue session-tagged v2 tokens `<MRCLEAN:TYPE:NNN:nonce8>` (per-session CSPRNG nonce, kills planted-token enumeration); the one-way default keeps the shipped v1 placeholder format and code path byte-identical
 - [ ] **REVMODE-06**: Secret-class originals (all secret TYPEs, ENV, ENTROPY, checksum'd PII such as SSN/credit-card) are never persisted anywhere — map entries for these types structurally lack an `original` field; no configuration can widen this floor, only narrow the restorable set
-- [ ] **REVMODE-07**: Map lifecycle janitor — reason-aware SessionEnd handling (delete on `clear`/`logout`/`prompt_input_exit`/`other`; retain on `resume`) plus a TTL orphan sweep (24 h default, configurable) at SessionStart and MCP-server boot; installer widens the SessionStart matcher (`startup|resume|clear|compact`) with migration for existing installs
+- [x] **REVMODE-07**: Map lifecycle janitor — reason-aware SessionEnd handling (delete on `clear`/`logout`/`prompt_input_exit`/`other`; retain on `resume`) plus a TTL orphan sweep (24 h default, configurable) at SessionStart and MCP-server boot; installer widens the SessionStart matcher (`startup|resume|clear|compact`) with migration for existing installs
 
 ### Operator Restore
 
@@ -61,7 +61,7 @@ Mapped by v3.0 roadmap creation (2026-07-14). Coverage: 12/12 v3.0 requirements 
 | REVMODE-04 | Phase 9 — Session State Adapter | Pending |
 | REVMODE-05 | Phase 9 — Session State Adapter | Pending |
 | REVMODE-06 | Phase 9 — Session State Adapter | Pending |
-| REVMODE-07 | Phase 9 — Session State Adapter | Pending |
+| REVMODE-07 | Phase 9 — Session State Adapter | Complete |
 | REVMODE-08 | Phase 10 — Operator Restore | Pending |
 | REVMODE-09 | Phase 10 — Operator Restore | Pending |
 | REVMODE-10 | Phase 8 — Contract Verification & Reversible Plumbing | Complete |

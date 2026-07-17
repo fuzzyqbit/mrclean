@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Reversible Redact Mode — Foundations + Operator Restore
-status: ready_to_plan
-stopped_at: Roadmap created, awaiting phase planning
-last_updated: "2026-07-15T00:36:10.536Z"
-last_activity: 2026-07-15 -- Phase 08 planning complete
+status: executing
+stopped_at: Completed 08-12-PLAN.md (phase 08 gap-closure round 3)
+last_updated: "2026-07-17T00:46:12.978Z"
+last_activity: 2026-07-17
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 11
-  completed_plans: 9
-  percent: 25
+  total_plans: 12
+  completed_plans: 12
+  percent: 100
 ---
 
 # State: mrclean
@@ -28,11 +28,11 @@ progress:
 
 ## Current Position
 
-Phase: 9
-Plan: Not started
-Status: Ready to plan
-Progress: [░░░░░░░░░░] 0% (0/4 v3.0 phases)
-Last activity: 2026-07-15
+Phase: 08 (contract-verification-reversible-plumbing) — EXECUTING
+Plan: 2 of 12
+Status: Ready to execute
+Progress: [██████████] 100%
+Last activity: 2026-07-17
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Last activity: 2026-07-15
 | Reversible-mode PostToolUse overhead | ~4–8 ms typical / <60 ms contended worst-case | TBD (Phase 9/11 — research estimate; detection stays dominant cost) |
 | Phase 01 P06 | 10min | 3 tasks | 9 files |
 | Phase 01 P07 | 4min | 2 tasks | 1 files |
+| Phase 08 P12 | 8min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ Last activity: 2026-07-15
 - **REVMODE-03 maps to Phase 8** (THREAT_MODEL.md reversible section drafted from made decisions + in-phase empirical answers); Phase 11 finalizes it against the shipped implementation and locks it with the copy-drift gate (REVMODE-11 scope).
 - **Verification gates named early**: Phase 11's canary round-trip / chaos / concurrency-stress gates are named in Phases 8–10 success criteria so implementations build against them, not retrofit them (research phase-ordering rule).
 - **Storage-mechanics reconciliation deferred to Phase 9 planning** — append-only JSONL + lock-free hot path vs whole-file encrypt + short locked transaction, plus key layout; invariants already converged (SUMMARY.md T2), so it's a plan-phase design pin, not new research.
+- [Phase 08-12]: atomicWriteJson owns parent-dir creation (recursive mkdir before tmp write) — every JSON writer fresh-HOME safe, matching ignore.ts/project-dir.ts precedent
+- [Phase 08-12]: install banner count derives from exported HOOK_EVENTS.length, test-locked to the on-disk _mrclean ground truth (survives future HOOK_EVENTS changes)
 
 ### Phase → Requirement Mapping (v3.0)
 
@@ -238,7 +241,7 @@ Last activity: 2026-07-15
 
 **Last command:** `/gsd:new-project` (roadmap step for v3.0)
 **Last action:** v3.0 roadmap created — Phases 8–11 appended to ROADMAP.md (numbering continued from v2.0), 12/12 REVMODE requirements mapped, REQUIREMENTS.md traceability filled, STATE.md updated.
-**Stopped at:** Roadmap created, awaiting phase planning
+**Stopped at:** Completed 08-12-PLAN.md (phase 08 gap-closure round 3)
 **Next action:** `/gsd-plan-phase 8` — `--research-phase` recommended (live headless contract experiments; UAT-2b harness precedent)
 
 ---

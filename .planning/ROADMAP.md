@@ -80,7 +80,7 @@ Plans:
 - [x] 08-11-PLAN.md — E4/Read-object record-nothing gating + HOOK-CONTRACT citation refresh + UUID traceability gate (WR-01/WR-03) (wave 7)
 
 **Wave 8 — gap closure round 3** *(from 08-UAT.md diagnosed gaps, 2026-07-16; UAT test 2 — fresh-HOME zero-config install)*
-- [ ] 08-12-PLAN.md — Fresh-HOME install mkdir defense + banner count derived from HOOK_EVENTS.length (TDD; closes UAT gaps 1–2) (wave 8)
+- [x] 08-12-PLAN.md — Fresh-HOME install mkdir defense + banner count derived from HOOK_EVENTS.length (TDD; closes UAT gaps 1–2) (wave 8)
 
 **Research flag**: `--research-phase` recommended — live headless contract experiments (UAT-2b harness precedent); the answers feed Phase 9's resume/rehydration design (T5) and Phase 10's input-restore scope fence
 **Note**: This phase lays REVMODE-07's installer/dispatcher groundwork (no-op handlers, matcher widening + migration); the janitor requirement itself completes in Phase 9. The Phase 11 canary/chaos/stress gates are named in Phases 8–10 criteria so implementations are built against them, not retrofitted.
