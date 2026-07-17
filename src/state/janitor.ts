@@ -25,9 +25,12 @@
  * sid (traversal attempt, synthetic 'mcp-server', future format drift)
  * deletes NOTHING.
  *
- * Sweep candidacy (T-09-06-06): only filenames we provably created —
- * `<uuid>.key` under keys/, `<uuid>.map` and `*.tmp` under sessions/ — are
- * ever considered; non-conforming names are never touched.
+ * Sweep candidacy (T-09-06-06): only filenames our own stack provably
+ * creates are ever considered — `<uuid>.key` under keys/; `<uuid>.map`,
+ * write-file-atomic tmp litter `<uuid>.map.<digits>` (v7 getTmpname appends
+ * a uint32 — wfa NEVER produces `*.tmp`), and proper-lockfile's
+ * `<uuid>.map.lock` lock DIRECTORIES under sessions/. Non-conforming names
+ * (including foreign `*.tmp` files) are never touched.
  *
  * TOTAL-ERROR DISCIPLINE (D-07/D-08): both exported functions resolve on
  * every input. Each unlink/stat/readdir is individually guarded; unexpected
@@ -37,7 +40,7 @@
  * never exit-2 a SessionStart or stop the MCP server.
  */
 
-import { readdir, stat, unlink } from 'node:fs/promises'
+import { readdir, rm, stat, unlink } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -48,8 +51,10 @@ import { SESSION_ID_RE, isValidSessionId } from './session-map.js'
 // Constants + option shapes (pinned interface, 09-06)
 // ---------------------------------------------------------------------------
 
-/** Grace for unpaired/tmp files — covers the first-allocation race window
- *  (the key exists milliseconds before its initial map is written). */
+/** Grace for unpaired halves, atomic-write litter and stale lock dirs —
+ *  covers the first-allocation race window (the key exists milliseconds
+ *  before its initial map is written) and comfortably exceeds
+ *  proper-lockfile's held-lock mtime refresh interval. */
 export const ORPHAN_GRACE_MS = 60_000
 
 const MS_PER_HOUR = 3_600_000
@@ -132,6 +137,20 @@ async function ageOf(path: string, now: number): Promise<number | null> {
   }
 }
 
+/**
+ * Remove one stale lock DIRECTORY (proper-lockfile's artifact is a dir, so
+ * unlink cannot touch it). force:true makes a dir that vanished mid-sweep a
+ * no-op; any other failure warns once and is swallowed (same per-target
+ * isolation as deleteQuietly).
+ */
+async function removeDirQuietly(path: string): Promise<void> {
+  try {
+    await rm(path, { recursive: true, force: true })
+  } catch {
+    warnJanitor('mrclean janitor delete failed')
+  }
+}
+
 // ---------------------------------------------------------------------------
 // SessionEnd janitor (D-05/D-06)
 // ---------------------------------------------------------------------------
@@ -178,8 +197,14 @@ interface SweepCandidates {
   orphanMaps: string[]
   /** sids with a key but no map — aged vs ORPHAN_GRACE_MS. */
   orphanKeys: string[]
-  /** `*.tmp` basenames under sessions/ — crashed-write litter. */
-  tmps: string[]
+  /** `<uuid>.map.<digits>` basenames under sessions/ — write-file-atomic v7
+   *  tmp litter (getTmpname appends a uint32) left by SIGKILL/OOM/power loss
+   *  (signal-exit only covers catchable exits). */
+  mapLitter: string[]
+  /** `<uuid>.map.lock` basenames under sessions/ — proper-lockfile lock DIRS
+   *  left by a killed holder that never re-contended (stale takeover only
+   *  fires when someone re-contends that map). */
+  staleLocks: string[]
 }
 
 /** Extract a sid from `<uuid><ext>`; anything else was not created by us. */
@@ -192,10 +217,35 @@ function sidFromName(name: string, ext: string): string | null {
 }
 
 /**
+ * True for `<uuid><ext>.<digits>` — the tmp shape our atomic-write stack
+ * actually produces (write-file-atomic v7 getTmpname: `<target>.<uint32>`;
+ * it NEVER produces `*.tmp`). The sid segment must be strictly ours —
+ * foreign files that merely look tmp-ish are never candidates.
+ */
+function isOwnLitterName(name: string, ext: string): boolean {
+  const lastDot = name.lastIndexOf('.')
+  if (lastDot === -1) {
+    return false
+  }
+  if (!/^\d+$/.test(name.slice(lastDot + 1))) {
+    return false
+  }
+  return sidFromName(name.slice(0, lastDot), ext) !== null
+}
+
+/** True for `<uuid>.map.lock` — proper-lockfile's lock DIRECTORY for a map. */
+function isOwnLockDirName(name: string): boolean {
+  if (!name.endsWith('.lock')) {
+    return false
+  }
+  return sidFromName(name.slice(0, -'.lock'.length), '.map') !== null
+}
+
+/**
  * Pure classification of raw dir listings into sweep candidates. Only
- * filenames we provably created are candidates — non-conforming names
- * (README.md, notauuid.map, <uuid>.map.bak, …) are never touched
- * (T-09-06-06: shared dirs may contain foreign files).
+ * filenames our own stack provably creates are candidates — non-conforming
+ * names (README.md, notauuid.map, <uuid>.map.bak, foo.tmp, …) are never
+ * touched (T-09-06-06: shared dirs may contain foreign files).
  */
 function classifySweepEntries(keyNames: string[], sessionNames: string[]): SweepCandidates {
   const keySids = new Set<string>()
@@ -208,27 +258,31 @@ function classifySweepEntries(keyNames: string[], sessionNames: string[]): Sweep
 
   const paired: string[] = []
   const orphanMaps: string[] = []
-  const tmps: string[] = []
+  const mapLitter: string[] = []
+  const staleLocks: string[] = []
   const mapSids = new Set<string>()
   for (const name of sessionNames) {
-    if (name.endsWith('.tmp')) {
-      tmps.push(name)
-      continue
-    }
     const sid = sidFromName(name, '.map')
-    if (sid === null) {
+    if (sid !== null) {
+      mapSids.add(sid)
+      if (keySids.has(sid)) {
+        paired.push(sid)
+      } else {
+        orphanMaps.push(sid)
+      }
       continue
     }
-    mapSids.add(sid)
-    if (keySids.has(sid)) {
-      paired.push(sid)
-    } else {
-      orphanMaps.push(sid)
+    if (isOwnLitterName(name, '.map')) {
+      mapLitter.push(name)
+      continue
+    }
+    if (isOwnLockDirName(name)) {
+      staleLocks.push(name)
     }
   }
 
   const orphanKeys = [...keySids].filter((sid) => !mapSids.has(sid))
-  return { paired, orphanMaps, orphanKeys, tmps }
+  return { paired, orphanMaps, orphanKeys, mapLitter, staleLocks }
 }
 
 /**
@@ -240,7 +294,11 @@ function classifySweepEntries(keyNames: string[], sessionNames: string[]): Sweep
  *     order). The key's own mtime is NEVER consulted (Pitfall 4).
  *   - unpaired half (map w/o key, key w/o map): own mtime older than the
  *     60 s grace ⇒ delete.
- *   - `*.tmp` under sessions/ older than the grace ⇒ delete.
+ *   - write-file-atomic litter `<uuid>.map.<digits>` under sessions/ older
+ *     than the grace ⇒ delete (wfa v7 tmp naming — never `*.tmp`).
+ *   - stale lock dirs `<uuid>.map.lock` under sessions/ older than the
+ *     grace ⇒ remove (a HELD lock's mtime refreshes every ~1.25 s, so it
+ *     can never age past the grace).
  *   - missing dirs ⇒ return silently; unreadable dirs ⇒ warn + return
  *     (classification against an unreadable dir would be unsound).
  *
@@ -261,7 +319,10 @@ export async function runTtlSweep(opts: TtlSweepOpts): Promise<void> {
     return
   }
 
-  const { paired, orphanMaps, orphanKeys, tmps } = classifySweepEntries(keyNames, sessionNames)
+  const { paired, orphanMaps, orphanKeys, mapLitter, staleLocks } = classifySweepEntries(
+    keyNames,
+    sessionNames,
+  )
 
   // Paired sessions age by MAP mtime ONLY (Pitfall 4): the map refreshes on
   // every write; the once-written key never does. A live session with an
@@ -293,12 +354,25 @@ export async function runTtlSweep(opts: TtlSweepOpts): Promise<void> {
     }
   }
 
-  // Stale tmp litter (crashed atomic writes) — same grace, no sessionId.
-  for (const name of tmps) {
-    const tmpPath = join(sessionsDir, name)
-    const age = await ageOf(tmpPath, now)
+  // Crashed atomic-write litter (`<sid>.map.<digits>` — write-file-atomic
+  // v7's real tmp naming; SIGKILL/OOM/power loss defeat its signal-exit
+  // cleanup) — same grace, no sessionId in warns.
+  for (const name of mapLitter) {
+    const litterPath = join(sessionsDir, name)
+    const age = await ageOf(litterPath, now)
     if (age !== null && age > ORPHAN_GRACE_MS) {
-      await deleteQuietly(tmpPath)
+      await deleteQuietly(litterPath)
+    }
+  }
+
+  // Stale lock DIRS (`<sid>.map.lock`): proper-lockfile refreshes a held
+  // lock's mtime every ~1.25 s, so a dir past the 60 s grace belongs to a
+  // killed holder that never re-contended.
+  for (const name of staleLocks) {
+    const lockPath = join(sessionsDir, name)
+    const age = await ageOf(lockPath, now)
+    if (age !== null && age > ORPHAN_GRACE_MS) {
+      await removeDirQuietly(lockPath)
     }
   }
 }

@@ -18,8 +18,11 @@
  *     a fresh key cannot save a stale map.
  *   - Pitfall 5: sid derives every delete target — an invalid sid
  *     (traversal attempt, synthetic 'mcp-server') deletes NOTHING.
- *   - T-09-06-06: only filenames we provably created (`<uuid>.key`,
- *     `<uuid>.map`, `*.tmp` under sessions/) are sweep candidates.
+ *   - T-09-06-06: only filenames our own stack provably creates
+ *     (`<uuid>.key` under keys/; `<uuid>.map`, write-file-atomic litter
+ *     `<uuid>.map.<digits>`, and proper-lockfile `<uuid>.map.lock` dirs
+ *     under sessions/) are sweep candidates. wfa v7 NEVER produces `*.tmp`,
+ *     so foreign `*.tmp` files are protected, not deleted.
  *
  * All fs cases run against a per-test tmpdir baseDir — never the real
  * ~/.mrclean (injection precedent: tests/state/map-store.test.ts).
@@ -219,8 +222,8 @@ describe('runSessionEndJanitor — invalid sid deletes NOTHING (Pitfall 5)', () 
 })
 
 // ---------------------------------------------------------------------------
-// runTtlSweep — map-mtime aging (Pitfall 4), orphan grace, tmp litter,
-// non-conforming names, missing/unreadable dirs
+// runTtlSweep — map-mtime aging (Pitfall 4), orphan grace, atomic-write
+// litter + stale lock dirs, non-conforming names, missing/unreadable dirs
 // ---------------------------------------------------------------------------
 
 describe('runTtlSweep — paired sessions age by MAP mtime ONLY (Pitfall 4)', () => {
@@ -330,31 +333,60 @@ describe('runTtlSweep — unpaired halves against the 60s orphan grace', () => {
   })
 })
 
-describe('runTtlSweep — stale sessions/*.tmp litter', () => {
-  it('tmp file 120s old is deleted', async () => {
-    // Arrange — crashed atomic-write litter
-    const tmpPath = join(statePaths(baseDir).sessionsDir, 'partial-write.tmp')
-    await writeFile(tmpPath, randomBytes(16))
-    await backdate(tmpPath, 120 * SECOND_MS)
+describe('runTtlSweep — atomic-write litter + stale lock dirs under sessions/ (WR-01)', () => {
+  it('write-file-atomic litter <sid>.map.<digits> 120s old is deleted', async () => {
+    // Arrange — wfa v7 tmp naming (getTmpname: `<target>.<uint32>`); a
+    // SIGKILL'd write leaves exactly this shape, never `*.tmp`
+    const litterPath = join(statePaths(baseDir).sessionsDir, `${randomUUID()}.map.2895626606`)
+    await writeFile(litterPath, randomBytes(16))
+    await backdate(litterPath, 120 * SECOND_MS)
 
     // Act
     await runTtlSweep({ ttlHours: 24, baseDir })
 
     // Assert
-    expect(await exists(tmpPath)).toBe(false)
+    expect(await exists(litterPath)).toBe(false)
   })
 
-  it('tmp file 10s old survives (an in-flight atomic write is not litter)', async () => {
+  it('write-file-atomic litter 10s old survives (an in-flight atomic write is not litter)', async () => {
     // Arrange
-    const tmpPath = join(statePaths(baseDir).sessionsDir, 'in-flight.tmp')
-    await writeFile(tmpPath, randomBytes(16))
-    await backdate(tmpPath, 10 * SECOND_MS)
+    const litterPath = join(statePaths(baseDir).sessionsDir, `${randomUUID()}.map.42`)
+    await writeFile(litterPath, randomBytes(16))
+    await backdate(litterPath, 10 * SECOND_MS)
 
     // Act
     await runTtlSweep({ ttlHours: 24, baseDir })
 
     // Assert
-    expect(await exists(tmpPath)).toBe(true)
+    expect(await exists(litterPath)).toBe(true)
+  })
+
+  it('stale lock DIR <sid>.map.lock 120s old is removed', async () => {
+    // Arrange — proper-lockfile's artifact is a DIRECTORY; a SIGKILL'd
+    // holder that never re-contends leaves it forever (stale takeover only
+    // fires on contention)
+    const lockPath = join(statePaths(baseDir).sessionsDir, `${randomUUID()}.map.lock`)
+    await mkdir(lockPath)
+    await backdate(lockPath, 120 * SECOND_MS)
+
+    // Act
+    await runTtlSweep({ ttlHours: 24, baseDir })
+
+    // Assert
+    expect(await exists(lockPath)).toBe(false)
+  })
+
+  it('lock dir 10s old survives (a HELD lock refreshes its mtime every ~1.25s)', async () => {
+    // Arrange
+    const lockPath = join(statePaths(baseDir).sessionsDir, `${randomUUID()}.map.lock`)
+    await mkdir(lockPath)
+    await backdate(lockPath, 10 * SECOND_MS)
+
+    // Act
+    await runTtlSweep({ ttlHours: 24, baseDir })
+
+    // Assert
+    expect(await exists(lockPath)).toBe(true)
   })
 })
 
@@ -367,6 +399,13 @@ describe('runTtlSweep — never delete what we did not create (T-09-06-06)', () 
       join(sessionsDir, 'README.md'),
       join(sessionsDir, 'notauuid.map'),
       join(sessionsDir, `${uuid}.map.bak`),
+      // Foreign tmp-ish names: wfa NEVER produces `*.tmp`, so a bare foo.tmp
+      // is provably NOT ours (WR-01 inverted-invariant regression); litter /
+      // lock shapes with a non-uuid sid segment are foreign too.
+      join(sessionsDir, 'foo.tmp'),
+      join(sessionsDir, `${uuid}.tmp`),
+      join(sessionsDir, 'notauuid.map.123'),
+      join(sessionsDir, 'notauuid.map.lock'),
       join(keysDir, 'README.md'),
       join(keysDir, 'notauuid.key'),
     ]

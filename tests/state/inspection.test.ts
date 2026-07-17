@@ -12,8 +12,8 @@
  *   event 2: hydrate (REAL map now)  → allocate an AWS_KEY original → persist
  *
  * then readdir/stat/byte-scans the state tree:
- *   - sessions/ holds ONLY <sid>.map — zero *.tmp residue (write-file-atomic
- *     cleaned up)
+ *   - sessions/ holds ONLY <sid>.map — zero `<sid>.map.<digits>` tmp residue
+ *     (write-file-atomic v7 naming; its signal-exit cleanup ran)
  *   - every state file's raw bytes lack both planted originals and the
  *     '"entries"' JSON marker (ciphertext-only, T-09-08-03)
  *   - keys/ holds ONLY <sid>.key — key and ciphertext in DIFFERENT dirs (D-04)
@@ -155,7 +155,8 @@ describe('SC1 operator inspection (literal dir inspection after a real flow)', (
 
     const { keysDir, sessionsDir } = statePaths(baseDir)
 
-    // Assert — sessions/ holds ONLY <sid>.map: no *.tmp residue, no strays.
+    // Assert — sessions/ holds ONLY <sid>.map: no `<sid>.map.<digits>` tmp
+    // residue (wfa v7 naming), no strays.
     const sessionFiles = await readdir(sessionsDir)
     expect(sessionFiles).toEqual([`${sid}.map`])
 
