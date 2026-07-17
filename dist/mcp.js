@@ -33885,9 +33885,11 @@ var init_defaults = __esm({
 var config_exports = {};
 __export(config_exports, {
   ConfigReadError: () => ConfigReadError,
+  SUPPORTED_REVERSIBLE_KEYS: () => SUPPORTED_REVERSIBLE_KEYS,
   loadEffectiveConfig: () => loadEffectiveConfig,
   mergeConfigs: () => mergeConfigs,
-  readConfigLayer: () => readConfigLayer
+  readConfigLayer: () => readConfigLayer,
+  readRawReversibleKeys: () => readRawReversibleKeys
 });
 import { readFile } from "fs/promises";
 import { join as join3 } from "path";
@@ -34140,6 +34142,26 @@ async function readConfigLayer(filePath) {
   if (content.trim() === "") return {};
   return parseToml(content, filePath);
 }
+async function readRawReversibleKeys(filePath) {
+  let content;
+  try {
+    content = await readFile(filePath, "utf8");
+  } catch (err) {
+    const nodeErr = err;
+    if (nodeErr.code === "ENOENT") return [];
+    throw new ConfigReadError(filePath, err.message);
+  }
+  if (content.trim() === "") return [];
+  let parsed;
+  try {
+    parsed = parse3(content);
+  } catch (err) {
+    throw new ConfigReadError(filePath, err.message);
+  }
+  const reversible = parsed["reversible"];
+  if (!isRecord(reversible)) return [];
+  return Object.keys(reversible);
+}
 function mergeConfigs(...layers) {
   let dryRun = DEFAULT_CONFIG.dry_run;
   let entropy = DEFAULT_CONFIG.entropy;
@@ -34215,7 +34237,7 @@ async function loadEffectiveConfig(opts) {
   const projectLayer = await readConfigLayer(projectPath);
   return mergeConfigs(DEFAULT_CONFIG, userLayer, projectLayer);
 }
-var ConfigReadError, VALID_PII_ACTIONS;
+var ConfigReadError, VALID_PII_ACTIONS, SUPPORTED_REVERSIBLE_KEYS;
 var init_config = __esm({
   "src/config/index.ts"() {
     "use strict";
@@ -34234,6 +34256,10 @@ var init_config = __esm({
       reason;
     };
     VALID_PII_ACTIONS = /* @__PURE__ */ new Set(["block", "warn", "audit"]);
+    SUPPORTED_REVERSIBLE_KEYS = Object.freeze([
+      "enabled",
+      "ttl_hours"
+    ]);
   }
 });
 
@@ -38393,7 +38419,7 @@ var require_async2 = __commonJS({
         readdirWithFileTypes(directory, settings, callback);
         return;
       }
-      readdir2(directory, settings, callback);
+      readdir3(directory, settings, callback);
     }
     exports.read = read;
     function readdirWithFileTypes(directory, settings, callback) {
@@ -38442,7 +38468,7 @@ var require_async2 = __commonJS({
         });
       };
     }
-    function readdir2(directory, settings, callback) {
+    function readdir3(directory, settings, callback) {
       settings.fs.readdir(directory, (readdirError, names) => {
         if (readdirError !== null) {
           callFailureCallback(callback, readdirError);
@@ -38477,7 +38503,7 @@ var require_async2 = __commonJS({
         });
       });
     }
-    exports.readdir = readdir2;
+    exports.readdir = readdir3;
     function callFailureCallback(callback, error51) {
       callback(error51);
     }
@@ -38502,7 +38528,7 @@ var require_sync2 = __commonJS({
       if (!settings.stats && constants_1.IS_SUPPORT_READDIR_WITH_FILE_TYPES) {
         return readdirWithFileTypes(directory, settings);
       }
-      return readdir2(directory, settings);
+      return readdir3(directory, settings);
     }
     exports.read = read;
     function readdirWithFileTypes(directory, settings) {
@@ -38527,7 +38553,7 @@ var require_sync2 = __commonJS({
       });
     }
     exports.readdirWithFileTypes = readdirWithFileTypes;
-    function readdir2(directory, settings) {
+    function readdir3(directory, settings) {
       const names = settings.fs.readdirSync(directory);
       return names.map((name) => {
         const entryPath = common.joinPathSegments(directory, name, settings.pathSegmentSeparator);
@@ -38543,7 +38569,7 @@ var require_sync2 = __commonJS({
         return entry;
       });
     }
-    exports.readdir = readdir2;
+    exports.readdir = readdir3;
   }
 });
 
@@ -41339,6 +41365,56 @@ var init_type_map = __esm({
 
 // src/state/session-map.ts
 import { createHmac, randomBytes } from "crypto";
+function isRestorableType(type) {
+  return RESTORABLE_SET.has(type);
+}
+function isRecord2(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function isNonNegativeInteger(v) {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0;
+}
+function parseMapEntry(raw) {
+  if (!isRecord2(raw)) return null;
+  const placeholder = raw["placeholder"];
+  const type = raw["type"];
+  const counter = raw["counter"];
+  if (typeof placeholder !== "string") return null;
+  if (typeof type !== "string") return null;
+  if (!isNonNegativeInteger(counter)) return null;
+  if (isRestorableType(type) && "original" in raw) {
+    if (typeof raw["original"] !== "string") return null;
+    return { placeholder, type, counter, original: raw["original"] };
+  }
+  return { placeholder, type, counter };
+}
+function parseSessionMap(json2) {
+  let raw;
+  try {
+    raw = JSON.parse(json2);
+  } catch {
+    return null;
+  }
+  if (!isRecord2(raw)) return null;
+  if (raw["version"] !== 1) return null;
+  const sessionId = raw["sessionId"];
+  const nonce8 = raw["nonce8"];
+  const hashSalt = raw["hashSalt"];
+  const counter = raw["counter"];
+  const entriesRaw = raw["entries"];
+  if (typeof sessionId !== "string") return null;
+  if (typeof nonce8 !== "string") return null;
+  if (typeof hashSalt !== "string") return null;
+  if (!isNonNegativeInteger(counter)) return null;
+  if (!isRecord2(entriesRaw)) return null;
+  const entries = {};
+  for (const [key, value] of Object.entries(entriesRaw)) {
+    const entry = parseMapEntry(value);
+    if (entry === null) return null;
+    entries[key] = entry;
+  }
+  return { version: 1, sessionId, nonce8, hashSalt, counter, entries };
+}
 function isValidSessionId(sid) {
   return SESSION_ID_RE.test(sid);
 }
@@ -41378,7 +41454,37 @@ function keyPathFor(baseDir, sid) {
 function mapPathFor(baseDir, sid) {
   return join5(statePaths(baseDir).sessionsDir, `${sid}.map`);
 }
-var import_write_file_atomic, ENVELOPE_MAGIC, VERSION_OFFSET, IV_LENGTH, IV_OFFSET, TAG_LENGTH, TAG_OFFSET, CIPHERTEXT_OFFSET, MIN_ENVELOPE;
+function aadFor(sessionId) {
+  return Buffer.from(`${AAD_PREFIX}${sessionId}`);
+}
+function decryptMapBuffer(envelope, key, sessionId) {
+  if (envelope.length < MIN_ENVELOPE) {
+    throw new MapEnvelopeError("short envelope");
+  }
+  if (!envelope.subarray(0, ENVELOPE_MAGIC.length).equals(ENVELOPE_MAGIC)) {
+    throw new MapEnvelopeError("bad magic");
+  }
+  if (envelope[VERSION_OFFSET] !== ENVELOPE_VERSION) {
+    throw new MapEnvelopeError("bad version");
+  }
+  const iv = envelope.subarray(IV_OFFSET, TAG_OFFSET);
+  const tag = envelope.subarray(TAG_OFFSET, CIPHERTEXT_OFFSET);
+  const decipher = createDecipheriv("aes-256-gcm", key, iv, { authTagLength: 16 });
+  decipher.setAAD(aadFor(sessionId));
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(envelope.subarray(CIPHERTEXT_OFFSET)), decipher.final()]);
+}
+async function readSessionMapFile(baseDir, sid) {
+  try {
+    const key = await readFile4(keyPathFor(baseDir, sid));
+    const envelope = await readFile4(mapPathFor(baseDir, sid));
+    const plaintext = decryptMapBuffer(envelope, key, sid);
+    return parseSessionMap(plaintext.toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+var import_write_file_atomic, ENVELOPE_MAGIC, ENVELOPE_VERSION, VERSION_OFFSET, IV_LENGTH, IV_OFFSET, TAG_LENGTH, TAG_OFFSET, CIPHERTEXT_OFFSET, MIN_ENVELOPE, AAD_PREFIX, MapEnvelopeError;
 var init_map_store = __esm({
   "src/state/map-store.ts"() {
     "use strict";
@@ -41386,6 +41492,7 @@ var init_map_store = __esm({
     import_write_file_atomic = __toESM(require_lib(), 1);
     init_session_map();
     ENVELOPE_MAGIC = Buffer.from("MRCLNMAP");
+    ENVELOPE_VERSION = 1;
     VERSION_OFFSET = 8;
     IV_LENGTH = 12;
     IV_OFFSET = VERSION_OFFSET + 1;
@@ -41393,6 +41500,13 @@ var init_map_store = __esm({
     TAG_OFFSET = IV_OFFSET + IV_LENGTH;
     CIPHERTEXT_OFFSET = TAG_OFFSET + TAG_LENGTH;
     MIN_ENVELOPE = ENVELOPE_MAGIC.length + 1 + IV_LENGTH + TAG_LENGTH + 1;
+    AAD_PREFIX = "mrclean-map-v1:";
+    MapEnvelopeError = class extends Error {
+      constructor(reason) {
+        super(`mrclean map envelope invalid: ${reason}`);
+        this.name = "MapEnvelopeError";
+      }
+    };
   }
 });
 
@@ -48892,18 +49006,115 @@ var init_banner = __esm({
   }
 });
 
+// src/state/counts.ts
+import { readdir as readdir2 } from "fs/promises";
+function sidFromMapName(name) {
+  if (!name.endsWith(MAP_EXT)) {
+    return null;
+  }
+  const sid = name.slice(0, -MAP_EXT.length);
+  return SESSION_ID_RE.test(sid) ? sid : null;
+}
+async function readDirQuietly(dir) {
+  try {
+    return await readdir2(dir);
+  } catch {
+    return [];
+  }
+}
+async function countSessionEntries(baseDir) {
+  const names = await readDirQuietly(statePaths(baseDir).sessionsDir);
+  let sessions = 0;
+  let restorable = 0;
+  let secret = 0;
+  for (const name of names) {
+    const sid = sidFromMapName(name);
+    if (sid === null) {
+      continue;
+    }
+    const map2 = await readSessionMapFile(baseDir, sid);
+    if (map2 === null) {
+      continue;
+    }
+    sessions += 1;
+    for (const entry of Object.values(map2.entries)) {
+      if (isRestorableType(entry.type)) {
+        restorable += 1;
+      } else {
+        secret += 1;
+      }
+    }
+  }
+  return { sessions, restorable, secret };
+}
+var MAP_EXT;
+var init_counts = __esm({
+  "src/state/counts.ts"() {
+    "use strict";
+    init_esm_shims();
+    init_map_store();
+    init_session_map();
+    MAP_EXT = ".map";
+  }
+});
+
+// src/audit/restore-log.ts
+import { appendFile as appendFile2, readFile as readFile5 } from "fs/promises";
+import { join as join9 } from "path";
+async function aggregateRestoreCounters(cwd) {
+  let content;
+  try {
+    content = await readFile5(auditLogPath(cwd), "utf8");
+  } catch {
+    return { restored_total: 0, unmatched_total: 0 };
+  }
+  let restoredTotal = 0;
+  let unmatchedTotal = 0;
+  for (const line of content.split("\n")) {
+    if (line.length === 0) continue;
+    let parsed;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (!isRestoreLine(parsed)) continue;
+    restoredTotal += finiteOrZero(parsed["restored"]);
+    unmatchedTotal += finiteOrZero(parsed["unmatched"]);
+  }
+  return { restored_total: restoredTotal, unmatched_total: unmatchedTotal };
+}
+function auditLogPath(cwd) {
+  return join9(cwd, ".mrclean", "audit.jsonl");
+}
+function isRestoreLine(parsed) {
+  return typeof parsed === "object" && parsed !== null && parsed["action"] === "restore";
+}
+function finiteOrZero(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+var init_restore_log = __esm({
+  "src/audit/restore-log.ts"() {
+    "use strict";
+    init_esm_shims();
+    init_log();
+  }
+});
+
 // src/mcp/tools/status.ts
 var status_exports = {};
 __export(status_exports, {
   registerStatusTool: () => registerStatusTool
 });
-import { join as join9 } from "path";
-function registerStatusTool(server, getConfig, _getSessionState, getCwd) {
+import { join as join10 } from "path";
+import { homedir as homedir4 } from "os";
+function registerStatusTool(server, getConfig, _getSessionState, getCwd, getStateBaseDir = () => join10(homedir4(), ".mrclean")) {
   server.registerTool(
     "mrclean_status",
     {
       title: "Get mrclean MCP server status",
-      description: "Return runtime metadata: version, active rule count, allowlist entry count, operating mode (active | dry-run), and the path to the audit log file. Zero-argument, read-only, no side effects.",
+      description: "Return runtime metadata: version, active rule count, allowlist entry count, operating mode (active | dry-run), the path to the audit log file, and a reversible counters block (enabled flag, session count, entry counts by class, restored/unmatched totals \u2014 counts only, never values; session counts are machine-wide, restore totals are per-project). Zero-argument, read-only, no side effects.",
       inputSchema: statusInputSchema,
       outputSchema: statusOutputSchema,
       annotations: { readOnlyHint: true, idempotentHint: true }
@@ -48914,14 +49125,30 @@ function registerStatusTool(server, getConfig, _getSessionState, getCwd) {
       const ruleCount = ruleCountResult.total;
       const allowlistCount = computeAllowlistCount(config2);
       const mode = config2.dry_run ? "dry-run" : "active";
-      const auditLogPath = join9(getCwd(), ".mrclean", "audit.jsonl");
+      const auditLogPath2 = join10(getCwd(), ".mrclean", "audit.jsonl");
+      const counts = await countSessionEntries(getStateBaseDir()).catch(
+        () => ({ sessions: 0, restorable: 0, secret: 0 })
+      );
+      const totals = await aggregateRestoreCounters(getCwd()).catch(() => ({
+        restored_total: 0,
+        unmatched_total: 0
+      }));
+      const reversible = {
+        enabled: config2.reversible.enabled === true,
+        sessions: counts.sessions,
+        entries_restorable: counts.restorable,
+        entries_secret: counts.secret,
+        restored_total: totals.restored_total,
+        unmatched_total: totals.unmatched_total
+      };
       const status = {
         version: VERSION,
         rule_count: ruleCount,
         allowlist_count: allowlistCount,
         mode,
         session_id: null,
-        audit_log_path: auditLogPath
+        audit_log_path: auditLogPath2,
+        reversible
       };
       return {
         content: [{ type: "text", text: JSON.stringify(status) }],
@@ -48940,6 +49167,8 @@ var init_status = __esm({
     init_layer1_regex();
     init_banner();
     init_config();
+    init_counts();
+    init_restore_log();
     statusInputSchema = external_exports.object({});
     statusOutputSchema = external_exports.object({
       version: external_exports.string(),
@@ -48947,7 +49176,17 @@ var init_status = __esm({
       allowlist_count: external_exports.number(),
       mode: external_exports.enum(["active", "dry-run"]),
       session_id: external_exports.string().nullable(),
-      audit_log_path: external_exports.string()
+      audit_log_path: external_exports.string(),
+      // REVMODE-12 counters block — z.boolean()/z.number() ONLY, never strings:
+      // no original text, TYPE list, or path can structurally fit this schema.
+      reversible: external_exports.object({
+        enabled: external_exports.boolean(),
+        sessions: external_exports.number(),
+        entries_restorable: external_exports.number(),
+        entries_secret: external_exports.number(),
+        restored_total: external_exports.number(),
+        unmatched_total: external_exports.number()
+      })
     });
   }
 });

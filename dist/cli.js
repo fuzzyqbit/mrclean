@@ -5462,6 +5462,26 @@ async function readConfigLayer(filePath) {
   if (content.trim() === "") return {};
   return parseToml(content, filePath);
 }
+async function readRawReversibleKeys(filePath) {
+  let content;
+  try {
+    content = await readFile3(filePath, "utf8");
+  } catch (err) {
+    const nodeErr = err;
+    if (nodeErr.code === "ENOENT") return [];
+    throw new ConfigReadError(filePath, err.message);
+  }
+  if (content.trim() === "") return [];
+  let parsed;
+  try {
+    parsed = parse(content);
+  } catch (err) {
+    throw new ConfigReadError(filePath, err.message);
+  }
+  const reversible = parsed["reversible"];
+  if (!isRecord(reversible)) return [];
+  return Object.keys(reversible);
+}
 function mergeConfigs(...layers) {
   let dryRun = DEFAULT_CONFIG.dry_run;
   let entropy = DEFAULT_CONFIG.entropy;
@@ -5537,7 +5557,7 @@ async function loadEffectiveConfig(opts) {
   const projectLayer = await readConfigLayer(projectPath);
   return mergeConfigs(DEFAULT_CONFIG, userLayer, projectLayer);
 }
-var ConfigReadError, VALID_PII_ACTIONS;
+var ConfigReadError, VALID_PII_ACTIONS, SUPPORTED_REVERSIBLE_KEYS;
 var init_config = __esm({
   "src/config/index.ts"() {
     "use strict";
@@ -5556,6 +5576,10 @@ var init_config = __esm({
       reason;
     };
     VALID_PII_ACTIONS = /* @__PURE__ */ new Set(["block", "warn", "audit"]);
+    SUPPORTED_REVERSIBLE_KEYS = Object.freeze([
+      "enabled",
+      "ttl_hours"
+    ]);
   }
 });
 
@@ -9715,7 +9739,7 @@ var require_async2 = __commonJS({
         readdirWithFileTypes(directory, settings, callback);
         return;
       }
-      readdir3(directory, settings, callback);
+      readdir4(directory, settings, callback);
     }
     exports.read = read;
     function readdirWithFileTypes(directory, settings, callback) {
@@ -9764,7 +9788,7 @@ var require_async2 = __commonJS({
         });
       };
     }
-    function readdir3(directory, settings, callback) {
+    function readdir4(directory, settings, callback) {
       settings.fs.readdir(directory, (readdirError, names) => {
         if (readdirError !== null) {
           callFailureCallback(callback, readdirError);
@@ -9799,7 +9823,7 @@ var require_async2 = __commonJS({
         });
       });
     }
-    exports.readdir = readdir3;
+    exports.readdir = readdir4;
     function callFailureCallback(callback, error2) {
       callback(error2);
     }
@@ -9824,7 +9848,7 @@ var require_sync2 = __commonJS({
       if (!settings.stats && constants_1.IS_SUPPORT_READDIR_WITH_FILE_TYPES) {
         return readdirWithFileTypes(directory, settings);
       }
-      return readdir3(directory, settings);
+      return readdir4(directory, settings);
     }
     exports.read = read;
     function readdirWithFileTypes(directory, settings) {
@@ -9849,7 +9873,7 @@ var require_sync2 = __commonJS({
       });
     }
     exports.readdirWithFileTypes = readdirWithFileTypes;
-    function readdir3(directory, settings) {
+    function readdir4(directory, settings) {
       const names = settings.fs.readdirSync(directory);
       return names.map((name) => {
         const entryPath = common.joinPathSegments(directory, name, settings.pathSegmentSeparator);
@@ -9865,7 +9889,7 @@ var require_sync2 = __commonJS({
         return entry;
       });
     }
-    exports.readdir = readdir3;
+    exports.readdir = readdir4;
   }
 });
 
@@ -18836,7 +18860,7 @@ function formatV2Token(type, counter, nonce8) {
 function isValidSessionId(sid) {
   return SESSION_ID_RE.test(sid);
 }
-var RESTORABLE_TYPES, RESTORABLE_SET, NEVER_RESTORABLE_TYPES, NONCE_BYTES, SALT_BYTES, V2_COUNTER_MAX, V2_COUNTER_PAD, SESSION_ID_RE;
+var RESTORABLE_TYPES, RESTORABLE_SET, NEVER_RESTORABLE_TYPES, NONCE_BYTES, SALT_BYTES, V2_COUNTER_MAX, V2_COUNTER_PAD, V2_TOKEN_SCAN_RE, SESSION_ID_RE;
 var init_session_map = __esm({
   "src/state/session-map.ts"() {
     "use strict";
@@ -18859,6 +18883,7 @@ var init_session_map = __esm({
     SALT_BYTES = 32;
     V2_COUNTER_MAX = 999;
     V2_COUNTER_PAD = 3;
+    V2_TOKEN_SCAN_RE = /<MRCLEAN:([A-Z0-9_]+):(\d{3}|OVF):([a-f0-9]{8})>/g;
     SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   }
 });
@@ -20984,8 +21009,8 @@ var require_graceful_fs = __commonJS({
       fs2.createReadStream = createReadStream;
       fs2.createWriteStream = createWriteStream;
       var fs$readFile = fs2.readFile;
-      fs2.readFile = readFile8;
-      function readFile8(path3, options, cb) {
+      fs2.readFile = readFile10;
+      function readFile10(path3, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path3, options, cb);
@@ -21019,8 +21044,8 @@ var require_graceful_fs = __commonJS({
       }
       var fs$appendFile = fs2.appendFile;
       if (fs$appendFile)
-        fs2.appendFile = appendFile2;
-      function appendFile2(path3, data, options, cb) {
+        fs2.appendFile = appendFile3;
+      function appendFile3(path3, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$appendFile(path3, data, options, cb);
@@ -21056,9 +21081,9 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$readdir = fs2.readdir;
-      fs2.readdir = readdir3;
+      fs2.readdir = readdir4;
       var noReaddirOptionVersions = /^v[0-5]\./;
-      function readdir3(path3, options, cb) {
+      function readdir4(path3, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path4, options2, cb2, startTime) {
@@ -40097,10 +40122,10 @@ async function checkModelCache(homeDir) {
   };
 }
 async function checkConfigLoad(homeDir, cwd) {
-  const { join: join18 } = await import("path");
+  const { join: join20 } = await import("path");
   const { access: fsAccess, constants: fsConstants2 } = await import("fs/promises");
-  const userConfigPath = join18(homeDir, ".mrclean", "config.toml");
-  const projectConfigPath = join18(cwd, ".mrclean", "config.toml");
+  const userConfigPath = join20(homeDir, ".mrclean", "config.toml");
+  const projectConfigPath = join20(cwd, ".mrclean", "config.toml");
   let userExists = false;
   let projectExists = false;
   try {
@@ -40150,8 +40175,29 @@ async function checkConfigLoad(homeDir, cwd) {
     };
   }
 }
+function formatReversibleOffenders(filePath, rawKeys) {
+  return rawKeys.filter((key) => !SUPPORTED_REVERSIBLE_KEYS.includes(key)).map((key) => `${filePath}: ${key}`);
+}
 async function checkReversibleState(homeDir, cwd) {
+  const { join: join20 } = await import("path");
+  const userConfigPath = join20(homeDir, ".mrclean", "config.toml");
+  const projectConfigPath = join20(cwd, ".mrclean", "config.toml");
   try {
+    const offenders = [
+      ...formatReversibleOffenders(userConfigPath, await readRawReversibleKeys(userConfigPath)),
+      ...formatReversibleOffenders(
+        projectConfigPath,
+        await readRawReversibleKeys(projectConfigPath)
+      )
+    ];
+    if (offenders.length > 0) {
+      return {
+        name: "reversible",
+        status: "FAIL",
+        detail: `unsupported [reversible] key(s): ${offenders.join("; ")}`,
+        exitCodeOnFail: 1
+      };
+    }
     const config2 = await loadEffectiveConfig({ homeDir, cwd });
     return {
       name: "reversible",
@@ -40427,6 +40473,249 @@ var init_doctor = __esm({
   }
 });
 
+// src/audit/restore-log.ts
+import { appendFile as appendFile2, readFile as readFile8 } from "fs/promises";
+import { join as join18 } from "path";
+function buildRestoreAuditRecord(input) {
+  return {
+    ts: (/* @__PURE__ */ new Date()).toISOString(),
+    action: "restore",
+    sessionScope: input.sessionScope,
+    restored: input.restored,
+    unmatched: input.unmatched,
+    skippedSecret: input.skippedSecret,
+    hashes: [...new Set(input.hashes)].sort()
+  };
+}
+async function writeRestoreAuditRecord(cwd, record2) {
+  const logPath = auditLogPath(cwd);
+  const line = JSON.stringify(record2) + "\n";
+  try {
+    await appendFile2(logPath, line, { flag: "a", encoding: "utf8" });
+  } catch (err) {
+    const message = isEnoent2(err) ? "mrclean audit: .mrclean/ not found \u2014 run `mrclean install`" : `mrclean audit: failed to write to ${logPath}`;
+    throw new AuditWriteError(message, err);
+  }
+}
+function auditLogPath(cwd) {
+  return join18(cwd, ".mrclean", "audit.jsonl");
+}
+function isEnoent2(err) {
+  return typeof err === "object" && err !== null && err.code === "ENOENT";
+}
+var init_restore_log = __esm({
+  "src/audit/restore-log.ts"() {
+    "use strict";
+    init_esm_shims();
+    init_log();
+  }
+});
+
+// src/restore/index.ts
+function restoreText(input, index, secretPlaceholders) {
+  let restored = 0;
+  let unmatched = 0;
+  let skippedSecret = 0;
+  const restoredOriginals = [];
+  const text = input.replace(V2_TOKEN_SCAN_RE, (token, _type, label) => {
+    if (label === OVF_LABEL) {
+      unmatched += 1;
+      return token;
+    }
+    if (secretPlaceholders?.has(token) === true) {
+      skippedSecret += 1;
+      return token;
+    }
+    const original = index.get(token);
+    if (original === void 0) {
+      unmatched += 1;
+      return token;
+    }
+    restored += 1;
+    restoredOriginals.push(original);
+    return original;
+  });
+  return { text, restored, unmatched, skippedSecret, restoredOriginals };
+}
+var OVF_LABEL;
+var init_restore = __esm({
+  "src/restore/index.ts"() {
+    "use strict";
+    init_esm_shims();
+    init_session_map();
+    OVF_LABEL = "OVF";
+  }
+});
+
+// src/restore/session-index.ts
+import { readdir as readdir3 } from "fs/promises";
+function emptyRestoreIndex() {
+  return { placeholders: /* @__PURE__ */ new Map(), secretPlaceholders: /* @__PURE__ */ new Set(), sessions: 0 };
+}
+function sidFromMapName(name) {
+  if (!name.endsWith(MAP_EXT)) {
+    return null;
+  }
+  const sid = name.slice(0, -MAP_EXT.length);
+  return SESSION_ID_RE.test(sid) ? sid : null;
+}
+async function listCandidateSids(sessionsDir) {
+  let names;
+  try {
+    names = await readdir3(sessionsDir);
+  } catch {
+    return [];
+  }
+  return names.map(sidFromMapName).filter((sid) => sid !== null);
+}
+async function buildRestoreIndex(baseDir, sessionFilter) {
+  if (sessionFilter !== void 0 && !isValidSessionId(sessionFilter)) {
+    return emptyRestoreIndex();
+  }
+  const { sessionsDir } = statePaths(baseDir);
+  const discovered = await listCandidateSids(sessionsDir);
+  const candidates = sessionFilter === void 0 ? discovered : discovered.filter((sid) => sid === sessionFilter);
+  const placeholders = /* @__PURE__ */ new Map();
+  const secretPlaceholders = /* @__PURE__ */ new Set();
+  let sessions = 0;
+  for (const sid of candidates) {
+    const map = await readSessionMapFile(baseDir, sid);
+    if (map === null) {
+      continue;
+    }
+    sessions += 1;
+    for (const entry of Object.values(map.entries)) {
+      if (!isRestorableType(entry.type)) {
+        secretPlaceholders.add(entry.placeholder);
+        continue;
+      }
+      if (!("original" in entry)) {
+        continue;
+      }
+      if (entry.placeholder.includes(OVF_LABEL2)) {
+        continue;
+      }
+      placeholders.set(entry.placeholder, entry.original);
+    }
+  }
+  return { placeholders, secretPlaceholders, sessions };
+}
+var MAP_EXT, OVF_LABEL2;
+var init_session_index = __esm({
+  "src/restore/session-index.ts"() {
+    "use strict";
+    init_esm_shims();
+    init_map_store();
+    init_session_map();
+    MAP_EXT = ".map";
+    OVF_LABEL2 = ":OVF:";
+  }
+});
+
+// src/restore/cli.ts
+var cli_exports = {};
+__export(cli_exports, {
+  runRestore: () => runRestore
+});
+import { readFile as readFile9 } from "fs/promises";
+import { homedir as homedir11 } from "os";
+import { join as join19 } from "path";
+function defaultBaseDir3() {
+  return join19(homedir11(), ".mrclean");
+}
+async function readAll(stream) {
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+function summaryLine(counts) {
+  return `[mrclean] restore: restored=${counts.restored} unmatched=${counts.unmatched} secret-skipped=${counts.skippedSecret} sessions=${counts.sessions}
+`;
+}
+async function runRestore(opts) {
+  const {
+    file,
+    session,
+    cwd = process.cwd(),
+    baseDir = defaultBaseDir3(),
+    stdin = process.stdin
+  } = opts;
+  if (session !== void 0 && !isValidSessionId(session)) {
+    process.stderr.write(ERR_BAD_SESSION);
+    process.exit(2);
+  }
+  let input;
+  if (file !== void 0) {
+    try {
+      input = await readFile9(file, "utf8");
+    } catch {
+      process.stderr.write(`[mrclean] restore: cannot read input file: ${file}
+`);
+      process.exit(2);
+    }
+  } else {
+    input = await readAll(stdin);
+  }
+  let counts = ZERO_COUNTS;
+  let stdoutWritten = false;
+  let warnedNoMaps = false;
+  try {
+    const index = await buildRestoreIndex(baseDir, session);
+    if (index.sessions === 0) {
+      process.stderr.write(WARN_NO_MAPS);
+      warnedNoMaps = true;
+    }
+    const result = restoreText(input, index.placeholders, index.secretPlaceholders);
+    counts = {
+      restored: result.restored,
+      unmatched: result.unmatched,
+      skippedSecret: result.skippedSecret,
+      sessions: index.sessions
+    };
+    process.stdout.write(result.text);
+    stdoutWritten = true;
+    try {
+      const hashes = [...new Set(result.restoredOriginals)].map(redactedHash).sort();
+      const record2 = buildRestoreAuditRecord({
+        sessionScope: session ?? "all",
+        restored: result.restored,
+        unmatched: result.unmatched,
+        skippedSecret: result.skippedSecret,
+        hashes
+      });
+      await writeRestoreAuditRecord(cwd, record2);
+    } catch {
+      process.stderr.write(WARN_AUDIT_FAILED);
+    }
+  } catch {
+    if (!stdoutWritten) {
+      process.stdout.write(input);
+    }
+    if (!warnedNoMaps) {
+      process.stderr.write(WARN_NO_MAPS);
+    }
+  }
+  process.stderr.write(summaryLine(counts));
+}
+var WARN_NO_MAPS, WARN_AUDIT_FAILED, ERR_BAD_SESSION, ZERO_COUNTS;
+var init_cli = __esm({
+  "src/restore/cli.ts"() {
+    "use strict";
+    init_esm_shims();
+    init_restore_log();
+    init_findings();
+    init_session_map();
+    init_restore();
+    init_session_index();
+    WARN_NO_MAPS = "[mrclean] restore: no readable session map \u2014 placeholders left unchanged\n";
+    WARN_AUDIT_FAILED = "[mrclean] restore: audit write failed \u2014 restored output unaffected\n";
+    ERR_BAD_SESSION = "[mrclean] restore: invalid --session id (expected UUID)\n";
+    ZERO_COUNTS = { restored: 0, unmatched: 0, skippedSecret: 0, sessions: 0 };
+  }
+});
+
 // src/cli.ts
 init_esm_shims();
 
@@ -40478,8 +40767,8 @@ piiCmd.command("fetch-model").description(
   "Download or side-load the NER model (Xenova/bert-base-NER) into ~/.mrclean/models/"
 ).option("--from <path>", "Side-load from a local file instead of downloading from HuggingFace").action(async (opts) => {
   const { downloadModel: downloadModel2, sideLoadModel: sideLoadModel2 } = await Promise.resolve().then(() => (init_model_cache(), model_cache_exports));
-  const { homedir: homedir11 } = await import("os");
-  const homeDir = homedir11();
+  const { homedir: homedir12 } = await import("os");
+  const homeDir = homedir12();
   if (opts.from) {
     process.stderr.write(`[mrclean] Side-loading model from ${opts.from}
 `);
@@ -40498,6 +40787,12 @@ piiCmd.command("fetch-model").description(
 program2.command("doctor").description("Verify mrclean installation: hook entries, MCP server, canary round-trip").option("--verbose", "Print detailed check output", false).option("--bench", "Run a performance benchmark stub (Phase 3 will add the assertion gate)", false).action(async (opts) => {
   const { runDoctor: runDoctor2 } = await Promise.resolve().then(() => (init_doctor(), doctor_exports));
   await runDoctor2({ verbose: opts.verbose, bench: opts.bench });
+});
+program2.command("restore [file]").description(
+  "Restore policy-permitted placeholders from redacted text (stdin or file) \u2014 operator-only, local"
+).option("--session <uuid>", "Restrict restore to one session map").action(async (file, opts) => {
+  const { runRestore: runRestore2 } = await Promise.resolve().then(() => (init_cli(), cli_exports));
+  await runRestore2({ file, session: opts.session });
 });
 var isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
