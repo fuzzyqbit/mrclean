@@ -199,4 +199,51 @@ describe('loadEffectiveConfig', () => {
     expect(result.pii.ner.model).toBe(DEFAULT_CONFIG.pii.ner.model)
     expect(result.pii.ner.confidence).toBe(DEFAULT_CONFIG.pii.ner.confidence)
   })
+
+  // Test Q (Phase 9-01, D-09): default effective config carries ttl_hours = 24 alongside
+  // enabled = false — no config files present means the full frozen default shape.
+  it('yields reversible { enabled: false, ttl_hours: 24 } when no config files are present', async () => {
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: false, ttl_hours: 24 })
+  })
+
+  // Test R (Phase 9-01, D-09 — Test G mirror): a partial project [reversible] table
+  // WITHOUT ttl_hours must not reset the user layer's ttl_hours or enabled — per-field
+  // accumulation, never wholesale replacement (T-09-01-02 / CR-01 regression class).
+  // Real TOML files are load-bearing: the defect class lives in the validators.
+  it('preserves user ttl_hours and enabled when project [reversible] is partial without ttl_hours', async () => {
+    // Arrange
+    await mkdir(join(tmpHome, '.mrclean'), { recursive: true })
+    await writeFile(
+      join(tmpHome, '.mrclean', 'config.toml'),
+      '[reversible]\nenabled = true\nttl_hours = 48\n',
+    )
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[reversible]\nfuture_key = 1\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert — the partial project layer never resets accumulated fields.
+    expect(result.reversible).toEqual({ enabled: true, ttl_hours: 48 })
+  })
+
+  // Test S (Phase 9-01, D-09): ttl_hours is last-wins-when-set — a project layer that
+  // DOES set it overrides the user layer, independent of the enabled field.
+  it('lets project ttl_hours = 2 override user ttl_hours = 48 (last-wins-when-set)', async () => {
+    // Arrange
+    await mkdir(join(tmpHome, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpHome, '.mrclean', 'config.toml'), '[reversible]\nttl_hours = 48\n')
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[reversible]\nttl_hours = 2\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: false, ttl_hours: 2 })
+  })
 })
