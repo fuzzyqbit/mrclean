@@ -37,7 +37,7 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
 
 - [ ] **Phase 8: Contract Verification & Reversible Plumbing** — hook-contract unknowns settled empirically in live headless sessions; `[reversible]` config table + SessionEnd/SessionStart plumbing landed with zero behavior change; THREAT_MODEL.md reversible-mode section drafted
 - [ ] **Phase 9: Session State Adapter** — encrypted cross-process session map with content-addressed allocation, session-tagged v2 tokens, structural secret floor, and reason-aware janitor + TTL orphan sweep
-- [ ] **Phase 10: Operator Restore** — `mrclean restore` CLI with policy-filtered exact-map restore, fail-one-way degradation, hash-only restore audit, honest doctor/status
+- [x] **Phase 10: Operator Restore** — `mrclean restore` CLI with policy-filtered exact-map restore, fail-one-way degradation, hash-only restore audit, honest doctor/status (completed 2026-07-17)
 - [ ] **Phase 11: Wire-Safety Verification & Hardening** — CI proves no wire re-exposure: live canary round-trip, fs-write interception, chaos + concurrency stress gates, THREAT_MODEL finalization + copy-drift
 
 ## Phase Details (v3.0)
@@ -142,8 +142,8 @@ Plans:
 - [x] 10-06-PLAN.md — `mrclean_status` reversible counters via state-confined reducer + audit aggregation (wave 2)
 
 **Wave 3** *(blocked on Wave 2)*
-- [ ] 10-07-PLAN.md — Trust-boundary fences (both directions) + mixed-content canary (Phase 11 gate substrate) (wave 3)
-- [ ] 10-08-PLAN.md — Leak-grep extension over restore surfaces/error paths + phase regression gate (wave 3)
+- [x] 10-07-PLAN.md — Trust-boundary fences (both directions) + mixed-content canary (Phase 11 gate substrate) (wave 3)
+- [x] 10-08-PLAN.md — Leak-grep extension over restore surfaces/error paths + phase regression gate (wave 3)
 
 **Note**: Restore engine is a pure single-pass function with exhaustive ecosystem prior art (LLM Guard/LiteLLM string substitution) — standard patterns, skip research-phase. Build directly against the Phase 11 canary round-trip and mixed-content canary gates by name. Planner pins (2026-07-17, resolving 10-RESEARCH A1–A5): doctor FAIL = unknown `[reversible]` keys only; status restore counters aggregate from `action:'restore'` audit records; restore audit is a discriminated sibling record (log.ts LOCKED unions untouched); default restore scope = union across all live maps with `--session` narrowing; exit 0 on cosmetic degrade, exit 2 for hard input errors.
 
@@ -173,7 +173,7 @@ Plans:
 | 7. PII Security Hardening & Framing | v2.0 | 3/3 | Complete | 2026-06-03 |
 | 8. Contract Verification & Reversible Plumbing | v3.0 | 11/12 | Gap closure (round 3) | - |
 | 9. Session State Adapter | v3.0 | 0/8 | Planned | - |
-| 10. Operator Restore | v3.0 | 6/8 | In Progress|  |
+| 10. Operator Restore | v3.0 | 8/8 | Complete   | 2026-07-17 |
 | 11. Wire-Safety Verification & Hardening | v3.0 | 0/TBD | Not started | - |
 
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
