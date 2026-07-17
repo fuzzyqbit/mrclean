@@ -62,6 +62,22 @@ describe('atomicWriteJson', () => {
     expect(parsed).toEqual({ new: 'data' })
     expect(parsed.old).toBeUndefined()
   })
+
+  // 08-UAT.md test 2 / gap 1 (major): fresh $HOME lacks ~/.claude, so the tmp
+  // write into dirname(target) ENOENTs. atomicWriteJson must create the missing
+  // parent chain itself so EVERY caller (settings.json, ~/.claude.json, future
+  // writers) is protected — zero-config first run.
+  it('creates missing parent directories before writing (fresh-HOME defense)', async () => {
+    // Arrange — nested parent dirs deliberately never created
+    const target = join(testDir, 'nested', 'missing', 'settings.json')
+
+    // Act
+    await atomicWriteJson(target, { fresh: true })
+
+    // Assert — data round-trips through the newly created directory chain
+    const parsed = JSON.parse(await readFile(target, 'utf8'))
+    expect(parsed).toEqual({ fresh: true })
+  })
 })
 
 // Test 2: readJsonOrEmpty returns {} on ENOENT
