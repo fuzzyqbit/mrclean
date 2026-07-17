@@ -139,7 +139,7 @@ describe('restore-log', () => {
       const overShaped = { ...makeInput(), value: 'raw-canary' } as never
       const record = buildRestoreAuditRecord(overShaped)
 
-      expect((record as Record<string, unknown>)['value']).toBeUndefined()
+      expect((record as unknown as Record<string, unknown>)['value']).toBeUndefined()
       expect(JSON.stringify(record)).not.toContain('raw-canary')
     })
 
