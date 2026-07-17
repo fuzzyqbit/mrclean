@@ -114,7 +114,7 @@ Plans:
 - [x] 09-07-PLAN.md — PreToolUse/PostToolUse reversible branches (hydrate→detect→persist→rename) + cold-path import-graph fence (wave 4)
 
 **Wave 5** *(blocked on Wave 4)*
-- [ ] 09-08-PLAN.md — 16-process SC5 stress gate + chaos parity + SC1 inspection test + doctor check-8 copy + phase regression gates (wave 5)
+- [x] 09-08-PLAN.md — 16-process SC5 stress gate + chaos parity + SC1 inspection test + doctor check-8 copy + phase regression gates (wave 5)
 
 **Note**: The T2 mechanism reconciliation was pinned at plan time (09-CONTEXT D-01..D-05): whole-file AES-256-GCM encrypt + short locked `proper-lockfile` transaction (never held across detection), per-session key in separate 0700 `~/.mrclean/keys/`, no fsync inside the lock (RESEARCH-measured), TTL aging by map mtime only, key-before-map janitor deletes.
 
