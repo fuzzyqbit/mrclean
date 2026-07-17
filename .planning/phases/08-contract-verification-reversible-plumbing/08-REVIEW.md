@@ -1,173 +1,169 @@
 ---
 phase: 08-contract-verification-reversible-plumbing
-reviewed: 2026-07-15T01:05:02Z
+reviewed: 2026-07-17T00:55:05Z
 depth: standard
 files_reviewed: 5
 files_reviewed_list:
-  - tests/uat/findings-builder.ts
-  - tests/uat/findings-builder.test.ts
-  - tests/uat/contract-verification.test.ts
-  - tests/copy-drift.test.ts
-  - docs/HOOK-CONTRACT.md
+  - src/install/atomic-json.ts
+  - src/install/settings.ts
+  - src/install/index.ts
+  - tests/install/atomic-json.test.ts
+  - tests/install/fresh-home.test.ts
 findings:
-  critical: 2
+  critical: 0
   warning: 4
-  info: 3
-  total: 9
+  info: 2
+  total: 6
 status: issues_found
 ---
 
-# Phase 8: Code Review Report (Round 2 — gap-closure review of plans 08-10 + 08-11)
+# Phase 8: Code Review Report (Round 3 — gap-closure review of plan 08-12)
 
-**Reviewed:** 2026-07-15T01:05:02Z
+**Reviewed:** 2026-07-17T00:55:05Z
 **Depth:** standard
 **Files Reviewed:** 5
 **Status:** issues_found
 
 ## Summary
 
-Scope: commits after `61f81de` (08-10 buildE1 per-tool carry-forward; 08-11 record-nothing gates, HOOK-CONTRACT citation refresh, session-UUID traceability gate). Verification performed: both offline suites executed (24/24 pass); all 5 session UUIDs quoted in `docs/HOOK-CONTRACT.md` mechanically confirmed present in `tests/uat/artifacts/contract-findings.json` independently of the test; every gate path traced against the committed artifact.
+Scope: commits after `b3d8e1d` — `d0fdd6b` (RED tests), `73e006f` (mkdir in `atomicWriteJson` + banner count from `HOOK_EVENTS.length`), `0c0a7f7` (dist rebuild). Focus areas per the review request: mkdir-before-tmp-write (error handling, TOCTOU, permissions), the exported `HOOK_EVENTS` + banner interpolation, and the two new/extended test files.
 
-**Prior-finding closure status:**
+**Verified sound (traced, not assumed):**
 
-- **Prior CR-01 (buildE1 destroys committed E1 per-tool evidence): core destruction path closed.** The fresh→previous→stub per-tool merge is correct, the verdict string derives from the merged map, and the new disjoint-rerun tests prove byte-identical survival of `tools` + `verdict`. However, the fix introduced a new evidence-provenance defect: buildE1 re-stamps wholly carried-forward evidence with the fresh run's `claude_version`/`date` (new CR-02 below).
-- **Prior WR-03 (doc citations orphaned): closed.** Citations refreshed correctly (Read row now cites `8ba19558…`, E3 sids updated), and the new traceability gate is non-vacuous (≥1 guard + positive control) and passing honestly (5/5 traced).
-- **Prior WR-01 (fabricate-on-not-run): partially closed.** The implemented E4 gate copies the prior review's suggested snippet verbatim but not its stated requirement ("only record 'unanswerable' when the object leg actually ran"): the conjunct condition leaves a mixed-failure path open that fabricates an "unanswerable" E4 record and destroys the committed E4 answer (new CR-01 below). The shape-validation gate closes the all-legs-absent path but a `-t 'object'` filtered rerun can still overwrite the committed `string_shape_rejected: true` signal with an unmeasured `false` (new WR-01 below).
+- **Both UAT gaps are genuinely closed.** Gap 1: `atomicWriteJson` now runs `mkdir(dir, { recursive: true })` before the tmp write (`src/install/atomic-json.ts:48`), and the fresh-HOME test creates `tempHome` *without* `.claude` and asserts the full install round-trip. Gap 2: the banner interpolates `HOOK_EVENTS.length` (`src/install/index.ts:81`) from the now-exported single source of truth (`src/install/settings.ts:22`); the stale `hooks: 4` literal is gone.
+- **Dist is in sync with src.** The committed `dist/cli.js` contains the mkdir call (bundle line 3539) and the derived banner interpolation (bundle line 3943), and a full `tsup` rebuild during this review left the git tree byte-identical — commit `0c0a7f7` is an honest rebuild.
+- **Tests pass and are honest tripwires:** both suites executed during review — 14/14 pass. The banner test is *not* circular: `bannerCount` and `registeredEvents` both ultimately derive from `HOOK_EVENTS`, but the hardcoded `toHaveLength(5)` at `tests/install/fresh-home.test.ts:133` breaks the circularity, and the duplicated `EXPECTED_HOOK_EVENTS` mirror in the same file means list drift fails a test rather than silently passing.
+- **TOCTOU / atomicity of the mkdir change:** the mkdir is create-then-use (not check-then-use), is idempotent under `recursive: true`, and sits correctly *outside* the try block (no tmp file exists yet to clean up). If the directory is removed between mkdir and the tmp write, `writeFile` rejects with ENOENT and the error propagates — fail-loud, no silent bypass. Concurrent `atomicWriteJson` calls use UUID-unique tmp names + atomic rename → last-writer-wins, no torn file.
+- **mkdir directory mode:** the created `~/.claude` gets Node's default `0o777 & ~umask` (typically 755). Ground-truthed against the live machine: Claude Code's own `~/.claude` is `drwxr-xr-x` (755), so mrclean matches platform-owner behavior rather than diverging. Not a defect.
+- **Uninstall does not spuriously create directories:** `removeHookEntries`/`removeMcpServerEntry` early-return before any write when there is nothing to remove, so the mkdir-in-primitive change cannot materialize `~/.claude` on an uninstall of a clean machine.
 
-Prior WR-02 (prototype-chain) and prior WR-04 (double-DEFAULT_CONFIG) are known/out-of-scope and were not made worse by this diff.
+**Prior rounds:** round-2 findings (CR-01/02, WR-01..04) targeted `tests/uat/` rendering modules — all recorded as resolved in git history (`79705c1`..`14707d2`) and out of this round's file scope; not re-reviewed.
+
+The four warnings below are robustness/security-hardening gaps in the reviewed files. Two (WR-01, WR-03) are directly implicated by this round's mkdir change; two (WR-02, WR-04) are pre-existing defects in the reviewed files surfaced by standard-depth tracing. None is a regression introduced by 08-12's diff, and none blocks ship — but WR-01 and WR-02 sit in the shared primitive every config write flows through and are cheap to fix.
 
 ## Narrative Findings (AI reviewer)
 
-## Critical Issues
-
-### CR-01: E4 record-nothing gate is too narrow — a mixed partial run fabricates "unanswerable" and destroys the committed E4 verdict
-
-**File:** `tests/uat/contract-verification.test.ts:764-766`
-**Issue:** The gate is:
-
-```ts
-if (e1ObjectBash === undefined && Object.keys(e1Tools).length === 0) {
-  return
-}
-```
-
-The conjunct defeats the protection whenever ANY string leg recorded. Concrete scenario (a flake mode this file itself documents at lines 578–584 — ToolSearch loops, subagent spawn timeouts): full `MRCLEAN_UAT=1` run where `E1/Bash` (string) succeeds and records `e1Tools['Bash'] = 'ignored…'`, but `E1/Bash-object` fails at `assertSessionRan` before line 449 assigns `e1ObjectBash`. In the E4 test: `objectLeg = false`; `stringHonored = undefined` (Bash/Read verdicts are 'ignored'); the gate condition is false because `e1Tools` is non-empty — so the fall-through **records** `e4Record` = "unanswerable … (Bash-object verdict: not-run …)". `buildE4` is run-wins (`run.e4 !== undefined ? { ...run.e4 } : …`), so the committed verdict `"cap does NOT bind updatedToolOutput (~15K survived intact for Bash)"` is replaced by a verdict derived from a leg that produced no measurement in this process. This is fabrication + destruction of committed evidence (T-08-08-01, Critical class), and the new UUID traceability gate cannot catch it — the doc's E4 section quotes no session UUID. The comment above the gate claims to protect exactly this case ("an upgrade run where the E1 legs fail at assertSessionRan") but the code only protects it when *all* E1 legs failed; the prior review's prose requirement — record only when the object leg *actually ran* — is not met.
-**Fix:** Gate on the object leg alone — `e1Tools` being non-empty says nothing about whether the *gate* leg ran:
-
-```ts
-// Gate leg produced no verdict in THIS process → no new gate information.
-// (e1Tools being non-empty does not mean the Bash-object leg ran.)
-if (e1ObjectBash === undefined) {
-  return
-}
-```
-
-The genuine-drift case (object leg ran and was not honored → `e1ObjectBash` defined with a non-'honored' verdict) still falls through and records, as intended. The honored-string-leg upgrade case is unaffected (it takes the `stringHonored` branch before this gate).
-
-### CR-02: buildE1 stamps carried-forward per-tool evidence with the fresh run's `claude_version`/`date` — provenance fabrication on every partial rerun
-
-**File:** `tests/uat/findings-builder.ts:130-139` (stamps at 134–135)
-**Issue:** `buildE1` unconditionally returns `claude_version: run.claudeVersion, date: run.date` — even when **all three** tool records were carried forward from the previous artifact (a rerun recording only E2, or a `vitest -t 'object'` filtered rerun that passes the guard via `shapeValidation`). `ToolVerdict` carries no per-tool stamps (`verdict`/`signals`/`evidence_paths` only), so `E1.claude_version`/`E1.date` are the *only* provenance for the per-tool evidence — and they get rewritten. A rerun on Claude Code 2.2.x that records only E2 produces an artifact claiming the E1 Bash/Read/MCP verdicts were verified on 2.2.x when no E1 leg ran there. The artifact's entire purpose is per-version contract evidence ("per-tool, per-version behavior is what this file records" — HOOK-CONTRACT.md:14), and the re-verification procedure tells the operator to refresh doc stamps from it (HOOK-CONTRACT.md:217-220). Note the asymmetry the diff itself created: `buildE5` re-emits `prevE5` verbatim when the run contributed nothing ("version stamps intact", findings-builder.ts:183), and `resolveExperiment`/`buildE4` carry previous records with their embedded stamps — `buildE1` alone rebuilds with fresh stamps (and also rewrites `question`/`method` to the current literals, silently retitling committed evidence). The unit test "carries forward committed E1 per-tool verdicts when a partial rerun records only E2" (findings-builder.test.ts:240-252) asserts `tools` and `verdict` survival but never asserts the stamps, so the gap is untested.
-**Fix:** Mirror `buildE5`'s verbatim re-emit, and stamp fresh per-tool records for the mixed case:
-
-```ts
-function buildE1(run: RunRecords, prevExperiments: Record<string, unknown>): Record<string, unknown> {
-  const prevE1 = recordAt(prevExperiments, 'E1')
-  // Run contributed no E1 tool verdicts → re-emit previous E1 verbatim
-  // (version stamps intact — mirrors buildE5).
-  if (Object.keys(run.e1Tools).length === 0 && prevE1 !== undefined) return { ...prevE1 }
-  // ... existing merge path ...
-}
-```
-
-For the mixed case (fresh Bash + carried Read/MCP under one stamp), add `claude_version`/`date` to `ToolVerdict` (stamped in the harness's `buildE1Verdict`) so merged records keep per-tool provenance. Extend the disjoint-rerun unit test to assert `e1['claude_version']`/`e1['date']` equal the committed stamps (RED first, per TDD).
-
 ## Warnings
 
-### WR-01: `string_shape_rejected: false` can be fabricated from an unscanned transcript and overwrite the committed `true` signal
+### WR-01: atomicWriteJson silently resets the target file's permission bits to 644 on every rewrite
 
-**File:** `tests/uat/contract-verification.test.ts:510, 538` (scan regex at 295)
-**Issue:** `const stringRejected = stringShapeHookError !== undefined` conflates "rejection error not found" with "string form not rejected". Two paths write `string_shape_rejected: false` into the fresh record without any string-leg measurement:
-
-1. **Filtered `vitest -t 'object'` rerun** — matches `E1/Bash-object`, `E1/Read-object`, and the `(object-gated…)` E4 test, but NOT `E1/Bash`. `e1BashTranscriptPath` stays null → `stringShapeHookError` undefined → `stringRejected = false`. Both object legs ran, so the Read-object gate (`e1ObjectBash === undefined`) does NOT fire; `shapeValidationRecord` is assembled and run-wins in `buildShapeValidation` — the committed `signals.string_shape_rejected: true` (which backs the doc's "STRING payloads are REJECTED" claim) is flipped to `false` by a run that never exercised the string leg. This is the exact vector the gate's own comment names ("string_shape_rejected from an unstashed transcript") but only guards in the `e1ObjectBash === undefined` branch.
-2. **Full run with error-wording drift** — `scanHookErrorExcerpt`'s regex (`does not match|invalid_type`) is coupled to 2.1.209's zod message; a wording change makes the scan miss even though `e1Tools['Bash'].verdict` still says 'ignored' (i.e. it WAS rejected), yielding a self-contradictory record: `string_shape_rejected: false` alongside a carried-forward `verbatim_hook_error` showing the rejection (the builder's field fallback fills only `verbatim_hook_error`, not the signal).
-
-The verdict prose partially discloses case 2 ("not re-observed this run"), but the machine-readable signal is destroyed either way.
-**Fix:** Make the signal honest about observation state and corroborate with the string-leg verdict:
+**File:** `src/install/atomic-json.ts:48-52` (affects `src/install/settings.ts:166,202` and `src/install/mcp-config.ts:75,107` — i.e. `~/.claude/settings.json` and `~/.claude.json`)
+**Issue:** The atomic-rename pattern replaces the target's inode with the tmp file's inode. The tmp file is created by `writeFile` with the default mode `0o666 & ~umask` (typically 644), so after `rename` the target carries 644 **regardless of its previous mode**. A user who hardened `~/.claude.json` or `~/.claude/settings.json` to 600 (reasonable — `~/.claude.json` carries account metadata and per-project state, and hooks in settings.json can embed env-derived values) has that hardening silently undone by any `mrclean install`/`uninstall`. For a tool whose entire brand is "secrets never leak," widening a user-tightened config file back to world-readable without notice is a hardening regression. Notably `backupJson` does NOT have this problem (`copyFile` preserves the source mode), so only the live file is loosened — the backup stays hardened, which makes the asymmetry more surprising. The review request explicitly asked about permissions of the mkdir path; the directory mode is fine (see Summary), but the file-mode non-preservation is the real gap.
+**Fix:** Stat the target before writing and give the tmp file the same permission bits (mode applies at creation; `undefined` falls back to the default):
 
 ```ts
-const stringLegObserved = e1BashTranscriptPath !== null
-signals: {
-  ...
-  string_shape_rejected: stringLegObserved ? stringRejected : 'not-observed-this-run',
-  string_leg_verdict: e1Tools['Bash']?.verdict ?? 'not-run',
+import { readFile, writeFile, rename, copyFile, mkdir, readdir, unlink, stat } from 'node:fs/promises'
+
+export async function atomicWriteJson(path: string, data: unknown): Promise<void> {
+  const dir = dirname(path)
+  const tmpPath = join(dir, `.mrclean-tmp-${randomUUID()}.json`)
+
+  await mkdir(dir, { recursive: true })
+
+  // Preserve existing permission bits: a user-hardened 600 config must not
+  // silently widen to 644 because the tmp file's default mode survives rename.
+  let mode: number | undefined
+  try {
+    mode = (await stat(path)).mode & 0o777
+  } catch {
+    // Target does not exist yet — default mode is fine
+  }
+
+  try {
+    await writeFile(tmpPath, JSON.stringify(data, null, 2), { encoding: 'utf8', mode })
+    await rename(tmpPath, path)
+  } catch (err) {
+    try { await unlink(tmpPath) } catch { /* ignore cleanup errors */ }
+    throw err
+  }
 }
 ```
 
-or extend `buildShapeValidation`'s field-level fallback to preserve the committed `signals.string_shape_rejected` when the fresh run did not observe the string leg.
+### WR-02: readJsonOrEmpty returns non-object JSON as `Record`, producing a raw TypeError, an unlabeled SyntaxError, or a silent fail-open install
 
-### WR-02: E1/Read-object record-nothing gate silently discards a genuinely observed drift verdict — no operator signal
-
-**File:** `tests/uat/contract-verification.test.ts:504-506`
-**Issue:** In a filtered `vitest -t 'Read-object'` rerun on a future Claude Code version where the Bash-style object is newly HONORED for Read (a contract change directly relevant to mrclean's PostToolUse redaction scope), the leg runs, computes `readObjectVerdict = 'honored (Bash-style object accepted for Read)'`, then hits `if (e1ObjectBash === undefined) return` — the drift observation is dropped with zero output, the test passes green, and the committed artifact continues to assert rejection. Dropping the *host record* is the correct trade-off (fabricating it would be worse), but dropping the observation *silently* violates the harness's own contract ("reports drift instead of breaking CI") and the never-silently-swallow rule.
-**Fix:** One line before the return:
-
-```ts
-console.warn(
-  `mrclean findings: Read-object observation DROPPED (Bash-object gate leg absent this process): ${readObjectVerdict} — rerun the full E1 suite to record it`,
-)
-```
-
-### WR-03: `E1_TOOL_ORDER` silently drops fresh and previous per-tool records outside {Bash, Read, MCP}
-
-**File:** `tests/uat/findings-builder.ts:59, 122`
-**Issue:** `toolEntries` maps only over the fixed `E1_TOOL_ORDER`. Two silent-loss paths: (1) a future harness leg recording `e1Tools['Edit']` without a matching builder update — the fresh verdict is counted by `countRecordedVerdicts` (so the guard passes and the artifact is rewritten with refreshed top-level stamps) yet the verdict itself never appears in the output; (2) a previous artifact carrying a tool key outside the list — dropped on rerun, contradicting the module's "re-emitted verbatim" guarantee (header lines 16-19). No error, no stub, no warning in either direction. In an evidence-preservation module whose sole job is not losing records, key-set truncation should be impossible by construction.
-**Fix:** Iterate the union, known tools first for stable ordering:
+**File:** `src/install/atomic-json.ts:20-31` (consumed at `src/install/settings.ts:128-134`, `src/install/mcp-config.ts:39-54`, `src/doctor/checks.ts:127+`)
+**Issue:** The function casts `JSON.parse(raw)` straight to `Record<string, unknown>` without validating it is a plain object. Three concrete failure paths, all at a system boundary parsing external file content (the user hand-edits these files):
+1. `settings.json` containing `null` → `writeHookEntries` line 131 reads `data.hooks` on `null` → raw `TypeError: Cannot read properties of null` crash.
+2. **Empty file** (`touch ~/.claude/settings.json` — entirely plausible) → `JSON.parse('')` throws `SyntaxError: Unexpected end of JSON input`, rethrown with **no indication of which file** is broken. Same raw-stack symptom class UAT gap 1 complained about.
+3. `settings.json` containing a top-level **array** → `data.hooks = {}` attaches a non-index property to the array, all five hook entries are written onto it, then `JSON.stringify(data)` serializes only the array indices and **drops the entire `hooks` property**. Net effect: the original array is written back unchanged, no hook is registered, and the success banner still prints `(hooks: 5, ...)` — a silent fail-open install for a fail-closed security tool.
+**Fix:** Validate the parsed shape and attach file context to parse errors:
 
 ```ts
-const toolNames = [...new Set([...E1_TOOL_ORDER, ...Object.keys(run.e1Tools), ...Object.keys(prevTools)])]
-const toolEntries = toolNames.map((tool) => [tool, toolRecord(tool)] as const)
-```
-
-Add a unit test with a previous artifact carrying an extra tool key.
-
-### WR-04: malformed committed artifact is treated as absent — one parse error re-arms wholesale overwrite
-
-**File:** `tests/uat/contract-verification.test.ts:363-367`
-**Issue:** `catch { previous = undefined }` means any JSON parse failure of the committed artifact (merge-conflict markers, truncated write, stray trailing bytes) disables the entire carry-forward substrate this round hardened: the next run with ≥1 verdict rewrites the file, stubbing every experiment it did not run — committed evidence replaced wholesale. Git makes this recoverable and diff-visible, hence Warning rather than Critical, but the guard philosophy ("a crashed run cannot clobber committed evidence" — HOOK-CONTRACT.md:222-224) has a hole: the one state that most needs operator attention (a corrupted evidence file) is the one state where the writer silently replaces instead of refusing. The `existsSync` check already distinguishes first-run-absent from present-but-unparseable, so failing loudly costs nothing. (Introduced in 08-08; flagged now because the new carry-forward guarantees are only as strong as this parse path.)
-**Fix:**
-
-```ts
-} catch (error) {
-  console.error(
-    `mrclean findings: committed artifact at ${FINDINGS_PATH} is unparseable — refusing to overwrite; fix or delete it first (${String(error)})`,
-  )
-  return
+export async function readJsonOrEmpty(path: string): Promise<Record<string, unknown>> {
+  let raw: string
+  try {
+    raw = await readFile(path, 'utf8')
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {}
+    throw err
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch (err) {
+    throw new Error(`mrclean: ${path} is not valid JSON (${(err as Error).message}) — fix or remove it, then re-run`)
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`mrclean: expected a JSON object in ${path}, found ${Array.isArray(parsed) ? 'an array' : String(parsed === null ? 'null' : typeof parsed)}`)
+  }
+  return parsed as Record<string, unknown>
 }
+```
+
+### WR-03: install failure modes still surface as raw Node stacks — the new mkdir adds fresh untranslated errno sources and nothing catches them
+
+**File:** `src/install/index.ts:57-84` (mkdir source at `src/install/atomic-json.ts:48`; uncaught top-level `await program.parseAsync(process.argv)` at `src/cli.ts:124`)
+**Issue:** UAT gap 1's symptom was "crashes with a raw Node ENOENT stack." The 08-12 fix removes the *trigger* (missing `~/.claude`) but not the *symptom class*: `runInstall` has no error contextualization, and `src/cli.ts:124` awaits `parseAsync` bare at module top level, so any rejection prints an unhandled-rejection stack. The new `mkdir(dir, { recursive: true })` call itself introduces new members of this class: if `~/.claude` exists as a regular **file** (or a path component is a file), mkdir throws raw `EEXIST`/`ENOTDIR`; `EACCES`, `EROFS`, and `ENOSPC` on the tmp write behave the same. Combined with WR-02's unlabeled `SyntaxError`, the next UAT-style report will look identical to gap 1 with a different errno. Project error-handling rules require user-friendly messages in UI-facing code paths.
+**Fix:** Catch in the install/uninstall `.action()` handlers (NOT around `parseAsync` globally — the `hook` subcommand owns exit-code semantics where exit 2 means BLOCK, and a blanket catch risks remapping those):
+
+```ts
+.action(async (opts: { scope: string }) => {
+  const { runInstall } = await import('./install/index.js')
+  const scope = opts.scope === 'project' ? 'project' : 'user'
+  try {
+    await runInstall({ scope })
+  } catch (err) {
+    process.stderr.write(`mrclean install failed: ${err instanceof Error ? err.message : String(err)}\n`)
+    process.exitCode = 1
+  }
+})
+```
+
+### WR-04: no locking around read→mutate→write of live shared config files — concurrent Claude Code sessions can silently lose the install (pre-existing)
+
+**File:** `src/install/settings.ts:122-167` (same pattern at `src/install/mcp-config.ts:33-76`)
+**Issue:** `writeHookEntries` reads `settings.json`, mutates in memory, backs up, then rewrites the whole file. There is no lock and no re-read verification, and the target files are live-written by a normally-running application: Claude Code appends "always allow" permission rules to `~/.claude/settings.json` mid-session and rewrites `~/.claude.json` frequently (project state/history). Running `mrclean install` while a Claude Code session is open can (a) clobber a settings update Claude Code made between mrclean's read and write, or (b) have mrclean's freshly written hook/MCP entries clobbered moments later by Claude Code flushing *its* in-memory copy — while the banner has already reported success. For a fail-closed tool, (b) is a silent-protection-absent outcome. Pre-existing design (not introduced by 08-12; atomicity-per-write was in scope for RESEARCH §3.3, cross-process coordination was not), and timestamped backups bound the damage — but the failure is silent.
+**Fix:** Minimum viable: document "run `mrclean install` with Claude Code closed" and point users at `mrclean doctor` to verify registration post-install (doctor already re-reads both files). Robust: take an exclusive-create lock sentinel around the read→write window:
+
+```ts
+const lock = `${settingsPath}.mrclean-lock`
+const fh = await open(lock, 'wx')          // fails EEXIST if another writer holds it
+try { /* read → mutate → backup → atomicWriteJson */ }
+finally { await fh.close(); await unlink(lock).catch(() => {}) }
 ```
 
 ## Info
 
-### IN-01: session-UUID regex is lowercase-only — an uppercase-pasted citation is invisible to the traceability gate
+### IN-01: stale docstring — cleanup happens in a `catch` block, not a `finally` block
 
-**File:** `tests/copy-drift.test.ts:181`
-**Issue:** `SESSION_UUID_RX` matches `[0-9a-f]` without the `i` flag. Claude session ids are lowercase today, but a future doc edit pasting an uppercase UUID would be neither extracted nor membership-checked, while the `>= 1` non-vacuous guard still passes via the remaining lowercase citations — a partially vacuous gate for exactly the drift it exists to catch.
-**Fix:** Add the `i` flag and lowercase both sides before the `artifact.includes(uuid)` check.
+**File:** `src/install/atomic-json.ts:37-38`
+**Issue:** The docstring says "the tmp file is cleaned up in a finally block." The implementation (correctly) uses `catch` — a `finally` would attempt to unlink the already-renamed tmp on the success path. Wrong docs on the shared write primitive invite a "fix" toward the worse shape.
+**Fix:** Change the sentence to "…the tmp file is cleaned up before the error is re-thrown."
 
-### IN-02: a Bash-object-only rerun records a real observation the guard cannot see, then reports "no experiment recorded a verdict"
+### IN-02: banner-count assertion collapses "regex didn't match" into "expected NaN to be 5", obscuring triage
 
-**File:** `tests/uat/findings-builder.ts:86-89`; `tests/uat/contract-verification.test.ts:449`
-**Issue:** `e1ObjectBash` is not part of `RunRecords`, so `countRecordedVerdicts` never counts it. A `vitest -t 'E1/Bash-object'` rerun that observes drift (e.g. the object shape newly REJECTED — which would make mrclean's planned object-shape rewrite inert) records nothing, and the writer's warn ("no experiment recorded a verdict — artifact left untouched") is factually wrong: an experiment did produce a verdict; it just has no home in `RunRecords`. Conservative (nothing destroyed), but a drift-suppression path with a misleading operator message.
-**Fix:** Warn explicitly when `e1ObjectBash` is defined but unpersisted, or add it to `RunRecords` and fold it into the E1 signals so the observation survives.
+**File:** `tests/install/fresh-home.test.ts:137-139`
+**Issue:** `const bannerCount = Number(match?.[1] ?? NaN)` means a banner *format* drift (e.g. wording change breaking the `\(hooks: (\d+), MCP server: mrclean\)` regex) fails with the same message as a genuine count mismatch. The failure mode misdirects the fixer toward the count logic when the format changed.
+**Fix:** Assert the match exists first so the two failure causes are distinguishable:
 
-### IN-03: HOOK-CONTRACT Bash object-payload cell cites the PTY probe session where the harness probe is the canonical evidence
-
-**File:** `docs/HOOK-CONTRACT.md:34`
-**Issue:** The per-tool matrix's Bash object cell cites probe session `e244a7f9-…` together with the fixture attribution `tests/uat/fixtures/e1-object-rewrite-hook.sh` — but `e244a7f9` is the operator PTY *rendering* probe (artifact `E1.rendering.evidence.object_shape_session_id`); the session that established `object_probe_honored: true` with that fixture is `df4534f2-190a-4060-8d50-0dbf94cfba94` (artifact `E1_shape_validation.signals.object_probe_session_id`). Both trace, so the gate passes, but the citation attributes the harness fixture to the wrong session. (The 08-11 refresh fixed the Read row correctly; the Bash row kept the pre-refresh citation.)
-**Fix:** Cite `df4534f2-…` for the fixture-backed object probe, optionally alongside `e244a7f9-…` for the rendering half.
+```ts
+const match = banner.match(/\(hooks: (\d+), MCP server: mrclean\)/)
+expect(match, `banner did not contain the hooks-count segment: ${banner}`).not.toBeNull()
+expect(Number(match![1])).toBe(registeredEvents.length)
+```
 
 ---
 
-_Reviewed: 2026-07-15T01:05:02Z_
+_Reviewed: 2026-07-17T00:55:05Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
