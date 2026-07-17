@@ -62,12 +62,13 @@ vi.mock('../../src/state/index.js', async (importOriginal) => {
 })
 
 import { handlePreToolUse } from '../../src/hook/handlers/pre-tool-use.js'
+import { handlePostToolUse } from '../../src/hook/handlers/post-tool-use.js'
 import { loadEffectiveConfig } from '../../src/config/index.js'
 import { readSessionMapForHydration, persistAllocations } from '../../src/state/index.js'
 import { POST_LOCK_DEADLINE_MS } from '../../src/state/lock.js'
 import * as detectMod from '../../src/detect/index.js'
 import { DEFAULT_CONFIG } from '../../src/config/defaults.js'
-import type { MrcleanConfig, PreToolUseInput } from '../../src/shared/types.js'
+import type { MrcleanConfig, PreToolUseInput, PostToolUseInput } from '../../src/shared/types.js'
 import type { DetectionResult, ResolvedFinding } from '../../src/detect/index.js'
 import type { PendingAllocation, ReversibleHydration } from '../../src/state/session-map.js'
 
@@ -165,6 +166,20 @@ function twoLeafInput(sid: string): PreToolUseInput {
     cwd: '/tmp',
     tool_name: 'Bash',
     tool_input: { command: `deploy --token ${SECRET_A}`, description: `uses ${SECRET_B}` },
+    tool_use_id: 'tool-123',
+  }
+}
+
+/** PostToolUse fixture — single-string path (Step 3 coerces to string). */
+function postInput(sid: string, response: unknown): PostToolUseInput {
+  return {
+    hook_event_name: 'PostToolUse',
+    session_id: sid,
+    transcript_path: '/tmp/transcript',
+    cwd: '/tmp',
+    tool_name: 'Bash',
+    tool_input: { command: 'deploy' },
+    tool_response: response,
     tool_use_id: 'tool-123',
   }
 }
@@ -418,5 +433,173 @@ describe('handlePreToolUse — reversible branch (09-07 Task 1)', () => {
     expect(drainSpy).not.toHaveBeenCalled()
     expect(persistAllocations).not.toHaveBeenCalled()
     expect(output).toEqual(ONE_WAY_TWO_LEAF_OUTPUT)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// PostToolUse (Task 2)
+// ---------------------------------------------------------------------------
+
+const TOOL_RESPONSE = `log line with ${SECRET_A} token`
+
+const PENDING_SINGLE: PendingAllocation[] = [
+  { value: SECRET_A, type: 'GENERIC', provisionalPlaceholder: PROV_A },
+]
+
+/** One-way emission for the single-string fixture — provisional token stands. */
+const ONE_WAY_POST_OUTPUT = {
+  hookSpecificOutput: {
+    hookEventName: 'PostToolUse',
+    updatedToolOutput: `log line with ${PROV_A} token`,
+    additionalContext: '[mrclean] substituted 1 secret(s) in tool output',
+  },
+} as const
+
+describe('handlePostToolUse — reversible branch (09-07 Task 2)', () => {
+  it('enabled + UUID sid + detectable secret: hydrate BEFORE detection, ONE persist, renames applied to the STRING updatedToolOutput (E1 shape unchanged)', async () => {
+    // Arrange
+    vi.mocked(loadEffectiveConfig).mockResolvedValue(REVERSIBLE_ON)
+    const runSpy = spyDetectionPerLeaf()
+    const hydrateSpy = spyHydrate()
+    const drainSpy = spyDrain([...PENDING_SINGLE])
+    vi.mocked(persistAllocations).mockResolvedValue({
+      status: 'ok',
+      renames: [{ from: PROV_A, to: FINAL_A }],
+    })
+
+    // Act
+    const output = await handlePostToolUse(postInput(UUID_SID, TOOL_RESPONSE))
+
+    // Assert — hydrate happened once, BEFORE runDetection
+    expect(readSessionMapForHydration).toHaveBeenCalledTimes(1)
+    expect(readSessionMapForHydration).toHaveBeenCalledWith({ sessionId: UUID_SID })
+    expect(hydrateSpy).toHaveBeenCalledTimes(1)
+    expect(hydrateSpy).toHaveBeenCalledWith(UUID_SID, HYDRATION)
+    expect(vi.mocked(readSessionMapForHydration).mock.invocationCallOrder[0]!).toBeLessThan(
+      runSpy.mock.invocationCallOrder[0]!,
+    )
+
+    // Assert — exactly one drain + one locked persist for the event
+    expect(drainSpy).toHaveBeenCalledTimes(1)
+    expect(persistAllocations).toHaveBeenCalledTimes(1)
+    expect(persistAllocations).toHaveBeenCalledWith({
+      sessionId: UUID_SID,
+      pending: PENDING_SINGLE,
+      deadlineMs: POST_LOCK_DEADLINE_MS,
+    })
+
+    // Assert — E1 contract: STRING updatedToolOutput, exact one-way key set
+    const hso = output?.hookSpecificOutput
+    expect(hso).toBeDefined()
+    expect(typeof hso?.updatedToolOutput).toBe('string')
+    expect(Object.keys(hso!)).toEqual(['hookEventName', 'updatedToolOutput', 'additionalContext'])
+
+    // Assert — rename applied; provisional token never reaches the wire
+    expect(hso?.updatedToolOutput).toBe(`log line with ${FINAL_A} token`)
+    expect(JSON.stringify(output)).not.toContain(PROV_A)
+  })
+
+  it("persist status 'degraded': provisional token stands, response shape otherwise identical", async () => {
+    // Arrange
+    vi.mocked(loadEffectiveConfig).mockResolvedValue(REVERSIBLE_ON)
+    spyDetectionPerLeaf()
+    spyHydrate()
+    spyDrain([...PENDING_SINGLE])
+    vi.mocked(persistAllocations).mockResolvedValue({ status: 'degraded', renames: [] })
+
+    // Act
+    const output = await handlePostToolUse(postInput(UUID_SID, TOOL_RESPONSE))
+
+    // Assert — persist WAS attempted, emission is the untouched one-way shape
+    expect(persistAllocations).toHaveBeenCalledTimes(1)
+    expect(output).toEqual(ONE_WAY_POST_OUTPUT)
+  })
+
+  it('enabled + INVALID sid: no facade work past the gate, output identical to one-way', async () => {
+    // Arrange
+    vi.mocked(loadEffectiveConfig).mockResolvedValue(REVERSIBLE_ON)
+    spyDetectionPerLeaf()
+    const hydrateSpy = spyHydrate()
+    const drainSpy = spyDrain([...PENDING_SINGLE])
+
+    // Act
+    const output = await handlePostToolUse(postInput(INVALID_SID, TOOL_RESPONSE))
+
+    // Assert
+    expect(readSessionMapForHydration).not.toHaveBeenCalled()
+    expect(persistAllocations).not.toHaveBeenCalled()
+    expect(hydrateSpy).not.toHaveBeenCalled()
+    expect(drainSpy).not.toHaveBeenCalled()
+    expect(output).toEqual(ONE_WAY_POST_OUTPUT)
+  })
+
+  it('disabled: readSessionMapForHydration NEVER called, output byte-identical to one-way', async () => {
+    // Arrange
+    vi.mocked(loadEffectiveConfig).mockResolvedValue(REVERSIBLE_OFF)
+    spyDetectionPerLeaf()
+    const hydrateSpy = spyHydrate()
+    const drainSpy = spyDrain([...PENDING_SINGLE])
+
+    // Act
+    const output = await handlePostToolUse(postInput(UUID_SID, TOOL_RESPONSE))
+
+    // Assert — zero reversible work; wire form byte-identical (D-10)
+    expect(readSessionMapForHydration).not.toHaveBeenCalled()
+    expect(persistAllocations).not.toHaveBeenCalled()
+    expect(hydrateSpy).not.toHaveBeenCalled()
+    expect(drainSpy).not.toHaveBeenCalled()
+    expect(JSON.stringify(output)).toBe(JSON.stringify(ONE_WAY_POST_OUTPUT))
+  })
+
+  it('budget-exhausted with reversible active: drain-DISCARD, no persist, null + stderr warn unchanged', async () => {
+    // Arrange
+    vi.mocked(loadEffectiveConfig).mockResolvedValue(REVERSIBLE_ON)
+    vi.spyOn(detectMod, 'runDetection').mockResolvedValue(BUDGET_EXHAUSTED_RESULT)
+    spyHydrate()
+    const drainSpy = spyDrain([...PENDING_SINGLE])
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true)
+
+    // Act
+    const output = await handlePostToolUse(postInput(UUID_SID, TOOL_RESPONSE))
+
+    // Assert — pass-through null; allocations discarded; warn line preserved
+    expect(output).toBeNull()
+    expect(drainSpy).toHaveBeenCalledTimes(1)
+    expect(persistAllocations).not.toHaveBeenCalled()
+    const warnLines = stderrSpy.mock.calls.map((c) => String(c[0]))
+    expect(
+      warnLines.some((l) => l.includes('mrclean detection budget exhausted on PostToolUse')),
+    ).toBe(true)
+  })
+
+  it('dry_run with reversible active: drain-DISCARD, no persist, null response unchanged', async () => {
+    // Arrange
+    vi.mocked(loadEffectiveConfig).mockResolvedValue(REVERSIBLE_ON_DRY_RUN)
+    spyDetectionPerLeaf()
+    spyHydrate()
+    const drainSpy = spyDrain([...PENDING_SINGLE])
+
+    // Act
+    const output = await handlePostToolUse(postInput(UUID_SID, TOOL_RESPONSE))
+
+    // Assert
+    expect(output).toBeNull()
+    expect(drainSpy).toHaveBeenCalledTimes(1)
+    expect(persistAllocations).not.toHaveBeenCalled()
+  })
+
+  it('persistAllocations REJECTS: one-way emission, never a throw (Pitfall 6 wall)', async () => {
+    // Arrange — the write path degrades in production; this simulates a facade bug
+    vi.mocked(loadEffectiveConfig).mockResolvedValue(REVERSIBLE_ON)
+    spyDetectionPerLeaf()
+    spyHydrate()
+    spyDrain([...PENDING_SINGLE])
+    vi.mocked(persistAllocations).mockRejectedValue(new Error('lock exploded'))
+
+    // Act — must resolve, not reject
+    const output = await handlePostToolUse(postInput(UUID_SID, TOOL_RESPONSE))
+
+    // Assert — provisional token stands, exact one-way shape
+    expect(output).toEqual(ONE_WAY_POST_OUTPUT)
   })
 })
