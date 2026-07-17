@@ -16,7 +16,7 @@
 
 - [ ] **REVMODE-01**: Operator can restore placeholders to originals locally via a `mrclean restore` CLI (stdin or file input → restored output on stdout) — exact map lookup, single-pass token scan, policy-filtered; unknown, stale, and OVF tokens pass through unchanged; no hook-path restore, no MCP tool (`restore` stays on FORBIDDEN_TOOL_NAMES with CI enforcement)
 - [ ] **REVMODE-08**: Restore failures degrade one-way (placeholders remain visible plus a warning) and never block a tool call or disable redaction — restore and redact have separate error domains with no shared kill switch
-- [ ] **REVMODE-09**: Restore operations are audited hash-only (never raw values), and the leak-grep regression is extended over map artifacts, restore code paths, and their error paths
+- [x] **REVMODE-09**: Restore operations are audited hash-only (never raw values), and the leak-grep regression is extended over map artifacts, restore code paths, and their error paths
 
 ### Contract Verification & Hardening
 
@@ -63,7 +63,7 @@ Mapped by v3.0 roadmap creation (2026-07-14). Coverage: 12/12 v3.0 requirements 
 | REVMODE-06 | Phase 9 — Session State Adapter | Complete |
 | REVMODE-07 | Phase 9 — Session State Adapter | Complete |
 | REVMODE-08 | Phase 10 — Operator Restore | Pending |
-| REVMODE-09 | Phase 10 — Operator Restore | Pending |
+| REVMODE-09 | Phase 10 — Operator Restore | Complete |
 | REVMODE-10 | Phase 8 — Contract Verification & Reversible Plumbing | Complete |
 | REVMODE-11 | Phase 11 — Wire-Safety Verification & Hardening | Pending |
 | REVMODE-12 | Phase 10 — Operator Restore | Pending |
