@@ -95,8 +95,28 @@ Plans:
   3. Decrypting and dumping a session map in a test shows secret-class entries (all secret TYPEs, ENV, ENTROPY, checksum'd PII such as SSN/credit-card) structurally lack an `original` field, and no configuration can widen the restorable set — only narrow it
   4. SessionEnd with reason `clear`/`logout`/`prompt_input_exit`/`other` deletes the session map; `resume` retains it; orphaned maps older than the TTL (24h default, configurable) are swept at SessionStart and MCP-server boot
   5. The adapter holds against the named Phase 11 gates at integration level: an 8–16-process stress run loses/corrupts no entries, and a corrupt/missing/chmod'd map is treated as absent — redaction provably unaffected
-**Plans**: TBD
-**Note**: Phase-planning-time reconciliation required before the store is built: append-only JSONL + lock-free hot path (STACK) vs whole-file encrypt + short locked transaction (ARCHITECTURE), plus exact key layout — invariants already converged (research SUMMARY.md T2); pin the mechanism during `/gsd-plan-phase 9`, no new research needed.
+**Plans**: 8 plans
+
+Plans:
+**Wave 1**
+- [ ] 09-01-PLAN.md — Pinned deps install (proper-lockfile/write-file-atomic/@types) + `ttl_hours` config widening (wave 1)
+- [ ] 09-02-PLAN.md — Session-map schema + structural secret floor + HMAC addressing + v2 formatter contracts (TDD; wave 1)
+
+**Wave 2** *(blocked on Wave 1)*
+- [ ] 09-03-PLAN.md — Encrypted map store: GCM envelope (authTagLength:16), key custody, total-error read, wfa fsync:false write (TDD; wave 2)
+- [ ] 09-04-PLAN.md — v2 token layer on PlaceholderManager: hydrate seam + drainable pending; v1 byte-identical (TDD; wave 2)
+
+**Wave 3** *(blocked on Wave 2)*
+- [ ] 09-05-PLAN.md — Lock recipe + deadline-degrade wrapper + locked allocate-and-persist transaction with reconcile/renames (TDD; wave 3)
+- [ ] 09-06-PLAN.md — Reason-aware SessionEnd janitor + TTL sweep at SessionStart/MCP boot (TDD; wave 3)
+
+**Wave 4** *(blocked on Wave 3)*
+- [ ] 09-07-PLAN.md — PreToolUse/PostToolUse reversible branches (hydrate→detect→persist→rename) + cold-path import-graph fence (wave 4)
+
+**Wave 5** *(blocked on Wave 4)*
+- [ ] 09-08-PLAN.md — 16-process SC5 stress gate + chaos parity + SC1 inspection test + doctor check-8 copy + phase regression gates (wave 5)
+
+**Note**: The T2 mechanism reconciliation was pinned at plan time (09-CONTEXT D-01..D-05): whole-file AES-256-GCM encrypt + short locked `proper-lockfile` transaction (never held across detection), per-session key in separate 0700 `~/.mrclean/keys/`, no fsync inside the lock (RESEARCH-measured), TTL aging by map mtime only, key-before-map janitor deletes.
 
 ### Phase 10: Operator Restore
 **Goal**: Operator can round-trip redacted content locally — `mrclean restore` turns policy-permitted placeholders back into originals with fail-one-way degradation, hash-only audit, and honest doctor/status reporting; zero model-facing restore surface
@@ -136,11 +156,11 @@ Plans:
 | 6. NER Inference (L6b) + MCP Wiring | v2.0 | 4/4 | Complete | 2026-06-03 |
 | 7. PII Security Hardening & Framing | v2.0 | 3/3 | Complete | 2026-06-03 |
 | 8. Contract Verification & Reversible Plumbing | v3.0 | 11/12 | Gap closure (round 3) | - |
-| 9. Session State Adapter | v3.0 | 0/TBD | Not started | - |
+| 9. Session State Adapter | v3.0 | 0/8 | Planned | - |
 | 10. Operator Restore | v3.0 | 0/TBD | Not started | - |
 | 11. Wire-Safety Verification & Hardening | v3.0 | 0/TBD | Not started | - |
 
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
 
 ---
-*Last updated: 2026-07-16 — Phase 8 gap-closure round 3 planned (08-12, wave 8; from 08-UAT.md diagnosed gaps, UAT test 2). Next: `/gsd-execute-phase 8 --gaps-only`.*
+*Last updated: 2026-07-17 — Phase 9 planned (8 plans, 5 waves; T2 store mechanism pinned per 09-CONTEXT D-01). Next: `/gsd:execute-phase 9`.*
