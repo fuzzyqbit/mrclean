@@ -42,7 +42,7 @@ patterns-established:
   - "Fresh-HOME test fixture: beforeEach creates tempHome but deliberately NOT .claude (contrast idempotency.test.ts which pre-creates it and masked gap 1)"
   - "stdout spy with try/finally restore immediately after the awaited call — assertion failures render normally; vi.restoreAllMocks() in afterEach as rejection-path safety net"
 
-requirements-completed: [REVMODE-07]
+requirements-completed: []  # REVMODE-07 NOT complete — installer-surface groundwork only; janitor + TTL sweep land in Phase 9 (traceability corrected post-verification)
 
 # Metrics
 duration: 8min
