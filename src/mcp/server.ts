@@ -83,6 +83,20 @@ export async function runMcpServer(): Promise<void> {
 
   const cwd = process.cwd()
   const config = await loadEffectiveConfig({ cwd })
+
+  // Boot-time TTL sweep (09-06, D-07 second site — headless sessions never
+  // fire SessionEnd, E5). sid-agnostic sweep ONLY: the MCP redact tool is
+  // NEVER wired to the store (MCP-lane fence — per-call sids would spray
+  // orphan maps). Non-fatal: a sweep bug must never stop the MCP server.
+  if (config.reversible.enabled) {
+    try {
+      const { runTtlSweep } = await import('../state/janitor.js')
+      await runTtlSweep({ ttlHours: config.reversible.ttl_hours })
+    } catch {
+      // non-fatal (D-07)
+    }
+  }
+
   const sessionState = await initSessionState({
     sessionId: 'mcp-server',
     homeDir: process.env['HOME'] ?? cwd,

@@ -30,6 +30,19 @@ export async function handleSessionStart(input: SessionStartInput): Promise<Sess
   // ConfigReadError propagates — fail-closed via installCrashGuards → exit 2
   const config = await loadEffectiveConfig({ homeDir: homedir(), cwd: input.cwd })
 
+  // Step 1b (09-06, D-07): non-fatal TTL orphan sweep — never disturb the
+  // banner path. The ConfigReadError rethrow contract above stays UNTOUCHED:
+  // this try/catch wraps ONLY the janitor call, never loadEffectiveConfig.
+  // Lazy import keeps src/state/ off the one-way cold path (Pitfall 7).
+  if (config.reversible.enabled) {
+    try {
+      const { runTtlSweep } = await import('../../state/janitor.js')
+      await runTtlSweep({ ttlHours: config.reversible.ttl_hours })
+    } catch {
+      // non-fatal (D-07): a sweep bug must never turn SessionStart into exit-2
+    }
+  }
+
   // Step 2: Initialize session state (Layer 3 env blocklist + Layer 4 words.txt)
   const state = await initSessionState({
     sessionId: input.session_id,
