@@ -550,3 +550,117 @@ describe('checkReversibleState', () => {
     await rm(cwd, { recursive: true, force: true })
   })
 })
+
+// ---------------------------------------------------------------------------
+// checkReversibleState — FAIL-loud on unknown [reversible] keys
+// (plan 10-04, REVMODE-12: the silent unknown-key no-op is banned)
+// ---------------------------------------------------------------------------
+
+describe('checkReversibleState — FAIL-loud on unknown [reversible] keys', () => {
+  it('Test 18: FAIL — user layer plants an unknown key → names the user config path + key', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const userConfigDir = join(homeDir, '.mrclean')
+    await mkdir(userConfigDir, { recursive: true })
+    // restore_secrets is NOT in the supported set {enabled, ttl_hours} — the
+    // tolerant validator silently drops it today (exactly what REVMODE-12 bans).
+    await writeFile(
+      join(userConfigDir, 'config.toml'),
+      '[reversible]\nenabled = true\nrestore_secrets = true\n',
+      'utf8',
+    )
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    expect(result.name).toBe('reversible')
+    expect(result.status).toBe('FAIL')
+    expect(result.exitCodeOnFail).toBe(1)
+    expect(result.detail).toMatch(/unsupported \[reversible\] key/)
+    expect(result.detail).toContain(join(homeDir, '.mrclean', 'config.toml'))
+    expect(result.detail).toContain('restore_secrets')
+    // Supported keys are never named as offenders.
+    expect(result.detail).not.toContain('enabled')
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+
+  it('Test 19: FAIL — project layer plants a typo key (ttl_hour) → names the project path + key', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const projectConfigDir = join(cwd, '.mrclean')
+    await mkdir(projectConfigDir, { recursive: true })
+    // Typo: ttl_hour (missing the s) — silent tolerance would leave the
+    // operator's intended TTL override a no-op.
+    await writeFile(join(projectConfigDir, 'config.toml'), '[reversible]\nttl_hour = 12\n', 'utf8')
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    expect(result.name).toBe('reversible')
+    expect(result.status).toBe('FAIL')
+    expect(result.exitCodeOnFail).toBe(1)
+    expect(result.detail).toMatch(/unsupported \[reversible\] key/)
+    expect(result.detail).toContain(`${join(cwd, '.mrclean', 'config.toml')}: ttl_hour`)
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+
+  it('Test 20: FAIL — both layers offend → single FAIL naming both file+key pairs, user first', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const userConfigDir = join(homeDir, '.mrclean')
+    const projectConfigDir = join(cwd, '.mrclean')
+    await mkdir(userConfigDir, { recursive: true })
+    await mkdir(projectConfigDir, { recursive: true })
+    await writeFile(
+      join(userConfigDir, 'config.toml'),
+      '[reversible]\nrestore_secrets = true\n',
+      'utf8',
+    )
+    await writeFile(join(projectConfigDir, 'config.toml'), '[reversible]\nttl_hour = 12\n', 'utf8')
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    const userPair = `${join(homeDir, '.mrclean', 'config.toml')}: restore_secrets`
+    const projectPair = `${join(cwd, '.mrclean', 'config.toml')}: ttl_hour`
+    expect(result.name).toBe('reversible')
+    expect(result.status).toBe('FAIL')
+    expect(result.exitCodeOnFail).toBe(1)
+    expect(result.detail).toContain(userPair)
+    expect(result.detail).toContain(projectPair)
+    // Offenders aggregate into ONE FAIL — user layer listed first.
+    expect(result.detail.indexOf(userPair)).toBeLessThan(result.detail.indexOf(projectPair))
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+
+  it('Test 21: FAIL detail byte-shape — starts with "unsupported [reversible] key"', async () => {
+    const homeDir = await makeTmpDir()
+    const cwd = await makeTmpDir()
+    const userConfigDir = join(homeDir, '.mrclean')
+    await mkdir(userConfigDir, { recursive: true })
+    await writeFile(
+      join(userConfigDir, 'config.toml'),
+      '[reversible]\nrestore_secrets = true\n',
+      'utf8',
+    )
+
+    const result = await checkReversibleState(homeDir, cwd)
+
+    // Guard: the FAIL detail prefix is stable copy tooling can match on.
+    expect(result.detail.startsWith('unsupported [reversible] key')).toBe(true)
+    // Full byte-shape lock (paths ARE allowed in FAIL details — checkConfigLoad
+    // precedent; the T-08-08 constant-detail constraint applies to PASS/SKIP).
+    expect(result).toEqual({
+      name: 'reversible',
+      status: 'FAIL',
+      detail: `unsupported [reversible] key(s): ${join(homeDir, '.mrclean', 'config.toml')}: restore_secrets`,
+      exitCodeOnFail: 1,
+    })
+
+    await rm(homeDir, { recursive: true, force: true })
+    await rm(cwd, { recursive: true, force: true })
+  })
+})
