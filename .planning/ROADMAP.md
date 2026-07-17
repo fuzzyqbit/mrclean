@@ -99,8 +99,8 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 09-01-PLAN.md — Pinned deps install (proper-lockfile/write-file-atomic/@types) + `ttl_hours` config widening (wave 1)
-- [ ] 09-02-PLAN.md — Session-map schema + structural secret floor + HMAC addressing + v2 formatter contracts (TDD; wave 1)
+- [x] 09-01-PLAN.md — Pinned deps install (proper-lockfile/write-file-atomic/@types) + `ttl_hours` config widening (wave 1)
+- [x] 09-02-PLAN.md — Session-map schema + structural secret floor + HMAC addressing + v2 formatter contracts (TDD; wave 1)
 
 **Wave 2** *(blocked on Wave 1)*
 - [ ] 09-03-PLAN.md — Encrypted map store: GCM envelope (authTagLength:16), key custody, total-error read, wfa fsync:false write (TDD; wave 2)
