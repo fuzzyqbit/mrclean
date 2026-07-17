@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Reversible Redact Mode — Foundations + Operator Restore
 status: executing
-stopped_at: Phase 9 context gathered (auto mode)
-last_updated: "2026-07-17T02:29:32.365Z"
-last_activity: 2026-07-17 -- Phase 09 execution started
+stopped_at: Completed 09-07-PLAN.md
+last_updated: "2026-07-17T03:44:10.087Z"
+last_activity: 2026-07-17
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 20
-  completed_plans: 12
-  percent: 60
+  completed_plans: 19
+  percent: 95
 ---
 
 # State: mrclean
@@ -29,10 +29,10 @@ progress:
 ## Current Position
 
 Phase: 09 (session-state-adapter) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 09
-Progress: [██████████] 100%
-Last activity: 2026-07-17 -- Phase 09 execution started
+Plan: 2 of 8
+Status: Ready to execute
+Progress: [██████████] 95%
+Last activity: 2026-07-17
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Last activity: 2026-07-17 -- Phase 09 execution started
 | Phase 01 P06 | 10min | 3 tasks | 9 files |
 | Phase 01 P07 | 4min | 2 tasks | 1 files |
 | Phase 08 P12 | 8min | 2 tasks | 7 files |
+| Phase 09 P07 | 18min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Last activity: 2026-07-17 -- Phase 09 execution started
 - **Storage-mechanics reconciliation deferred to Phase 9 planning** — append-only JSONL + lock-free hot path vs whole-file encrypt + short locked transaction, plus key layout; invariants already converged (SUMMARY.md T2), so it's a plan-phase design pin, not new research.
 - [Phase 08-12]: atomicWriteJson owns parent-dir creation (recursive mkdir before tmp write) — every JSON writer fresh-HOME safe, matching ignore.ts/project-dir.ts precedent
 - [Phase 08-12]: install banner count derives from exported HOOK_EVENTS.length, test-locked to the on-disk _mrclean ground truth (survives future HOOK_EVENTS changes)
+- [Phase 09]: 09-07: ReversibleHandle capability handle — lazily-imported facade stored from Step 2b and reused at persist time, keeping EXACTLY ONE dynamic state-import site per handler — Satisfies the one-await-import grep gate + cold-path fence without a facade re-export; disabled sessions allocate zero promises
+- [Phase 09]: 09-07: drain-and-DISCARD on budget-deny and dry_run paths in both substitution handlers — the store only learns allocations that actually shipped on the wire (T-09-07-04) — Persisting non-emitted substitutions would create orphan store entries the operator could never legitimately restore against
+- [Phase 09]: 09-07: cold-path fence is now regression-locked — static state/proper-lockfile/write-file-atomic imports banned from the 9-module hook-reachable set; cipher/lock tokens confined to src/state/ by full-src walk — Pitfall 7 / REVMODE-05: one-way default provably byte-identical; fence trip verified live with a planted import during development
 
 ### Phase → Requirement Mapping (v3.0)
 
@@ -241,7 +245,7 @@ Last activity: 2026-07-17 -- Phase 09 execution started
 
 **Last command:** `/gsd:execute-phase 8 --gaps-only`
 **Last action:** Phase 8 complete (12/12 plans) — UAT round 3 gaps closed by 08-12 (fresh-HOME install mkdir + honest banner), re-verified 20/20, REVMODE-07 traceability corrected, code review round 3 committed (0 critical / 4 advisory warnings).
-**Stopped at:** Phase 9 context gathered (auto mode)
+**Stopped at:** Completed 09-07-PLAN.md
 **Next action:** `/gsd:discuss-phase 9` (no CONTEXT.md yet) — ROADMAP flags `--research-phase` for planning
 
 ---

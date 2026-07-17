@@ -111,7 +111,7 @@ Plans:
 - [x] 09-06-PLAN.md — Reason-aware SessionEnd janitor + TTL sweep at SessionStart/MCP boot (TDD; wave 3)
 
 **Wave 4** *(blocked on Wave 3)*
-- [ ] 09-07-PLAN.md — PreToolUse/PostToolUse reversible branches (hydrate→detect→persist→rename) + cold-path import-graph fence (wave 4)
+- [x] 09-07-PLAN.md — PreToolUse/PostToolUse reversible branches (hydrate→detect→persist→rename) + cold-path import-graph fence (wave 4)
 
 **Wave 5** *(blocked on Wave 4)*
 - [ ] 09-08-PLAN.md — 16-process SC5 stress gate + chaos parity + SC1 inspection test + doctor check-8 copy + phase regression gates (wave 5)
