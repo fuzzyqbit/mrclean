@@ -368,19 +368,22 @@ Ecosystem prior art (settled per ROADMAP note — not re-researched): LLM Guard 
 | A5 | CLI exits 0 on cosmetic degrade (map absent/corrupt), warning on stderr | Pattern 5 / Pitfall 9 | If operators need failure signaling, add `--strict` later; deferring matches YAGNI + "restore is cosmetic" posture [ASSUMED — recommendation] |
 | A6 | LLM Guard / LiteLLM prior-art characterization carried from earlier milestone research without re-fetching | State of the Art | Zero build impact — design is fully determined by in-repo contracts [ASSUMED] |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact doctor FAIL matrix beyond unknown keys**
    - What we know: exit 1 reserved; unknown-key silent tolerance is the named silent no-op; win32 is a documented inherited gap, not a widening.
    - What's unclear: whether check 8 should also surface (non-FAIL) informational details like win32-enabled or orphaned-map counts.
    - Recommendation: FAIL = unknown keys only (A1); anything else is PASS-detail copy, decided at plan time and byte-locked in tests.
+   - RESOLVED: doctor FAIL = unknown `[reversible]` keys only (A1 pin) — pinned in the ROADMAP.md Phase 10 planner-pin note (2026-07-17); implemented by plan 10-04.
 2. **`mrclean_status` cross-project scoping copy**
    - What we know: sessions are machine-global; audit counters are cwd-scoped (status already uses `getCwd()` for the audit path).
    - What's unclear: whether entry counts should be filtered to "sessions plausibly belonging to this project" (not derivable — maps don't record cwd).
    - Recommendation: report global session counts with honest field naming (e.g. `sessions` = machine-wide live maps); never claim project scoping the data can't support.
+   - RESOLVED: counters aggregate from `action:'restore'` audit records (A2 pin) with machine-global session counts under honest field naming — pinned in the ROADMAP.md Phase 10 planner-pin note (2026-07-17); implemented by plan 10-06.
 3. **STATE.md open todo "Phase 10 early: per-tool empirical verification of structured `tool_response` shapes"**
    - What we know: written pre-reshape; the operator CLI has zero PostToolUse dependency; the concern belongs to hook emission (Phase 11's live canary).
    - Recommendation: re-home this todo to Phase 11 during planning; do not spend Phase 10 tokens on live-session experiments.
+   - RESOLVED: re-homed to Phase 11 at plan time — recorded beside the planner pins (2026-07-17) in the ROADMAP.md Phase 11 note ("Phase 10 re-homed the stale STATE.md todo ... here"); zero Phase 10 scope.
 
 ## Environment Availability
 
