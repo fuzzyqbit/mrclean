@@ -132,10 +132,10 @@ Plans:
 
 Plans:
 **Wave 1** *(4 parallel TDD plans, zero file overlap)*
-- [ ] 10-01-PLAN.md — Single-pass restore engine `restoreText()` + `V2_TOKEN_SCAN_RE` grammar export (TDD; wave 1)
-- [ ] 10-02-PLAN.md — Session discovery + policy-filtered inverted index with poisoned-map defense (TDD; wave 1)
-- [ ] 10-03-PLAN.md — Hash-only restore audit record + counters aggregator (`src/audit/restore-log.ts`) (TDD; wave 1)
-- [ ] 10-04-PLAN.md — Doctor FAIL-loud on unknown `[reversible]` keys (raw-layer scan, reserved exit 1) (TDD; wave 1)
+- [x] 10-01-PLAN.md — Single-pass restore engine `restoreText()` + `V2_TOKEN_SCAN_RE` grammar export (TDD; wave 1)
+- [x] 10-02-PLAN.md — Session discovery + policy-filtered inverted index with poisoned-map defense (TDD; wave 1)
+- [x] 10-03-PLAN.md — Hash-only restore audit record + counters aggregator (`src/audit/restore-log.ts`) (TDD; wave 1)
+- [x] 10-04-PLAN.md — Doctor FAIL-loud on unknown `[reversible]` keys (raw-layer scan, reserved exit 1) (TDD; wave 1)
 
 **Wave 2** *(blocked on Wave 1)*
 - [ ] 10-05-PLAN.md — `mrclean restore` CLI (stdin/file/--session) + REVMODE-08 degrade matrix (wave 2)
@@ -173,7 +173,7 @@ Plans:
 | 7. PII Security Hardening & Framing | v2.0 | 3/3 | Complete | 2026-06-03 |
 | 8. Contract Verification & Reversible Plumbing | v3.0 | 11/12 | Gap closure (round 3) | - |
 | 9. Session State Adapter | v3.0 | 0/8 | Planned | - |
-| 10. Operator Restore | v3.0 | 0/8 | Planned | - |
+| 10. Operator Restore | v3.0 | 4/8 | In Progress|  |
 | 11. Wire-Safety Verification & Hardening | v3.0 | 0/TBD | Not started | - |
 
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
