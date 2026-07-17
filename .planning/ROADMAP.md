@@ -128,8 +128,24 @@ Plans:
   3. With the map missing, corrupt, or locked, restore degrades one-way — placeholders stay visible with a warning, no tool call is ever blocked, and redaction is provably unaffected (separate error domains, no shared kill switch)
   4. Every restore operation is audited hash-only (never raw values), and the extended leak-grep regression passes over map artifacts, restore code paths, and their error paths
   5. `mrclean doctor` FAILs loud (never silent no-op) on unsupported reversible configuration, and `mrclean_status` reports map entry counts by class plus restored/unmatched counters — never values
-**Plans**: TBD
-**Note**: Restore engine is a pure single-pass function with exhaustive ecosystem prior art (LLM Guard/LiteLLM string substitution) — standard patterns, skip research-phase. Build directly against the Phase 11 canary round-trip and mixed-content canary gates by name.
+**Plans**: 8 plans
+
+Plans:
+**Wave 1** *(4 parallel TDD plans, zero file overlap)*
+- [ ] 10-01-PLAN.md — Single-pass restore engine `restoreText()` + `V2_TOKEN_SCAN_RE` grammar export (TDD; wave 1)
+- [ ] 10-02-PLAN.md — Session discovery + policy-filtered inverted index with poisoned-map defense (TDD; wave 1)
+- [ ] 10-03-PLAN.md — Hash-only restore audit record + counters aggregator (`src/audit/restore-log.ts`) (TDD; wave 1)
+- [ ] 10-04-PLAN.md — Doctor FAIL-loud on unknown `[reversible]` keys (raw-layer scan, reserved exit 1) (TDD; wave 1)
+
+**Wave 2** *(blocked on Wave 1)*
+- [ ] 10-05-PLAN.md — `mrclean restore` CLI (stdin/file/--session) + REVMODE-08 degrade matrix (wave 2)
+- [ ] 10-06-PLAN.md — `mrclean_status` reversible counters via state-confined reducer + audit aggregation (wave 2)
+
+**Wave 3** *(blocked on Wave 2)*
+- [ ] 10-07-PLAN.md — Trust-boundary fences (both directions) + mixed-content canary (Phase 11 gate substrate) (wave 3)
+- [ ] 10-08-PLAN.md — Leak-grep extension over restore surfaces/error paths + phase regression gate (wave 3)
+
+**Note**: Restore engine is a pure single-pass function with exhaustive ecosystem prior art (LLM Guard/LiteLLM string substitution) — standard patterns, skip research-phase. Build directly against the Phase 11 canary round-trip and mixed-content canary gates by name. Planner pins (2026-07-17, resolving 10-RESEARCH A1–A5): doctor FAIL = unknown `[reversible]` keys only; status restore counters aggregate from `action:'restore'` audit records; restore audit is a discriminated sibling record (log.ts LOCKED unions untouched); default restore scope = union across all live maps with `--session` narrowing; exit 0 on cosmetic degrade, exit 2 for hard input errors.
 
 ### Phase 11: Wire-Safety Verification & Hardening
 **Goal**: CI proves the milestone's negative claims — reversible mode never re-exposes originals on any wire path — via adversarial end-to-end gates, and the honest copy is locked against drift
@@ -142,7 +158,7 @@ Plans:
   4. An 8–16-process concurrency stress test gates the build: no lost or corrupted map entries, no duplicate placeholders for distinct originals, identical placeholders for identical originals
   5. THREAT_MODEL.md's reversible-mode section is finalized against the shipped implementation, and the copy-drift CI gate covers the "encrypted at rest" and honest-framing claims
 **Plans**: TBD
-**Note**: Every gate extends an existing shipped harness (UAT-2b headless canary, leak-grep, copy-drift, perf CI) — standard patterns, skip research-phase.
+**Note**: Every gate extends an existing shipped harness (UAT-2b headless canary, leak-grep, copy-drift, perf CI) — standard patterns, skip research-phase. Phase 10 re-homed the stale STATE.md todo "per-tool empirical verification of structured `tool_response` shapes" here (pre-reshape concern; belongs to the live canary gate, not the operator CLI).
 
 ## Progress
 
@@ -157,10 +173,10 @@ Plans:
 | 7. PII Security Hardening & Framing | v2.0 | 3/3 | Complete | 2026-06-03 |
 | 8. Contract Verification & Reversible Plumbing | v3.0 | 11/12 | Gap closure (round 3) | - |
 | 9. Session State Adapter | v3.0 | 0/8 | Planned | - |
-| 10. Operator Restore | v3.0 | 0/TBD | Not started | - |
+| 10. Operator Restore | v3.0 | 0/8 | Planned | - |
 | 11. Wire-Safety Verification & Hardening | v3.0 | 0/TBD | Not started | - |
 
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
 
 ---
-*Last updated: 2026-07-17 — Phase 9 planned (8 plans, 5 waves; T2 store mechanism pinned per 09-CONTEXT D-01). Next: `/gsd:execute-phase 9`.*
+*Last updated: 2026-07-17 — Phase 10 planned (8 plans, 3 waves; RESEARCH assumptions A1–A5 pinned in the phase note). Next: `/gsd:execute-phase 10`.*
