@@ -39,21 +39,21 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/tsup/assets/esm_shims.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/tsup/assets/esm_shims.js
 import path from "path";
 import { fileURLToPath } from "url";
 var getFilename, __filename;
 var init_esm_shims = __esm({
-  "node_modules/tsup/assets/esm_shims.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/tsup/assets/esm_shims.js"() {
     "use strict";
     getFilename = () => fileURLToPath(import.meta.url);
     __filename = /* @__PURE__ */ getFilename();
   }
 });
 
-// node_modules/commander/lib/error.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/error.js
 var require_error = __commonJS({
-  "node_modules/commander/lib/error.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/error.js"(exports) {
     "use strict";
     init_esm_shims();
     var CommanderError2 = class extends Error {
@@ -88,9 +88,9 @@ var require_error = __commonJS({
   }
 });
 
-// node_modules/commander/lib/argument.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/argument.js
 var require_argument = __commonJS({
-  "node_modules/commander/lib/argument.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/argument.js"(exports) {
     "use strict";
     init_esm_shims();
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
@@ -217,9 +217,9 @@ var require_argument = __commonJS({
   }
 });
 
-// node_modules/commander/lib/help.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/help.js
 var require_help = __commonJS({
-  "node_modules/commander/lib/help.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/help.js"(exports) {
     "use strict";
     init_esm_shims();
     var { humanReadableArgName } = require_argument();
@@ -788,9 +788,9 @@ ${itemIndentStr}`);
   }
 });
 
-// node_modules/commander/lib/option.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/option.js
 var require_option = __commonJS({
-  "node_modules/commander/lib/option.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/option.js"(exports) {
     "use strict";
     init_esm_shims();
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
@@ -1091,9 +1091,9 @@ var require_option = __commonJS({
   }
 });
 
-// node_modules/commander/lib/suggestSimilar.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/suggestSimilar.js
 var require_suggestSimilar = __commonJS({
-  "node_modules/commander/lib/suggestSimilar.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/suggestSimilar.js"(exports) {
     "use strict";
     init_esm_shims();
     var maxDistance = 3;
@@ -1173,9 +1173,9 @@ var require_suggestSimilar = __commonJS({
   }
 });
 
-// node_modules/commander/lib/command.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/command.js
 var require_command = __commonJS({
-  "node_modules/commander/lib/command.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/commander/lib/command.js"(exports) {
     "use strict";
     init_esm_shims();
     var EventEmitter2 = __require("events").EventEmitter;
@@ -3334,9 +3334,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
   }
 });
 
-// node_modules/commander/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/commander/index.js
 var require_commander = __commonJS({
-  "node_modules/commander/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/commander/index.js"(exports) {
     "use strict";
     init_esm_shims();
     var { Argument: Argument2 } = require_argument();
@@ -3467,9 +3467,9 @@ var init_version = __esm({
   }
 });
 
-// node_modules/picocolors/picocolors.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/picocolors/picocolors.js
 var require_picocolors = __commonJS({
-  "node_modules/picocolors/picocolors.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/picocolors/picocolors.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var p = process || {};
@@ -4192,7 +4192,7 @@ var init_stdin = __esm({
   }
 });
 
-// node_modules/smol-toml/dist/error.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/error.js
 function getLineColFromPtr(string3, ptr) {
   let lines = string3.slice(0, ptr).split(/\r\n|\n|\r/g);
   return [lines.length, lines.pop().length + 1];
@@ -4218,7 +4218,7 @@ function makeCodeBlock(string3, line, column) {
 }
 var TomlError;
 var init_error = __esm({
-  "node_modules/smol-toml/dist/error.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/error.js"() {
     "use strict";
     init_esm_shims();
     TomlError = class extends Error {
@@ -4239,7 +4239,7 @@ ${codeblock}`, options);
   }
 });
 
-// node_modules/smol-toml/dist/util.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/util.js
 function isEscaped(str, ptr) {
   let i = 0;
   while (str[ptr - ++i] === "\\")
@@ -4318,17 +4318,17 @@ function getStringEnd(str, seek) {
   return seek;
 }
 var init_util = __esm({
-  "node_modules/smol-toml/dist/util.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/util.js"() {
     "use strict";
     init_esm_shims();
     init_error();
   }
 });
 
-// node_modules/smol-toml/dist/date.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/date.js
 var DATE_TIME_RE, TomlDate;
 var init_date = __esm({
-  "node_modules/smol-toml/dist/date.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/date.js"() {
     "use strict";
     init_esm_shims();
     DATE_TIME_RE = /^(\d{4}-\d{2}-\d{2})?[T ]?(?:(\d{2}):\d{2}(?::\d{2}(?:\.\d+)?)?)?(Z|[-+]\d{2}:\d{2})?$/i;
@@ -4424,7 +4424,7 @@ var init_date = __esm({
   }
 });
 
-// node_modules/smol-toml/dist/primitive.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/primitive.js
 function parseString(str, ptr = 0, endPtr = str.length) {
   let isLiteral = str[ptr] === "'";
   let isMultiline = str[ptr++] === str[ptr] && str[ptr] === str[ptr + 1];
@@ -4550,7 +4550,7 @@ function parseValue(value, toml, ptr, integersAsBigInt) {
 }
 var INT_REGEX, FLOAT_REGEX, LEADING_ZERO, ESCAPE_REGEX, ESC_MAP;
 var init_primitive = __esm({
-  "node_modules/smol-toml/dist/primitive.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/primitive.js"() {
     "use strict";
     init_esm_shims();
     init_util();
@@ -4573,7 +4573,7 @@ var init_primitive = __esm({
   }
 });
 
-// node_modules/smol-toml/dist/extract.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/extract.js
 function sliceAndTrimEndOf(str, startPtr, endPtr) {
   let value = str.slice(startPtr, endPtr);
   let commentIdx = value.indexOf("#");
@@ -4640,7 +4640,7 @@ function extractValue(str, ptr, end, depth, integersAsBigInt) {
   ];
 }
 var init_extract = __esm({
-  "node_modules/smol-toml/dist/extract.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/extract.js"() {
     "use strict";
     init_esm_shims();
     init_primitive();
@@ -4650,7 +4650,7 @@ var init_extract = __esm({
   }
 });
 
-// node_modules/smol-toml/dist/struct.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/struct.js
 function parseKey(str, ptr, end = "=") {
   let dot = ptr - 1;
   let parsed = [];
@@ -4798,7 +4798,7 @@ function parseArray(str, ptr, depth, integersAsBigInt) {
 }
 var KEY_PART_RE;
 var init_struct = __esm({
-  "node_modules/smol-toml/dist/struct.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/struct.js"() {
     "use strict";
     init_esm_shims();
     init_primitive();
@@ -4809,7 +4809,7 @@ var init_struct = __esm({
   }
 });
 
-// node_modules/smol-toml/dist/parse.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/parse.js
 function peekTable(key, table, meta2, type) {
   let t = table;
   let m = meta2;
@@ -4934,7 +4934,7 @@ function parse(toml, { maxDepth = 1e3, integersAsBigInt } = {}) {
   return res;
 }
 var init_parse = __esm({
-  "node_modules/smol-toml/dist/parse.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/parse.js"() {
     "use strict";
     init_esm_shims();
     init_struct();
@@ -4944,7 +4944,7 @@ var init_parse = __esm({
   }
 });
 
-// node_modules/smol-toml/dist/stringify.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/stringify.js
 function extendedTypeOf(obj) {
   let type = typeof obj;
   if (type === "object") {
@@ -5085,16 +5085,16 @@ function stringify(obj, { maxDepth = 1e3, numbersAsFloat = false } = {}) {
 }
 var BARE_KEY;
 var init_stringify = __esm({
-  "node_modules/smol-toml/dist/stringify.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/stringify.js"() {
     "use strict";
     init_esm_shims();
     BARE_KEY = /^[a-z0-9-_]+$/i;
   }
 });
 
-// node_modules/smol-toml/dist/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/index.js
 var init_dist = __esm({
-  "node_modules/smol-toml/dist/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/smol-toml/dist/index.js"() {
     "use strict";
     init_esm_shims();
     init_parse();
@@ -5650,9 +5650,9 @@ var init_shape_allowlist = __esm({
   }
 });
 
-// node_modules/fast-glob/out/utils/array.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/array.js
 var require_array = __commonJS({
-  "node_modules/fast-glob/out/utils/array.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/array.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -5678,9 +5678,9 @@ var require_array = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/utils/errno.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/errno.js
 var require_errno = __commonJS({
-  "node_modules/fast-glob/out/utils/errno.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/errno.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -5692,9 +5692,9 @@ var require_errno = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/utils/fs.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/fs.js
 var require_fs = __commonJS({
-  "node_modules/fast-glob/out/utils/fs.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/fs.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -5718,9 +5718,9 @@ var require_fs = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/utils/path.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/path.js
 var require_path = __commonJS({
-  "node_modules/fast-glob/out/utils/path.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/path.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -5772,9 +5772,9 @@ var require_path = __commonJS({
   }
 });
 
-// node_modules/is-extglob/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/is-extglob/index.js
 var require_is_extglob = __commonJS({
-  "node_modules/is-extglob/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/is-extglob/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = function isExtglob(str) {
@@ -5791,9 +5791,9 @@ var require_is_extglob = __commonJS({
   }
 });
 
-// node_modules/is-glob/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/is-glob/index.js
 var require_is_glob = __commonJS({
-  "node_modules/is-glob/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/is-glob/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var isExtglob = require_is_extglob();
@@ -5924,9 +5924,9 @@ var require_is_glob = __commonJS({
   }
 });
 
-// node_modules/glob-parent/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/glob-parent/index.js
 var require_glob_parent = __commonJS({
-  "node_modules/glob-parent/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/glob-parent/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var isGlob = require_is_glob();
@@ -5954,9 +5954,9 @@ var require_glob_parent = __commonJS({
   }
 });
 
-// node_modules/braces/lib/utils.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/utils.js
 var require_utils = __commonJS({
-  "node_modules/braces/lib/utils.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/utils.js"(exports) {
     "use strict";
     init_esm_shims();
     exports.isInteger = (num) => {
@@ -6037,9 +6037,9 @@ var require_utils = __commonJS({
   }
 });
 
-// node_modules/braces/lib/stringify.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/stringify.js
 var require_stringify = __commonJS({
-  "node_modules/braces/lib/stringify.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/stringify.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var utils = require_utils();
@@ -6069,9 +6069,9 @@ var require_stringify = __commonJS({
   }
 });
 
-// node_modules/is-number/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/is-number/index.js
 var require_is_number = __commonJS({
-  "node_modules/is-number/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/is-number/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = function(num) {
@@ -6086,9 +6086,9 @@ var require_is_number = __commonJS({
   }
 });
 
-// node_modules/to-regex-range/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/to-regex-range/index.js
 var require_to_regex_range = __commonJS({
-  "node_modules/to-regex-range/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/to-regex-range/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var isNumber = require_is_number();
@@ -6298,9 +6298,9 @@ var require_to_regex_range = __commonJS({
   }
 });
 
-// node_modules/fill-range/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fill-range/index.js
 var require_fill_range = __commonJS({
-  "node_modules/fill-range/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fill-range/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var util = __require("util");
@@ -6493,9 +6493,9 @@ var require_fill_range = __commonJS({
   }
 });
 
-// node_modules/braces/lib/compile.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/compile.js
 var require_compile = __commonJS({
-  "node_modules/braces/lib/compile.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/compile.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var fill = require_fill_range();
@@ -6546,9 +6546,9 @@ var require_compile = __commonJS({
   }
 });
 
-// node_modules/braces/lib/expand.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/expand.js
 var require_expand = __commonJS({
-  "node_modules/braces/lib/expand.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/expand.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var fill = require_fill_range();
@@ -6641,9 +6641,9 @@ var require_expand = __commonJS({
   }
 });
 
-// node_modules/braces/lib/constants.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/constants.js
 var require_constants = __commonJS({
-  "node_modules/braces/lib/constants.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/constants.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = {
@@ -6743,9 +6743,9 @@ var require_constants = __commonJS({
   }
 });
 
-// node_modules/braces/lib/parse.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/parse.js
 var require_parse = __commonJS({
-  "node_modules/braces/lib/parse.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/braces/lib/parse.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var stringify2 = require_stringify();
@@ -6982,9 +6982,9 @@ var require_parse = __commonJS({
   }
 });
 
-// node_modules/braces/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/braces/index.js
 var require_braces = __commonJS({
-  "node_modules/braces/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/braces/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var stringify2 = require_stringify();
@@ -7046,9 +7046,9 @@ var require_braces = __commonJS({
   }
 });
 
-// node_modules/micromatch/node_modules/picomatch/lib/constants.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/constants.js
 var require_constants2 = __commonJS({
-  "node_modules/micromatch/node_modules/picomatch/lib/constants.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/constants.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var path3 = __require("path");
@@ -7248,9 +7248,9 @@ var require_constants2 = __commonJS({
   }
 });
 
-// node_modules/micromatch/node_modules/picomatch/lib/utils.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/utils.js
 var require_utils2 = __commonJS({
-  "node_modules/micromatch/node_modules/picomatch/lib/utils.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/utils.js"(exports) {
     "use strict";
     init_esm_shims();
     var path3 = __require("path");
@@ -7310,9 +7310,9 @@ var require_utils2 = __commonJS({
   }
 });
 
-// node_modules/micromatch/node_modules/picomatch/lib/scan.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/scan.js
 var require_scan = __commonJS({
-  "node_modules/micromatch/node_modules/picomatch/lib/scan.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/scan.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var utils = require_utils2();
@@ -7641,9 +7641,9 @@ var require_scan = __commonJS({
   }
 });
 
-// node_modules/micromatch/node_modules/picomatch/lib/parse.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/parse.js
 var require_parse2 = __commonJS({
-  "node_modules/micromatch/node_modules/picomatch/lib/parse.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/parse.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var constants7 = require_constants2();
@@ -8644,9 +8644,9 @@ var require_parse2 = __commonJS({
   }
 });
 
-// node_modules/micromatch/node_modules/picomatch/lib/picomatch.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/picomatch.js
 var require_picomatch = __commonJS({
-  "node_modules/micromatch/node_modules/picomatch/lib/picomatch.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/lib/picomatch.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var path3 = __require("path");
@@ -8786,18 +8786,18 @@ var require_picomatch = __commonJS({
   }
 });
 
-// node_modules/micromatch/node_modules/picomatch/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/index.js
 var require_picomatch2 = __commonJS({
-  "node_modules/micromatch/node_modules/picomatch/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/micromatch/node_modules/picomatch/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = require_picomatch();
   }
 });
 
-// node_modules/micromatch/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/micromatch/index.js
 var require_micromatch = __commonJS({
-  "node_modules/micromatch/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/micromatch/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var util = __require("util");
@@ -8957,9 +8957,9 @@ var require_micromatch = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/utils/pattern.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/pattern.js
 var require_pattern = __commonJS({
-  "node_modules/fast-glob/out/utils/pattern.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/pattern.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9123,9 +9123,9 @@ var require_pattern = __commonJS({
   }
 });
 
-// node_modules/merge2/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/merge2/index.js
 var require_merge2 = __commonJS({
-  "node_modules/merge2/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/merge2/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var Stream = __require("stream");
@@ -9243,9 +9243,9 @@ var require_merge2 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/utils/stream.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/stream.js
 var require_stream = __commonJS({
-  "node_modules/fast-glob/out/utils/stream.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/stream.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9267,9 +9267,9 @@ var require_stream = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/utils/string.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/string.js
 var require_string = __commonJS({
-  "node_modules/fast-glob/out/utils/string.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/string.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9285,9 +9285,9 @@ var require_string = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/utils/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/index.js
 var require_utils3 = __commonJS({
-  "node_modules/fast-glob/out/utils/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/utils/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9309,9 +9309,9 @@ var require_utils3 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/managers/tasks.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/managers/tasks.js
 var require_tasks = __commonJS({
-  "node_modules/fast-glob/out/managers/tasks.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/managers/tasks.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9406,9 +9406,9 @@ var require_tasks = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.stat/out/providers/async.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/providers/async.js
 var require_async = __commonJS({
-  "node_modules/@nodelib/fs.stat/out/providers/async.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/providers/async.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9449,9 +9449,9 @@ var require_async = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.stat/out/providers/sync.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/providers/sync.js
 var require_sync = __commonJS({
-  "node_modules/@nodelib/fs.stat/out/providers/sync.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/providers/sync.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9478,9 +9478,9 @@ var require_sync = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.stat/out/adapters/fs.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/adapters/fs.js
 var require_fs2 = __commonJS({
-  "node_modules/@nodelib/fs.stat/out/adapters/fs.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/adapters/fs.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9502,9 +9502,9 @@ var require_fs2 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.stat/out/settings.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/settings.js
 var require_settings = __commonJS({
-  "node_modules/@nodelib/fs.stat/out/settings.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/settings.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9525,9 +9525,9 @@ var require_settings = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.stat/out/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/index.js
 var require_out = __commonJS({
-  "node_modules/@nodelib/fs.stat/out/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.stat/out/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9558,9 +9558,9 @@ var require_out = __commonJS({
   }
 });
 
-// node_modules/queue-microtask/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/queue-microtask/index.js
 var require_queue_microtask = __commonJS({
-  "node_modules/queue-microtask/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/queue-microtask/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var promise;
@@ -9570,9 +9570,9 @@ var require_queue_microtask = __commonJS({
   }
 });
 
-// node_modules/run-parallel/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/run-parallel/index.js
 var require_run_parallel = __commonJS({
-  "node_modules/run-parallel/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/run-parallel/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = runParallel;
@@ -9622,9 +9622,9 @@ var require_run_parallel = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.scandir/out/constants.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/constants.js
 var require_constants3 = __commonJS({
-  "node_modules/@nodelib/fs.scandir/out/constants.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/constants.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9643,9 +9643,9 @@ var require_constants3 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.scandir/out/utils/fs.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/utils/fs.js
 var require_fs3 = __commonJS({
-  "node_modules/@nodelib/fs.scandir/out/utils/fs.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/utils/fs.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9669,9 +9669,9 @@ var require_fs3 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.scandir/out/utils/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/utils/index.js
 var require_utils4 = __commonJS({
-  "node_modules/@nodelib/fs.scandir/out/utils/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/utils/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9681,9 +9681,9 @@ var require_utils4 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.scandir/out/providers/common.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/providers/common.js
 var require_common = __commonJS({
-  "node_modules/@nodelib/fs.scandir/out/providers/common.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/providers/common.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9698,9 +9698,9 @@ var require_common = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.scandir/out/providers/async.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/providers/async.js
 var require_async2 = __commonJS({
-  "node_modules/@nodelib/fs.scandir/out/providers/async.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/providers/async.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9809,9 +9809,9 @@ var require_async2 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.scandir/out/providers/sync.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/providers/sync.js
 var require_sync2 = __commonJS({
-  "node_modules/@nodelib/fs.scandir/out/providers/sync.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/providers/sync.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9869,9 +9869,9 @@ var require_sync2 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.scandir/out/adapters/fs.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/adapters/fs.js
 var require_fs4 = __commonJS({
-  "node_modules/@nodelib/fs.scandir/out/adapters/fs.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/adapters/fs.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9895,9 +9895,9 @@ var require_fs4 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.scandir/out/settings.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/settings.js
 var require_settings2 = __commonJS({
-  "node_modules/@nodelib/fs.scandir/out/settings.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/settings.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9926,9 +9926,9 @@ var require_settings2 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.scandir/out/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/index.js
 var require_out2 = __commonJS({
-  "node_modules/@nodelib/fs.scandir/out/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.scandir/out/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -9959,9 +9959,9 @@ var require_out2 = __commonJS({
   }
 });
 
-// node_modules/reusify/reusify.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/reusify/reusify.js
 var require_reusify = __commonJS({
-  "node_modules/reusify/reusify.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/reusify/reusify.js"(exports, module) {
     "use strict";
     init_esm_shims();
     function reusify(Constructor) {
@@ -9991,9 +9991,9 @@ var require_reusify = __commonJS({
   }
 });
 
-// node_modules/fastq/queue.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fastq/queue.js
 var require_queue = __commonJS({
-  "node_modules/fastq/queue.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fastq/queue.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var reusify = require_reusify();
@@ -10276,9 +10276,9 @@ var require_queue = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.walk/out/readers/common.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/readers/common.js
 var require_common2 = __commonJS({
-  "node_modules/@nodelib/fs.walk/out/readers/common.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/readers/common.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10311,9 +10311,9 @@ var require_common2 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.walk/out/readers/reader.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/readers/reader.js
 var require_reader = __commonJS({
-  "node_modules/@nodelib/fs.walk/out/readers/reader.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/readers/reader.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10329,9 +10329,9 @@ var require_reader = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.walk/out/readers/async.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/readers/async.js
 var require_async3 = __commonJS({
-  "node_modules/@nodelib/fs.walk/out/readers/async.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/readers/async.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10433,9 +10433,9 @@ var require_async3 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.walk/out/providers/async.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/providers/async.js
 var require_async4 = __commonJS({
-  "node_modules/@nodelib/fs.walk/out/providers/async.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/providers/async.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10470,9 +10470,9 @@ var require_async4 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.walk/out/providers/stream.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/providers/stream.js
 var require_stream2 = __commonJS({
-  "node_modules/@nodelib/fs.walk/out/providers/stream.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/providers/stream.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10512,9 +10512,9 @@ var require_stream2 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.walk/out/readers/sync.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/readers/sync.js
 var require_sync3 = __commonJS({
-  "node_modules/@nodelib/fs.walk/out/readers/sync.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/readers/sync.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10577,9 +10577,9 @@ var require_sync3 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.walk/out/providers/sync.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/providers/sync.js
 var require_sync4 = __commonJS({
-  "node_modules/@nodelib/fs.walk/out/providers/sync.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/providers/sync.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10598,9 +10598,9 @@ var require_sync4 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.walk/out/settings.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/settings.js
 var require_settings3 = __commonJS({
-  "node_modules/@nodelib/fs.walk/out/settings.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/settings.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10631,9 +10631,9 @@ var require_settings3 = __commonJS({
   }
 });
 
-// node_modules/@nodelib/fs.walk/out/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/index.js
 var require_out3 = __commonJS({
-  "node_modules/@nodelib/fs.walk/out/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@nodelib/fs.walk/out/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10672,9 +10672,9 @@ var require_out3 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/readers/reader.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/readers/reader.js
 var require_reader2 = __commonJS({
-  "node_modules/fast-glob/out/readers/reader.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/readers/reader.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10712,9 +10712,9 @@ var require_reader2 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/readers/stream.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/readers/stream.js
 var require_stream3 = __commonJS({
-  "node_modules/fast-glob/out/readers/stream.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/readers/stream.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10770,9 +10770,9 @@ var require_stream3 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/readers/async.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/readers/async.js
 var require_async5 = __commonJS({
-  "node_modules/fast-glob/out/readers/async.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/readers/async.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10810,9 +10810,9 @@ var require_async5 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/matchers/matcher.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/matchers/matcher.js
 var require_matcher = __commonJS({
-  "node_modules/fast-glob/out/providers/matchers/matcher.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/matchers/matcher.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10862,9 +10862,9 @@ var require_matcher = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/matchers/partial.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/matchers/partial.js
 var require_partial = __commonJS({
-  "node_modules/fast-glob/out/providers/matchers/partial.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/matchers/partial.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10900,9 +10900,9 @@ var require_partial = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/filters/deep.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/filters/deep.js
 var require_deep = __commonJS({
-  "node_modules/fast-glob/out/providers/filters/deep.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/filters/deep.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10966,9 +10966,9 @@ var require_deep = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/filters/entry.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/filters/entry.js
 var require_entry = __commonJS({
-  "node_modules/fast-glob/out/providers/filters/entry.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/filters/entry.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11055,9 +11055,9 @@ var require_entry = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/filters/error.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/filters/error.js
 var require_error2 = __commonJS({
-  "node_modules/fast-glob/out/providers/filters/error.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/filters/error.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11077,9 +11077,9 @@ var require_error2 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/transformers/entry.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/transformers/entry.js
 var require_entry2 = __commonJS({
-  "node_modules/fast-glob/out/providers/transformers/entry.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/transformers/entry.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11110,9 +11110,9 @@ var require_entry2 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/provider.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/provider.js
 var require_provider = __commonJS({
-  "node_modules/fast-glob/out/providers/provider.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/provider.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11165,9 +11165,9 @@ var require_provider = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/async.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/async.js
 var require_async6 = __commonJS({
-  "node_modules/fast-glob/out/providers/async.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/async.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11195,9 +11195,9 @@ var require_async6 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/stream.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/stream.js
 var require_stream4 = __commonJS({
-  "node_modules/fast-glob/out/providers/stream.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/stream.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11230,9 +11230,9 @@ var require_stream4 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/readers/sync.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/readers/sync.js
 var require_sync5 = __commonJS({
-  "node_modules/fast-glob/out/readers/sync.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/readers/sync.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11279,9 +11279,9 @@ var require_sync5 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/providers/sync.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/sync.js
 var require_sync6 = __commonJS({
-  "node_modules/fast-glob/out/providers/sync.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/providers/sync.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11309,9 +11309,9 @@ var require_sync6 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/settings.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/settings.js
 var require_settings4 = __commonJS({
-  "node_modules/fast-glob/out/settings.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/settings.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11370,9 +11370,9 @@ var require_settings4 = __commonJS({
   }
 });
 
-// node_modules/fast-glob/out/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/index.js
 var require_out4 = __commonJS({
-  "node_modules/fast-glob/out/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-glob/out/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var taskManager = require_tasks();
@@ -11472,9 +11472,9 @@ var require_out4 = __commonJS({
   }
 });
 
-// node_modules/dotenv/lib/main.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/dotenv/lib/main.js
 var require_main = __commonJS({
-  "node_modules/dotenv/lib/main.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/dotenv/lib/main.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var fs = __require("fs");
@@ -12182,9 +12182,9 @@ var init_type_map = __esm({
   }
 });
 
-// node_modules/boundary/lib/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/boundary/lib/index.js
 var require_lib = __commonJS({
-  "node_modules/boundary/lib/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/boundary/lib/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -12233,9 +12233,9 @@ var require_lib = __commonJS({
   }
 });
 
-// node_modules/structured-source/lib/structured-source.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/structured-source/lib/structured-source.js
 var require_structured_source = __commonJS({
-  "node_modules/structured-source/lib/structured-source.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/structured-source/lib/structured-source.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -12312,22 +12312,22 @@ var require_structured_source = __commonJS({
   }
 });
 
-// node_modules/@secretlint/core/module/helper/invariant.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/helper/invariant.js
 function invariant(condition, message) {
   if (!condition)
     throw new Error(message);
 }
 var init_invariant = __esm({
-  "node_modules/@secretlint/core/module/helper/invariant.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/helper/invariant.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/@secretlint/core/module/SecretLintSourceCodeImpl.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/SecretLintSourceCodeImpl.js
 var import_structured_source, SecretLintSourceCodeImpl;
 var init_SecretLintSourceCodeImpl = __esm({
-  "node_modules/@secretlint/core/module/SecretLintSourceCodeImpl.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/SecretLintSourceCodeImpl.js"() {
     "use strict";
     init_esm_shims();
     import_structured_source = __toESM(require_structured_source(), 1);
@@ -12418,10 +12418,10 @@ var init_SecretLintSourceCodeImpl = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/helper/promise-event-emitter.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/helper/promise-event-emitter.js
 var EventEmitter, PromiseEventEmitter;
 var init_promise_event_emitter = __esm({
-  "node_modules/@secretlint/core/module/helper/promise-event-emitter.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/helper/promise-event-emitter.js"() {
     "use strict";
     init_esm_shims();
     EventEmitter = class {
@@ -12484,10 +12484,10 @@ var init_promise_event_emitter = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/helper/SecretLintRuleMessageTranslator.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/helper/SecretLintRuleMessageTranslator.js
 var DEFAULT_LOCAL, formatMessage, getMatchedLocaleMessage, createTranslator;
 var init_SecretLintRuleMessageTranslator = __esm({
-  "node_modules/@secretlint/core/module/helper/SecretLintRuleMessageTranslator.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/helper/SecretLintRuleMessageTranslator.js"() {
     "use strict";
     init_esm_shims();
     DEFAULT_LOCAL = "en";
@@ -12555,10 +12555,10 @@ var init_SecretLintRuleMessageTranslator = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/RuleContext.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/RuleContext.js
 var createContextEvents, createRuleContext;
 var init_RuleContext = __esm({
-  "node_modules/@secretlint/core/module/RuleContext.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/RuleContext.js"() {
     "use strict";
     init_esm_shims();
     init_promise_event_emitter();
@@ -12649,10 +12649,10 @@ var init_RuleContext = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/SecretLintRuleImpl.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/SecretLintRuleImpl.js
 var SecretLintRule;
 var init_SecretLintRuleImpl = __esm({
-  "node_modules/@secretlint/core/module/SecretLintRuleImpl.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/SecretLintRuleImpl.js"() {
     "use strict";
     init_esm_shims();
     SecretLintRule = class {
@@ -12698,10 +12698,10 @@ var init_SecretLintRuleImpl = __esm({
   }
 });
 
-// node_modules/@secretlint/profiler/module/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/profiler/module/index.js
 var SecretLintProfiler;
 var init_module = __esm({
-  "node_modules/@secretlint/profiler/module/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/profiler/module/index.js"() {
     "use strict";
     init_esm_shims();
     SecretLintProfiler = class {
@@ -12762,11 +12762,11 @@ var init_module = __esm({
   }
 });
 
-// node_modules/@secretlint/profiler/module/node.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/profiler/module/node.js
 import perf_hooks from "perf_hooks";
 var NullPerformanceObserver, secretLintProfiler;
 var init_node = __esm({
-  "node_modules/@secretlint/profiler/module/node.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/profiler/module/node.js"() {
     "use strict";
     init_esm_shims();
     init_module();
@@ -12783,10 +12783,10 @@ var init_node = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/RunningEvents.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/RunningEvents.js
 var createRunningEvents;
 var init_RunningEvents = __esm({
-  "node_modules/@secretlint/core/module/RunningEvents.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/RunningEvents.js"() {
     "use strict";
     init_esm_shims();
     init_promise_event_emitter();
@@ -12851,10 +12851,10 @@ Duplicated rule.id is something wrong in .secretlintrc.
   }
 });
 
-// node_modules/@secretlint/core/module/RulePresetContext.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/RulePresetContext.js
 var createRulePresetContext;
 var init_RulePresetContext = __esm({
-  "node_modules/@secretlint/core/module/RulePresetContext.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/RulePresetContext.js"() {
     "use strict";
     init_esm_shims();
     init_RuleContext();
@@ -12909,7 +12909,7 @@ var init_RulePresetContext = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/messages/filter-ignored-process.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/filter-ignored-process.js
 function filterIgnoredMessages(options) {
   const reportedMessages = options.reportedMessages;
   const ignoreMessages = options.ignoredMessages;
@@ -12928,7 +12928,7 @@ function filterIgnoredMessages(options) {
 }
 var isContainedRange;
 var init_filter_ignored_process = __esm({
-  "node_modules/@secretlint/core/module/messages/filter-ignored-process.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/filter-ignored-process.js"() {
     "use strict";
     init_esm_shims();
     isContainedRange = (index, range) => {
@@ -12938,10 +12938,10 @@ var init_filter_ignored_process = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/messages/MessageProcessManager.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/MessageProcessManager.js
 var createMessageProcessor;
 var init_MessageProcessManager = __esm({
-  "node_modules/@secretlint/core/module/messages/MessageProcessManager.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/MessageProcessManager.js"() {
     "use strict";
     init_esm_shims();
     createMessageProcessor = (processors) => {
@@ -12963,7 +12963,7 @@ var init_MessageProcessManager = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/messages/filter-duplicated-process.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/filter-duplicated-process.js
 function filterDuplicatedMessages(messages2 = []) {
   return messages2.filter((message, index) => {
     const restMessages = messages2.slice(index + 1);
@@ -12974,7 +12974,7 @@ function filterDuplicatedMessages(messages2 = []) {
 }
 var isEqualMessage;
 var init_filter_duplicated_process = __esm({
-  "node_modules/@secretlint/core/module/messages/filter-duplicated-process.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/filter-duplicated-process.js"() {
     "use strict";
     init_esm_shims();
     isEqualMessage = (aMessage, bMessage) => {
@@ -12983,7 +12983,7 @@ var init_filter_duplicated_process = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/messages/sort-messages-process.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/sort-messages-process.js
 function sortMessagesByLocation(messages2) {
   return messages2.sort(function(a, b) {
     const startIndexDiff = a.range[0] - b.range[0];
@@ -12995,16 +12995,16 @@ function sortMessagesByLocation(messages2) {
   });
 }
 var init_sort_messages_process = __esm({
-  "node_modules/@secretlint/core/module/messages/sort-messages-process.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/sort-messages-process.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/@secretlint/core/module/messages/filter-message-id.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/filter-message-id.js
 var filterByAllowMessageIds;
 var init_filter_message_id = __esm({
-  "node_modules/@secretlint/core/module/messages/filter-message-id.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/filter-message-id.js"() {
     "use strict";
     init_esm_shims();
     filterByAllowMessageIds = (messages2, allowMessageIds) => {
@@ -13018,10 +13018,10 @@ var init_filter_message_id = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/messages/filter-mask-secrets.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/filter-mask-secrets.js
 var deepMask, createMaskValue, maskWithValues, filterMaskSecretsData;
 var init_filter_mask_secrets = __esm({
-  "node_modules/@secretlint/core/module/messages/filter-mask-secrets.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/filter-mask-secrets.js"() {
     "use strict";
     init_esm_shims();
     deepMask = (object3, handler) => {
@@ -13070,10 +13070,10 @@ var init_filter_mask_secrets = __esm({
   }
 });
 
-// node_modules/@secretlint/core/module/messages/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/index.js
 var cleanupMessages;
 var init_messages = __esm({
-  "node_modules/@secretlint/core/module/messages/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/messages/index.js"() {
     "use strict";
     init_esm_shims();
     init_filter_ignored_process();
@@ -13092,9 +13092,9 @@ var init_messages = __esm({
   }
 });
 
-// node_modules/ms/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ms/index.js
 var require_ms = __commonJS({
-  "node_modules/ms/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ms/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var s = 1e3;
@@ -13210,9 +13210,9 @@ var require_ms = __commonJS({
   }
 });
 
-// node_modules/debug/src/common.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/debug/src/common.js
 var require_common3 = __commonJS({
-  "node_modules/debug/src/common.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/debug/src/common.js"(exports, module) {
     "use strict";
     init_esm_shims();
     function setup(env) {
@@ -13389,9 +13389,9 @@ var require_common3 = __commonJS({
   }
 });
 
-// node_modules/debug/src/browser.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/debug/src/browser.js
 var require_browser = __commonJS({
-  "node_modules/debug/src/browser.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/debug/src/browser.js"(exports, module) {
     "use strict";
     init_esm_shims();
     exports.formatArgs = formatArgs;
@@ -13561,9 +13561,9 @@ var require_browser = __commonJS({
   }
 });
 
-// node_modules/has-flag/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/has-flag/index.js
 var require_has_flag = __commonJS({
-  "node_modules/has-flag/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/has-flag/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = (flag, argv = process.argv) => {
@@ -13575,9 +13575,9 @@ var require_has_flag = __commonJS({
   }
 });
 
-// node_modules/supports-color/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/supports-color/index.js
 var require_supports_color = __commonJS({
-  "node_modules/supports-color/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/supports-color/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var os = __require("os");
@@ -13678,9 +13678,9 @@ var require_supports_color = __commonJS({
   }
 });
 
-// node_modules/debug/src/node.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/debug/src/node.js
 var require_node = __commonJS({
-  "node_modules/debug/src/node.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/debug/src/node.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var tty = __require("tty");
@@ -13854,9 +13854,9 @@ var require_node = __commonJS({
   }
 });
 
-// node_modules/debug/src/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/debug/src/index.js
 var require_src = __commonJS({
-  "node_modules/debug/src/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/debug/src/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     if (typeof process === "undefined" || process.type === "renderer" || process.browser === true || process.__nwjs) {
@@ -13867,14 +13867,14 @@ var require_src = __commonJS({
   }
 });
 
-// node_modules/@secretlint/core/module/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/index.js
 var module_exports = {};
 __export(module_exports, {
   lintSource: () => lintSource
 });
 var import_debug, debug, lintSource, isRulePreset, isRule, registerRule;
 var init_module2 = __esm({
-  "node_modules/@secretlint/core/module/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/core/module/index.js"() {
     "use strict";
     init_esm_shims();
     init_SecretLintSourceCodeImpl();
@@ -14007,7 +14007,7 @@ var init_module2 = __esm({
   }
 });
 
-// node_modules/@secretlint/secretlint-rule-preset-recommend/module/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/secretlint-rule-preset-recommend/module/index.js
 var module_exports2 = {};
 __export(module_exports2, {
   creator: () => creator,
@@ -16386,7 +16386,7 @@ function parseComment(options) {
 }
 var commonjsGlobal, regexpStringMatcher, lodash_uniq, hasRequiredLodash_uniq, lodash_uniqwith, hasRequiredLodash_uniqwith, lodash_sortby, hasRequiredLodash_sortby, escapeStringRegexp, hasRequiredEscapeStringRegexp, regexpParse, hasRequiredRegexpParse, hasRequiredRegexpStringMatcher, regexpStringMatcherExports, BUILTIN_IGNORED, messages$r, reportAWSAccessKey, reportAWSSecretAccessKey, reportAWSAccountID, creator$s, TAG_INTEGER, TAG_OCTET_STRING, TAG_NULL, TAG_OID, TAG_SEQUENCE, TAG_CONTEXT_0, OID_DATA, OID_SHA1, OID_SHA256, OID_SHA384, OID_SHA512, MAC_HASHES, MAX_MAC_ITERATIONS, GCP_SERVICE_ACCOUNT_P12_PASSWORD, messages$q, creator$r, messages$p, isPackageFile, isNpmrc, creator$q, messages$o, creator$p, messages$n, BUILTIN_IGNORED_PATTERNS$1, creator$o, messages$m, creator$n, messages$l, creator$m, messages$k, creator$l, messages$j, creator$k, messages$i, creator$j, messages$h, creator$i, messages$g, PEM_CONTENT_PATTERN, creator$h, messages$f, creator$g, messages$e, creator$f, messages$d, messageIdMap$1, STRIPE_KEY_PATTERN, creator$e, messages$c, typeMap, creator$d, messages$b, creator$c, messages$a, creator$b, messages$9, is1PasswordServiceAccountToken, creator$a, messages$8, BUILTIN_IGNORED_PATTERNS, creator$9, messages$7, serviceTokenPattern, batchTokenPattern, recoveryTokenPattern, creator$8, messages$6, prefixToMessageId, creator$7, messages$5, creator$6, messages$4, creator$5, messages$3, creator$4, messages$2, messageIdMap, CLOUDFLARE_TOKEN_PATTERN, creator$3, messages$1, messageIdByType, creator$2, HTML_COMMENT_REGEXP, parseComments, CommentState, messages, creator$1, rules, creator;
 var init_module3 = __esm({
-  "node_modules/@secretlint/secretlint-rule-preset-recommend/module/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@secretlint/secretlint-rule-preset-recommend/module/index.js"() {
     "use strict";
     init_esm_shims();
     commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
@@ -18246,9 +18246,9 @@ var init_strings = __esm({
   }
 });
 
-// node_modules/signal-exit/dist/cjs/signals.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/signal-exit/dist/cjs/signals.js
 var require_signals = __commonJS({
-  "node_modules/signal-exit/dist/cjs/signals.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/signal-exit/dist/cjs/signals.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -18278,9 +18278,9 @@ var require_signals = __commonJS({
   }
 });
 
-// node_modules/signal-exit/dist/cjs/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/signal-exit/dist/cjs/index.js
 var require_cjs = __commonJS({
-  "node_modules/signal-exit/dist/cjs/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/signal-exit/dist/cjs/index.js"(exports) {
     "use strict";
     init_esm_shims();
     var _a3;
@@ -18514,9 +18514,9 @@ var require_cjs = __commonJS({
   }
 });
 
-// node_modules/write-file-atomic/lib/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/write-file-atomic/lib/index.js
 var require_lib2 = __commonJS({
-  "node_modules/write-file-atomic/lib/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/write-file-atomic/lib/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = writeFile7;
@@ -18865,7 +18865,7 @@ var init_session_map = __esm({
 
 // src/state/map-store.ts
 import { createCipheriv, createDecipheriv, randomBytes as randomBytes2 } from "crypto";
-import { mkdir as mkdir3, readFile as readFile6, writeFile as writeFile5 } from "fs/promises";
+import { link, mkdir as mkdir3, readFile as readFile6, unlink as unlink3, writeFile as writeFile5 } from "fs/promises";
 import { join as join11 } from "path";
 function statePaths(baseDir) {
   return { keysDir: join11(baseDir, "keys"), sessionsDir: join11(baseDir, "sessions") };
@@ -18909,18 +18909,56 @@ function decryptMapBuffer(envelope, key, sessionId) {
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(envelope.subarray(CIPHERTEXT_OFFSET)), decipher.final()]);
 }
+async function readKeyIfPresent(keyPath) {
+  try {
+    return await readFile6(keyPath);
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      return null;
+    }
+    throw err;
+  }
+}
+async function publishKeyOnce(keyPath, key) {
+  const tmpPath = `${keyPath}.${randomBytes2(4).readUInt32BE(0)}`;
+  await writeFile5(tmpPath, key, { flag: "wx", mode: FILE_MODE });
+  try {
+    await link(tmpPath, keyPath);
+    return true;
+  } catch (err) {
+    if (err.code === "EEXIST") {
+      return false;
+    }
+    throw err;
+  } finally {
+    await unlink3(tmpPath).catch(() => {
+    });
+  }
+}
 async function ensureSessionKey(baseDir, sid) {
   const { keysDir } = statePaths(baseDir);
   await mkdir3(keysDir, { recursive: true, mode: DIR_MODE });
   const keyPath = keyPathFor(baseDir, sid);
-  try {
-    await writeFile5(keyPath, randomBytes2(KEY_BYTES), { flag: "wx", mode: FILE_MODE });
-  } catch (err) {
-    if (err.code !== "EEXIST") {
-      throw err;
+  for (let attempt = 0; attempt < KEY_ENSURE_ATTEMPTS; attempt += 1) {
+    const existing = await readKeyIfPresent(keyPath);
+    if (existing !== null && existing.length === KEY_BYTES) {
+      return existing;
+    }
+    if (existing !== null) {
+      try {
+        await unlink3(keyPath);
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          throw err;
+        }
+      }
+    }
+    const fresh = randomBytes2(KEY_BYTES);
+    if (await publishKeyOnce(keyPath, fresh)) {
+      return fresh;
     }
   }
-  return readFile6(keyPath);
+  throw new SessionKeyError("unreadable after publish attempts");
 }
 async function readSessionMapFile(baseDir, sid) {
   try {
@@ -18939,7 +18977,7 @@ async function writeSessionMapFile(baseDir, sid, map, key) {
   await mkdir3(sessionsDir, { recursive: true, mode: DIR_MODE });
   await (0, import_write_file_atomic.default)(mapPathFor(baseDir, sid), envelope, { fsync: false, mode: FILE_MODE });
 }
-var import_write_file_atomic, ENVELOPE_MAGIC, ENVELOPE_VERSION, VERSION_OFFSET, IV_LENGTH, IV_OFFSET, TAG_LENGTH, TAG_OFFSET, CIPHERTEXT_OFFSET, MIN_ENVELOPE, AAD_PREFIX, KEY_BYTES, DIR_MODE, FILE_MODE, MapEnvelopeError;
+var import_write_file_atomic, ENVELOPE_MAGIC, ENVELOPE_VERSION, VERSION_OFFSET, IV_LENGTH, IV_OFFSET, TAG_LENGTH, TAG_OFFSET, CIPHERTEXT_OFFSET, MIN_ENVELOPE, AAD_PREFIX, KEY_BYTES, DIR_MODE, FILE_MODE, MapEnvelopeError, SessionKeyError, KEY_ENSURE_ATTEMPTS;
 var init_map_store = __esm({
   "src/state/map-store.ts"() {
     "use strict";
@@ -18965,6 +19003,13 @@ var init_map_store = __esm({
         this.name = "MapEnvelopeError";
       }
     };
+    SessionKeyError = class extends Error {
+      constructor(reason) {
+        super(`mrclean session key invalid: ${reason}`);
+        this.name = "SessionKeyError";
+      }
+    };
+    KEY_ENSURE_ATTEMPTS = 2;
   }
 });
 
@@ -18975,7 +19020,7 @@ __export(janitor_exports, {
   runSessionEndJanitor: () => runSessionEndJanitor,
   runTtlSweep: () => runTtlSweep
 });
-import { readdir as readdir2, stat, unlink as unlink3 } from "fs/promises";
+import { readdir as readdir2, rm, stat, unlink as unlink4 } from "fs/promises";
 import { homedir as homedir3 } from "os";
 import { join as join12 } from "path";
 function defaultBaseDir() {
@@ -18990,7 +19035,7 @@ function warnJanitor(message, sessionId) {
 }
 async function deleteQuietly(path3, sessionId) {
   try {
-    await unlink3(path3);
+    await unlink4(path3);
   } catch (err) {
     if (err.code !== "ENOENT") {
       warnJanitor("mrclean janitor delete failed", sessionId);
@@ -19014,6 +19059,13 @@ async function ageOf(path3, now) {
     return null;
   }
 }
+async function removeDirQuietly(path3) {
+  try {
+    await rm(path3, { recursive: true, force: true });
+  } catch {
+    warnJanitor("mrclean janitor delete failed");
+  }
+}
 async function runSessionEndJanitor(sid, reason, opts) {
   if (!isValidSessionId(sid)) {
     return;
@@ -19032,36 +19084,61 @@ function sidFromName(name, ext) {
   const sid = name.slice(0, -ext.length);
   return SESSION_ID_RE.test(sid) ? sid : null;
 }
+function isOwnLitterName(name, ext) {
+  const lastDot = name.lastIndexOf(".");
+  if (lastDot === -1) {
+    return false;
+  }
+  if (!/^\d+$/.test(name.slice(lastDot + 1))) {
+    return false;
+  }
+  return sidFromName(name.slice(0, lastDot), ext) !== null;
+}
+function isOwnLockDirName(name) {
+  if (!name.endsWith(".lock")) {
+    return false;
+  }
+  return sidFromName(name.slice(0, -".lock".length), ".map") !== null;
+}
 function classifySweepEntries(keyNames, sessionNames) {
   const keySids = /* @__PURE__ */ new Set();
+  const keyLitter = [];
   for (const name of keyNames) {
     const sid = sidFromName(name, ".key");
     if (sid !== null) {
       keySids.add(sid);
+      continue;
+    }
+    if (isOwnLitterName(name, ".key")) {
+      keyLitter.push(name);
     }
   }
   const paired = [];
   const orphanMaps = [];
-  const tmps = [];
+  const mapLitter = [];
+  const staleLocks = [];
   const mapSids = /* @__PURE__ */ new Set();
   for (const name of sessionNames) {
-    if (name.endsWith(".tmp")) {
-      tmps.push(name);
-      continue;
-    }
     const sid = sidFromName(name, ".map");
-    if (sid === null) {
+    if (sid !== null) {
+      mapSids.add(sid);
+      if (keySids.has(sid)) {
+        paired.push(sid);
+      } else {
+        orphanMaps.push(sid);
+      }
       continue;
     }
-    mapSids.add(sid);
-    if (keySids.has(sid)) {
-      paired.push(sid);
-    } else {
-      orphanMaps.push(sid);
+    if (isOwnLitterName(name, ".map")) {
+      mapLitter.push(name);
+      continue;
+    }
+    if (isOwnLockDirName(name)) {
+      staleLocks.push(name);
     }
   }
   const orphanKeys = [...keySids].filter((sid) => !mapSids.has(sid));
-  return { paired, orphanMaps, orphanKeys, tmps };
+  return { paired, orphanMaps, orphanKeys, mapLitter, keyLitter, staleLocks };
 }
 async function runTtlSweep(opts) {
   const baseDir = opts.baseDir ?? defaultBaseDir();
@@ -19076,7 +19153,7 @@ async function runTtlSweep(opts) {
   if (sessionNames === null) {
     return;
   }
-  const { paired, orphanMaps, orphanKeys, tmps } = classifySweepEntries(keyNames, sessionNames);
+  const { paired, orphanMaps, orphanKeys, mapLitter, keyLitter, staleLocks } = classifySweepEntries(keyNames, sessionNames);
   for (const sid of paired) {
     const mapPath = mapPathFor(baseDir, sid);
     const age = await ageOf(mapPath, now);
@@ -19099,11 +19176,25 @@ async function runTtlSweep(opts) {
       await deleteQuietly(keyPath, sid);
     }
   }
-  for (const name of tmps) {
-    const tmpPath = join12(sessionsDir, name);
-    const age = await ageOf(tmpPath, now);
+  for (const name of mapLitter) {
+    const litterPath = join12(sessionsDir, name);
+    const age = await ageOf(litterPath, now);
     if (age !== null && age > ORPHAN_GRACE_MS) {
-      await deleteQuietly(tmpPath);
+      await deleteQuietly(litterPath);
+    }
+  }
+  for (const name of keyLitter) {
+    const litterPath = join12(keysDir, name);
+    const age = await ageOf(litterPath, now);
+    if (age !== null && age > ORPHAN_GRACE_MS) {
+      await deleteQuietly(litterPath);
+    }
+  }
+  for (const name of staleLocks) {
+    const lockPath = join12(sessionsDir, name);
+    const age = await ageOf(lockPath, now);
+    if (age !== null && age > ORPHAN_GRACE_MS) {
+      await removeDirQuietly(lockPath);
     }
   }
 }
@@ -19123,12 +19214,10 @@ var init_janitor = __esm({
 import { homedir as homedir4 } from "os";
 async function handleSessionStart(input) {
   const config2 = await loadEffectiveConfig({ homeDir: homedir4(), cwd: input.cwd });
-  if (config2.reversible.enabled) {
-    try {
-      const { runTtlSweep: runTtlSweep2 } = await Promise.resolve().then(() => (init_janitor(), janitor_exports));
-      await runTtlSweep2({ ttlHours: config2.reversible.ttl_hours });
-    } catch {
-    }
+  try {
+    const { runTtlSweep: runTtlSweep2 } = await Promise.resolve().then(() => (init_janitor(), janitor_exports));
+    await runTtlSweep2({ ttlHours: config2.reversible.ttl_hours });
+  } catch {
   }
   const state = await initSessionState({
     sessionId: input.session_id,
@@ -19822,7 +19911,7 @@ import {
   constants as fsConstants,
   mkdir as mkdir4,
   rename as rename3,
-  unlink as unlink4,
+  unlink as unlink5,
   stat as stat2,
   copyFile as copyFile2,
   open
@@ -19898,14 +19987,14 @@ async function downloadModel(homeDir, opts = {}, descriptor = BERT_DESCRIPTOR) {
     }
   } catch (err) {
     await fh.close();
-    await unlink4(tempPath).catch(() => {
+    await unlink5(tempPath).catch(() => {
     });
     throw err;
   }
   await fh.close();
   const actual = hash.digest("hex");
   if (actual !== expectedHash) {
-    await unlink4(tempPath).catch(() => {
+    await unlink5(tempPath).catch(() => {
     });
     throw new ModelIntegrityError("download", expectedHash, actual);
   }
@@ -19936,12 +20025,12 @@ async function sideLoadModel(homeDir, fromPath, expectedHash, descriptor = BERT_
   try {
     actual = await computeFileSha256(tempPath);
   } catch (err) {
-    await unlink4(tempPath).catch(() => {
+    await unlink5(tempPath).catch(() => {
     });
     throw err;
   }
   if (actual !== expected) {
-    await unlink4(tempPath).catch(() => {
+    await unlink5(tempPath).catch(() => {
     });
     throw new ModelIntegrityError("sideload", expected, actual);
   }
@@ -20396,9 +20485,9 @@ var init_user_prompt_submit = __esm({
   }
 });
 
-// node_modules/graceful-fs/polyfills.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
-  "node_modules/graceful-fs/polyfills.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/graceful-fs/polyfills.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var constants7 = __require("constants");
@@ -20686,9 +20775,9 @@ var require_polyfills = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/legacy-streams.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/graceful-fs/legacy-streams.js
 var require_legacy_streams = __commonJS({
-  "node_modules/graceful-fs/legacy-streams.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/graceful-fs/legacy-streams.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var Stream = __require("stream").Stream;
@@ -20784,9 +20873,9 @@ var require_legacy_streams = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/clone.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/graceful-fs/clone.js
 var require_clone = __commonJS({
-  "node_modules/graceful-fs/clone.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/graceful-fs/clone.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = clone2;
@@ -20808,9 +20897,9 @@ var require_clone = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/graceful-fs.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/graceful-fs/graceful-fs.js
 var require_graceful_fs = __commonJS({
-  "node_modules/graceful-fs/graceful-fs.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/graceful-fs/graceful-fs.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var fs = __require("fs");
@@ -21180,9 +21269,9 @@ var require_graceful_fs = __commonJS({
   }
 });
 
-// node_modules/retry/lib/retry_operation.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/retry/lib/retry_operation.js
 var require_retry_operation = __commonJS({
-  "node_modules/retry/lib/retry_operation.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/retry/lib/retry_operation.js"(exports, module) {
     "use strict";
     init_esm_shims();
     function RetryOperation(timeouts, options) {
@@ -21313,9 +21402,9 @@ var require_retry_operation = __commonJS({
   }
 });
 
-// node_modules/retry/lib/retry.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/retry/lib/retry.js
 var require_retry = __commonJS({
-  "node_modules/retry/lib/retry.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/retry/lib/retry.js"(exports) {
     "use strict";
     init_esm_shims();
     var RetryOperation = require_retry_operation();
@@ -21401,18 +21490,18 @@ var require_retry = __commonJS({
   }
 });
 
-// node_modules/retry/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/retry/index.js
 var require_retry2 = __commonJS({
-  "node_modules/retry/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/retry/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = require_retry();
   }
 });
 
-// node_modules/proper-lockfile/node_modules/signal-exit/signals.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/node_modules/signal-exit/signals.js
 var require_signals2 = __commonJS({
-  "node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/node_modules/signal-exit/signals.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = [
@@ -21449,9 +21538,9 @@ var require_signals2 = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/node_modules/signal-exit/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/node_modules/signal-exit/index.js
 var require_signal_exit = __commonJS({
-  "node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/node_modules/signal-exit/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var process4 = global.process;
@@ -21610,9 +21699,9 @@ var require_signal_exit = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/mtime-precision.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/lib/mtime-precision.js
 var require_mtime_precision = __commonJS({
-  "node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/lib/mtime-precision.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var cacheSymbol = /* @__PURE__ */ Symbol();
@@ -21653,9 +21742,9 @@ var require_mtime_precision = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/lockfile.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/lib/lockfile.js
 var require_lockfile = __commonJS({
-  "node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/lib/lockfile.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var path3 = __require("path");
@@ -21891,9 +21980,9 @@ var require_lockfile = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/lib/adapter.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/lib/adapter.js
 var require_adapter = __commonJS({
-  "node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/lib/adapter.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var fs = require_graceful_fs();
@@ -21957,9 +22046,9 @@ var require_adapter = __commonJS({
   }
 });
 
-// node_modules/proper-lockfile/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/index.js
 var require_proper_lockfile = __commonJS({
-  "node_modules/proper-lockfile/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/proper-lockfile/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var lockfile2 = require_lockfile();
@@ -22179,11 +22268,12 @@ async function persistAllocations(opts) {
   }
 }
 function applyRenamesToText(text, renames) {
-  let result = text;
-  for (const rename4 of renames) {
-    result = result.split(rename4.from).join(rename4.to);
+  if (renames.length === 0) {
+    return text;
   }
-  return result;
+  const byFrom = new Map(renames.map((rename4) => [rename4.from, rename4.to]));
+  const pattern = [...byFrom.keys()].map((from) => from.replace(REGEXP_SPECIALS_RE, "\\$&")).join("|");
+  return text.replace(new RegExp(pattern, "g"), (match) => byFrom.get(match) ?? match);
 }
 function renameDeep(value, renames, depth) {
   if (depth >= MAX_RENAME_WALK_DEPTH) {
@@ -22208,7 +22298,7 @@ function renameDeep(value, renames, depth) {
 function applyRenamesDeep(obj, renames) {
   return renameDeep(obj, renames, 0);
 }
-var SESSIONS_DIR_MODE, MAX_RENAME_WALK_DEPTH;
+var SESSIONS_DIR_MODE, REGEXP_SPECIALS_RE, MAX_RENAME_WALK_DEPTH;
 var init_state = __esm({
   "src/state/index.ts"() {
     "use strict";
@@ -22218,6 +22308,7 @@ var init_state = __esm({
     init_session_map();
     init_session_map();
     SESSIONS_DIR_MODE = 448;
+    REGEXP_SPECIALS_RE = /[.*+?^${}()|[\]\\]/g;
     MAX_RENAME_WALK_DEPTH = 32;
   }
 });
@@ -22654,7 +22745,7 @@ var init_ignore = __esm({
   }
 });
 
-// node_modules/zod/v4/core/core.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/core.js
 // @__NO_SIDE_EFFECTS__
 function $constructor(name, initializer3, params) {
   function init(inst, def) {
@@ -22714,7 +22805,7 @@ function config(newConfig) {
 }
 var _a, $ZodAsyncError, $ZodEncodeError, globalConfig;
 var init_core = __esm({
-  "node_modules/zod/v4/core/core.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/core.js"() {
     "use strict";
     init_esm_shims();
     $ZodAsyncError = class extends Error {
@@ -22733,7 +22824,7 @@ var init_core = __esm({
   }
 });
 
-// node_modules/zod/v4/core/util.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/util.js
 var util_exports = {};
 __export(util_exports, {
   BIGINT_FORMAT_RANGES: () => BIGINT_FORMAT_RANGES,
@@ -23344,7 +23435,7 @@ function uint8ArrayToHex(bytes) {
 }
 var EVALUATING, captureStackTrace, allowsEval, getParsedType, propertyKeyTypes, primitiveTypes, NUMBER_FORMAT_RANGES, BIGINT_FORMAT_RANGES, Class;
 var init_util2 = __esm({
-  "node_modules/zod/v4/core/util.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/util.js"() {
     "use strict";
     init_esm_shims();
     init_core();
@@ -23437,7 +23528,7 @@ var init_util2 = __esm({
   }
 });
 
-// node_modules/zod/v4/core/errors.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/errors.js
 function flattenError(error2, mapper = (issue2) => issue2.message) {
   const fieldErrors = {};
   const formErrors = [];
@@ -23489,7 +23580,7 @@ function formatError(error2, mapper = (issue2) => issue2.message) {
 }
 var initializer, $ZodError, $ZodRealError;
 var init_errors = __esm({
-  "node_modules/zod/v4/core/errors.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/errors.js"() {
     "use strict";
     init_esm_shims();
     init_core();
@@ -23515,10 +23606,10 @@ var init_errors = __esm({
   }
 });
 
-// node_modules/zod/v4/core/parse.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/parse.js
 var _parse, _parseAsync, _safeParse, safeParse, _safeParseAsync, safeParseAsync, _encode, _decode, _encodeAsync, _decodeAsync, _safeEncode, _safeDecode, _safeEncodeAsync, _safeDecodeAsync;
 var init_parse2 = __esm({
-  "node_modules/zod/v4/core/parse.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/parse.js"() {
     "use strict";
     init_esm_shims();
     init_core();
@@ -23603,7 +23694,7 @@ var init_parse2 = __esm({
   }
 });
 
-// node_modules/zod/v4/core/regexes.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/regexes.js
 function emoji() {
   return new RegExp(_emoji, "u");
 }
@@ -23627,7 +23718,7 @@ function datetime(args) {
 }
 var cuid, cuid2, ulid, xid, ksuid, nanoid, duration, guid, uuid, email, _emoji, ipv4, ipv6, cidrv4, cidrv6, base64, base64url, httpProtocol, e164, dateSource, date, string, integer, number, boolean, _null, lowercase, uppercase;
 var init_regexes = __esm({
-  "node_modules/zod/v4/core/regexes.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/regexes.js"() {
     "use strict";
     init_esm_shims();
     cuid = /^[cC][0-9a-z]{6,}$/;
@@ -23668,10 +23759,10 @@ var init_regexes = __esm({
   }
 });
 
-// node_modules/zod/v4/core/checks.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/checks.js
 var $ZodCheck, numericOriginMap, $ZodCheckLessThan, $ZodCheckGreaterThan, $ZodCheckMultipleOf, $ZodCheckNumberFormat, $ZodCheckMaxLength, $ZodCheckMinLength, $ZodCheckLengthEquals, $ZodCheckStringFormat, $ZodCheckRegex, $ZodCheckLowerCase, $ZodCheckUpperCase, $ZodCheckIncludes, $ZodCheckStartsWith, $ZodCheckEndsWith, $ZodCheckOverwrite;
 var init_checks = __esm({
-  "node_modules/zod/v4/core/checks.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/checks.js"() {
     "use strict";
     init_esm_shims();
     init_core();
@@ -24068,10 +24159,10 @@ var init_checks = __esm({
   }
 });
 
-// node_modules/zod/v4/core/doc.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/doc.js
 var Doc;
 var init_doc = __esm({
-  "node_modules/zod/v4/core/doc.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/doc.js"() {
     "use strict";
     init_esm_shims();
     Doc = class {
@@ -24111,10 +24202,10 @@ var init_doc = __esm({
   }
 });
 
-// node_modules/zod/v4/core/versions.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/versions.js
 var version;
 var init_versions = __esm({
-  "node_modules/zod/v4/core/versions.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/versions.js"() {
     "use strict";
     init_esm_shims();
     version = {
@@ -24125,7 +24216,7 @@ var init_versions = __esm({
   }
 });
 
-// node_modules/zod/v4/core/schemas.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/schemas.js
 function isValidBase64(data) {
   if (data === "")
     return true;
@@ -24409,7 +24500,7 @@ function handleRefineResult(result, payload, input, inst) {
 }
 var $ZodType, $ZodString, $ZodStringFormat, $ZodGUID, $ZodUUID, $ZodEmail, $ZodURL, $ZodEmoji, $ZodNanoID, $ZodCUID, $ZodCUID2, $ZodULID, $ZodXID, $ZodKSUID, $ZodISODateTime, $ZodISODate, $ZodISOTime, $ZodISODuration, $ZodIPv4, $ZodIPv6, $ZodCIDRv4, $ZodCIDRv6, $ZodBase64, $ZodBase64URL, $ZodE164, $ZodJWT, $ZodNumber, $ZodNumberFormat, $ZodBoolean, $ZodNull, $ZodUnknown, $ZodNever, $ZodArray, $ZodObject, $ZodObjectJIT, $ZodUnion, $ZodDiscriminatedUnion, $ZodIntersection, $ZodRecord, $ZodEnum, $ZodLiteral, $ZodTransform, $ZodOptional, $ZodExactOptional, $ZodNullable, $ZodDefault, $ZodPrefault, $ZodNonOptional, $ZodCatch, $ZodPipe, $ZodPreprocess, $ZodReadonly, $ZodCustom;
 var init_schemas = __esm({
-  "node_modules/zod/v4/core/schemas.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/schemas.js"() {
     "use strict";
     init_esm_shims();
     init_checks();
@@ -25620,7 +25711,7 @@ var init_schemas = __esm({
   }
 });
 
-// node_modules/zod/v4/locales/en.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/locales/en.js
 function en_default() {
   return {
     localeError: error()
@@ -25628,7 +25719,7 @@ function en_default() {
 }
 var error;
 var init_en = __esm({
-  "node_modules/zod/v4/locales/en.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/locales/en.js"() {
     "use strict";
     init_esm_shims();
     init_util2();
@@ -25741,21 +25832,21 @@ var init_en = __esm({
   }
 });
 
-// node_modules/zod/v4/locales/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/locales/index.js
 var init_locales = __esm({
-  "node_modules/zod/v4/locales/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/locales/index.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod/v4/core/registries.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/registries.js
 function registry() {
   return new $ZodRegistry();
 }
 var _a2, $ZodRegistry, globalRegistry;
 var init_registries = __esm({
-  "node_modules/zod/v4/core/registries.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/registries.js"() {
     "use strict";
     init_esm_shims();
     $ZodRegistry = class {
@@ -25803,7 +25894,7 @@ var init_registries = __esm({
   }
 });
 
-// node_modules/zod/v4/core/api.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/api.js
 // @__NO_SIDE_EFFECTS__
 function _string(Class2, params) {
   return new Class2({
@@ -26331,7 +26422,7 @@ function _check(fn, params) {
   return ch;
 }
 var init_api = __esm({
-  "node_modules/zod/v4/core/api.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/api.js"() {
     "use strict";
     init_esm_shims();
     init_checks();
@@ -26339,7 +26430,7 @@ var init_api = __esm({
   }
 });
 
-// node_modules/zod/v4/core/to-json-schema.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/to-json-schema.js
 function initializeContext(params) {
   let target = params?.target ?? "draft-2020-12";
   if (target === "draft-4")
@@ -26686,7 +26777,7 @@ function isTransforming(_schema, _ctx) {
 }
 var createToJSONSchemaMethod, createStandardJSONSchemaMethod;
 var init_to_json_schema = __esm({
-  "node_modules/zod/v4/core/to-json-schema.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/to-json-schema.js"() {
     "use strict";
     init_esm_shims();
     init_registries();
@@ -26706,10 +26797,10 @@ var init_to_json_schema = __esm({
   }
 });
 
-// node_modules/zod/v4/core/json-schema-processors.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/json-schema-processors.js
 var formatMap, stringProcessor, numberProcessor, booleanProcessor, nullProcessor, neverProcessor, unknownProcessor, enumProcessor, literalProcessor, customProcessor, transformProcessor, arrayProcessor, objectProcessor, unionProcessor, intersectionProcessor, recordProcessor, nullableProcessor, nonoptionalProcessor, defaultProcessor, prefaultProcessor, catchProcessor, pipeProcessor, readonlyProcessor, optionalProcessor;
 var init_json_schema_processors = __esm({
-  "node_modules/zod/v4/core/json-schema-processors.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/json-schema-processors.js"() {
     "use strict";
     init_esm_shims();
     init_to_json_schema();
@@ -27048,17 +27139,17 @@ var init_json_schema_processors = __esm({
   }
 });
 
-// node_modules/zod/v4/core/json-schema.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/json-schema.js
 var init_json_schema = __esm({
-  "node_modules/zod/v4/core/json-schema.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/json-schema.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod/v4/core/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/index.js
 var init_core2 = __esm({
-  "node_modules/zod/v4/core/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/core/index.js"() {
     "use strict";
     init_esm_shims();
     init_core();
@@ -27078,50 +27169,50 @@ var init_core2 = __esm({
   }
 });
 
-// node_modules/zod/v4/mini/parse.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/parse.js
 var init_parse3 = __esm({
-  "node_modules/zod/v4/mini/parse.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/parse.js"() {
     "use strict";
     init_esm_shims();
     init_core2();
   }
 });
 
-// node_modules/zod/v4/mini/schemas.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/schemas.js
 var init_schemas2 = __esm({
-  "node_modules/zod/v4/mini/schemas.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/schemas.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod/v4/mini/checks.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/checks.js
 var init_checks2 = __esm({
-  "node_modules/zod/v4/mini/checks.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/checks.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod/v4/mini/iso.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/iso.js
 var init_iso = __esm({
-  "node_modules/zod/v4/mini/iso.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/iso.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod/v4/mini/coerce.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/coerce.js
 var init_coerce = __esm({
-  "node_modules/zod/v4/mini/coerce.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/coerce.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod/v4/mini/external.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/external.js
 var init_external = __esm({
-  "node_modules/zod/v4/mini/external.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/mini/external.js"() {
     "use strict";
     init_esm_shims();
     init_core2();
@@ -27134,16 +27225,16 @@ var init_external = __esm({
   }
 });
 
-// node_modules/zod/v4-mini/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4-mini/index.js
 var init_v4_mini = __esm({
-  "node_modules/zod/v4-mini/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4-mini/index.js"() {
     "use strict";
     init_esm_shims();
     init_external();
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
 function isZ4Schema(s) {
   const schema = s;
   return !!schema._zod;
@@ -27206,23 +27297,23 @@ function getLiteralValue(schema) {
   return void 0;
 }
 var init_zod_compat = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js"() {
     "use strict";
     init_esm_shims();
     init_v4_mini();
   }
 });
 
-// node_modules/zod/v4/classic/checks.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/checks.js
 var init_checks3 = __esm({
-  "node_modules/zod/v4/classic/checks.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/checks.js"() {
     "use strict";
     init_esm_shims();
     init_core2();
   }
 });
 
-// node_modules/zod/v4/classic/iso.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/iso.js
 var iso_exports2 = {};
 __export(iso_exports2, {
   ZodISODate: () => ZodISODate,
@@ -27248,7 +27339,7 @@ function duration2(params) {
 }
 var ZodISODateTime, ZodISODate, ZodISOTime, ZodISODuration;
 var init_iso2 = __esm({
-  "node_modules/zod/v4/classic/iso.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/iso.js"() {
     "use strict";
     init_esm_shims();
     init_core2();
@@ -27272,10 +27363,10 @@ var init_iso2 = __esm({
   }
 });
 
-// node_modules/zod/v4/classic/errors.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/errors.js
 var initializer2, ZodRealError;
 var init_errors2 = __esm({
-  "node_modules/zod/v4/classic/errors.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/errors.js"() {
     "use strict";
     init_esm_shims();
     init_core2();
@@ -27321,10 +27412,10 @@ var init_errors2 = __esm({
   }
 });
 
-// node_modules/zod/v4/classic/parse.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/parse.js
 var parse3, parseAsync2, safeParse3, safeParseAsync2, encode2, decode2, encodeAsync2, decodeAsync2, safeEncode2, safeDecode2, safeEncodeAsync2, safeDecodeAsync2;
 var init_parse4 = __esm({
-  "node_modules/zod/v4/classic/parse.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/parse.js"() {
     "use strict";
     init_esm_shims();
     init_core2();
@@ -27344,7 +27435,7 @@ var init_parse4 = __esm({
   }
 });
 
-// node_modules/zod/v4/classic/schemas.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/schemas.js
 function _installLazyMethods(inst, group, methods) {
   const proto = Object.getPrototypeOf(inst);
   let installed = _installedGroups.get(proto);
@@ -27562,7 +27653,7 @@ function preprocess(fn, schema) {
 }
 var _installedGroups, ZodType, _ZodString, ZodString, ZodStringFormat, ZodEmail, ZodGUID, ZodUUID, ZodURL, ZodEmoji, ZodNanoID, ZodCUID, ZodCUID2, ZodULID, ZodXID, ZodKSUID, ZodIPv4, ZodIPv6, ZodCIDRv4, ZodCIDRv6, ZodBase64, ZodBase64URL, ZodE164, ZodJWT, ZodNumber, ZodNumberFormat, ZodBoolean, ZodNull, ZodUnknown, ZodNever, ZodArray, ZodObject, ZodUnion, ZodDiscriminatedUnion, ZodIntersection, ZodRecord, ZodEnum, ZodLiteral, ZodTransform, ZodOptional, ZodExactOptional, ZodNullable, ZodDefault, ZodPrefault, ZodNonOptional, ZodCatch, ZodPipe, ZodPreprocess, ZodReadonly, ZodCustom;
 var init_schemas3 = __esm({
-  "node_modules/zod/v4/classic/schemas.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/schemas.js"() {
     "use strict";
     init_esm_shims();
     init_core2();
@@ -28200,10 +28291,10 @@ var init_schemas3 = __esm({
   }
 });
 
-// node_modules/zod/v4/classic/compat.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/compat.js
 var ZodFirstPartyTypeKind;
 var init_compat = __esm({
-  "node_modules/zod/v4/classic/compat.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/compat.js"() {
     "use strict";
     init_esm_shims();
     /* @__PURE__ */ (function(ZodFirstPartyTypeKind2) {
@@ -28211,17 +28302,17 @@ var init_compat = __esm({
   }
 });
 
-// node_modules/zod/v4/classic/coerce.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/coerce.js
 var init_coerce2 = __esm({
-  "node_modules/zod/v4/classic/coerce.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/coerce.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod/v4/classic/external.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/external.js
 var init_external2 = __esm({
-  "node_modules/zod/v4/classic/external.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/external.js"() {
     "use strict";
     init_esm_shims();
     init_core2();
@@ -28239,28 +28330,28 @@ var init_external2 = __esm({
   }
 });
 
-// node_modules/zod/v4/classic/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/index.js
 var init_classic = __esm({
-  "node_modules/zod/v4/classic/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/classic/index.js"() {
     "use strict";
     init_esm_shims();
     init_external2();
   }
 });
 
-// node_modules/zod/v4/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/index.js
 var init_v4 = __esm({
-  "node_modules/zod/v4/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod/v4/index.js"() {
     "use strict";
     init_esm_shims();
     init_classic();
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
 var LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS, RELATED_TASK_META_KEY, JSONRPC_VERSION, AssertObjectSchema, ProgressTokenSchema, CursorSchema, TaskCreationParamsSchema, TaskMetadataSchema, RelatedTaskMetadataSchema, RequestMetaSchema, BaseRequestParamsSchema, TaskAugmentedRequestParamsSchema, isTaskAugmentedRequestParams, RequestSchema, NotificationsParamsSchema, NotificationSchema, ResultSchema, RequestIdSchema, JSONRPCRequestSchema, isJSONRPCRequest, JSONRPCNotificationSchema, isJSONRPCNotification, JSONRPCResultResponseSchema, isJSONRPCResultResponse, ErrorCode, JSONRPCErrorResponseSchema, isJSONRPCErrorResponse, JSONRPCMessageSchema, JSONRPCResponseSchema, EmptyResultSchema, CancelledNotificationParamsSchema, CancelledNotificationSchema, IconSchema, IconsSchema, BaseMetadataSchema, ImplementationSchema, FormElicitationCapabilitySchema, ElicitationCapabilitySchema, ClientTasksCapabilitySchema, ServerTasksCapabilitySchema, ClientCapabilitiesSchema, InitializeRequestParamsSchema, InitializeRequestSchema, ServerCapabilitiesSchema, InitializeResultSchema, InitializedNotificationSchema, PingRequestSchema, ProgressSchema, ProgressNotificationParamsSchema, ProgressNotificationSchema, PaginatedRequestParamsSchema, PaginatedRequestSchema, PaginatedResultSchema, TaskStatusSchema, TaskSchema, CreateTaskResultSchema, TaskStatusNotificationParamsSchema, TaskStatusNotificationSchema, GetTaskRequestSchema, GetTaskResultSchema, GetTaskPayloadRequestSchema, GetTaskPayloadResultSchema, ListTasksRequestSchema, ListTasksResultSchema, CancelTaskRequestSchema, CancelTaskResultSchema, ResourceContentsSchema, TextResourceContentsSchema, Base64Schema, BlobResourceContentsSchema, RoleSchema, AnnotationsSchema, ResourceSchema, ResourceTemplateSchema, ListResourcesRequestSchema, ListResourcesResultSchema, ListResourceTemplatesRequestSchema, ListResourceTemplatesResultSchema, ResourceRequestParamsSchema, ReadResourceRequestParamsSchema, ReadResourceRequestSchema, ReadResourceResultSchema, ResourceListChangedNotificationSchema, SubscribeRequestParamsSchema, SubscribeRequestSchema, UnsubscribeRequestParamsSchema, UnsubscribeRequestSchema, ResourceUpdatedNotificationParamsSchema, ResourceUpdatedNotificationSchema, PromptArgumentSchema, PromptSchema, ListPromptsRequestSchema, ListPromptsResultSchema, GetPromptRequestParamsSchema, GetPromptRequestSchema, TextContentSchema, ImageContentSchema, AudioContentSchema, ToolUseContentSchema, EmbeddedResourceSchema, ResourceLinkSchema, ContentBlockSchema, PromptMessageSchema, GetPromptResultSchema, PromptListChangedNotificationSchema, ToolAnnotationsSchema, ToolExecutionSchema, ToolSchema, ListToolsRequestSchema, ListToolsResultSchema, CallToolResultSchema, CompatibilityCallToolResultSchema, CallToolRequestParamsSchema, CallToolRequestSchema, ToolListChangedNotificationSchema, ListChangedOptionsBaseSchema, LoggingLevelSchema, SetLevelRequestParamsSchema, SetLevelRequestSchema, LoggingMessageNotificationParamsSchema, LoggingMessageNotificationSchema, ModelHintSchema, ModelPreferencesSchema, ToolChoiceSchema, ToolResultContentSchema, SamplingContentSchema, SamplingMessageContentBlockSchema, SamplingMessageSchema, CreateMessageRequestParamsSchema, CreateMessageRequestSchema, CreateMessageResultSchema, CreateMessageResultWithToolsSchema, BooleanSchemaSchema, StringSchemaSchema, NumberSchemaSchema, UntitledSingleSelectEnumSchemaSchema, TitledSingleSelectEnumSchemaSchema, LegacyTitledEnumSchemaSchema, SingleSelectEnumSchemaSchema, UntitledMultiSelectEnumSchemaSchema, TitledMultiSelectEnumSchemaSchema, MultiSelectEnumSchemaSchema, EnumSchemaSchema, PrimitiveSchemaDefinitionSchema, ElicitRequestFormParamsSchema, ElicitRequestURLParamsSchema, ElicitRequestParamsSchema, ElicitRequestSchema, ElicitationCompleteNotificationParamsSchema, ElicitationCompleteNotificationSchema, ElicitResultSchema, ResourceTemplateReferenceSchema, PromptReferenceSchema, CompleteRequestParamsSchema, CompleteRequestSchema, CompleteResultSchema, RootSchema, ListRootsRequestSchema, ListRootsResultSchema, RootsListChangedNotificationSchema, ClientRequestSchema, ClientNotificationSchema, ClientResultSchema, ServerRequestSchema, ServerNotificationSchema, ServerResultSchema, McpError, UrlElicitationRequiredError;
 var init_types = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/types.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/types.js"() {
     "use strict";
     init_esm_shims();
     init_v4();
@@ -29783,62 +29874,62 @@ var init_types = __esm({
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
 function isTerminal(status) {
   return status === "completed" || status === "failed" || status === "cancelled";
 }
 var init_interfaces = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/Options.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/Options.js
 var init_Options = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/Options.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/Options.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/Refs.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/Refs.js
 var init_Refs = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/Refs.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/Refs.js"() {
     "use strict";
     init_esm_shims();
     init_Options();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/errorMessages.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/errorMessages.js
 var init_errorMessages = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/errorMessages.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/errorMessages.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
 var init_getRelativePath = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/getRelativePath.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/getRelativePath.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/any.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/any.js
 var init_any = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/any.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/any.js"() {
     "use strict";
     init_esm_shims();
     init_getRelativePath();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/array.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/array.js
 var init_array = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/array.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/array.js"() {
     "use strict";
     init_esm_shims();
     init_errorMessages();
@@ -29846,62 +29937,62 @@ var init_array = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
 var init_bigint = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js"() {
     "use strict";
     init_esm_shims();
     init_errorMessages();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
 var init_boolean = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
 var init_branded = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/branded.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/branded.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
 var init_catch = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/catch.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/catch.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/date.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/date.js
 var init_date2 = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/date.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/date.js"() {
     "use strict";
     init_esm_shims();
     init_errorMessages();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/default.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/default.js
 var init_default = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/default.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/default.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
 var init_effects = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/effects.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/effects.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
@@ -29909,35 +30000,35 @@ var init_effects = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
 var init_enum = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/enum.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/enum.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
 var init_intersection = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
 var init_literal = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/literal.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/literal.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/string.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/string.js
 var ALPHA_NUMERIC;
 var init_string = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/string.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/string.js"() {
     "use strict";
     init_esm_shims();
     init_errorMessages();
@@ -29945,9 +30036,9 @@ var init_string = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/record.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/record.js
 var init_record = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/record.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/record.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
@@ -29957,9 +30048,9 @@ var init_record = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/map.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/map.js
 var init_map = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/map.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/map.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
@@ -29968,43 +30059,43 @@ var init_map = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
 var init_nativeEnum = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/never.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/never.js
 var init_never = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/never.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/never.js"() {
     "use strict";
     init_esm_shims();
     init_any();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/null.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/null.js
 var init_null = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/null.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/null.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/union.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/union.js
 var init_union = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/union.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/union.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
 var init_nullable = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
@@ -30012,27 +30103,27 @@ var init_nullable = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/number.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/number.js
 var init_number = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/number.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/number.js"() {
     "use strict";
     init_esm_shims();
     init_errorMessages();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/object.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/object.js
 var init_object = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/object.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/object.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
 var init_optional = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/optional.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/optional.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
@@ -30040,27 +30131,27 @@ var init_optional = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
 var init_pipeline = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
 var init_promise = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/promise.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/promise.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/set.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/set.js
 var init_set = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/set.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/set.js"() {
     "use strict";
     init_esm_shims();
     init_errorMessages();
@@ -30068,45 +30159,45 @@ var init_set = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
 var init_tuple = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
 var init_undefined = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js"() {
     "use strict";
     init_esm_shims();
     init_any();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
 var init_unknown = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js"() {
     "use strict";
     init_esm_shims();
     init_any();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
 var init_readonly = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/selectParser.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/selectParser.js
 var init_selectParser = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/selectParser.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/selectParser.js"() {
     "use strict";
     init_esm_shims();
     init_any();
@@ -30142,9 +30233,9 @@ var init_selectParser = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parseDef.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parseDef.js
 var init_parseDef = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parseDef.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parseDef.js"() {
     "use strict";
     init_esm_shims();
     init_Options();
@@ -30154,17 +30245,17 @@ var init_parseDef = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/parseTypes.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parseTypes.js
 var init_parseTypes = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/parseTypes.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/parseTypes.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
 var init_zodToJsonSchema = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js"() {
     "use strict";
     init_esm_shims();
     init_parseDef();
@@ -30173,9 +30264,9 @@ var init_zodToJsonSchema = __esm({
   }
 });
 
-// node_modules/zod-to-json-schema/dist/esm/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/index.js
 var init_esm = __esm({
-  "node_modules/zod-to-json-schema/dist/esm/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/zod-to-json-schema/dist/esm/index.js"() {
     "use strict";
     init_esm_shims();
     init_Options();
@@ -30220,7 +30311,7 @@ var init_esm = __esm({
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
 function getMethodLiteral(schema) {
   const shape = getObjectShape(schema);
   const methodSchema = shape?.method;
@@ -30241,7 +30332,7 @@ function parseWithCompat(schema, data) {
   return result.data;
 }
 var init_zod_json_schema_compat = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js"() {
     "use strict";
     init_esm_shims();
     init_zod_compat();
@@ -30249,7 +30340,7 @@ var init_zod_json_schema_compat = __esm({
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
 function isPlainObject2(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -30271,7 +30362,7 @@ function mergeCapabilities(base, additional) {
 }
 var DEFAULT_REQUEST_TIMEOUT_MSEC, Protocol;
 var init_protocol = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js"() {
     "use strict";
     init_esm_shims();
     init_zod_compat();
@@ -31214,9 +31305,9 @@ var init_protocol = __esm({
   }
 });
 
-// node_modules/ajv/dist/compile/codegen/code.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/codegen/code.js
 var require_code = __commonJS({
-  "node_modules/ajv/dist/compile/codegen/code.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/codegen/code.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -31369,9 +31460,9 @@ var require_code = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/codegen/scope.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/codegen/scope.js
 var require_scope = __commonJS({
-  "node_modules/ajv/dist/compile/codegen/scope.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/codegen/scope.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -31515,9 +31606,9 @@ var require_scope = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/codegen/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/codegen/index.js
 var require_codegen = __commonJS({
-  "node_modules/ajv/dist/compile/codegen/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/codegen/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -32236,9 +32327,9 @@ var require_codegen = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/util.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/util.js
 var require_util = __commonJS({
-  "node_modules/ajv/dist/compile/util.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/util.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -32404,9 +32495,9 @@ var require_util = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/names.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/names.js
 var require_names = __commonJS({
-  "node_modules/ajv/dist/compile/names.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/names.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -32444,9 +32535,9 @@ var require_names = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/errors.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/errors.js
 var require_errors = __commonJS({
-  "node_modules/ajv/dist/compile/errors.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/errors.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -32567,9 +32658,9 @@ var require_errors = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/validate/boolSchema.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/boolSchema.js
 var require_boolSchema = __commonJS({
-  "node_modules/ajv/dist/compile/validate/boolSchema.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/boolSchema.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -32619,9 +32710,9 @@ var require_boolSchema = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/rules.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/rules.js
 var require_rules = __commonJS({
-  "node_modules/ajv/dist/compile/rules.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/rules.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -32651,9 +32742,9 @@ var require_rules = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/validate/applicability.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/applicability.js
 var require_applicability = __commonJS({
-  "node_modules/ajv/dist/compile/validate/applicability.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/applicability.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -32675,9 +32766,9 @@ var require_applicability = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/validate/dataType.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/dataType.js
 var require_dataType = __commonJS({
-  "node_modules/ajv/dist/compile/validate/dataType.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/dataType.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -32860,9 +32951,9 @@ var require_dataType = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/validate/defaults.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/defaults.js
 var require_defaults = __commonJS({
-  "node_modules/ajv/dist/compile/validate/defaults.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/defaults.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -32898,9 +32989,9 @@ var require_defaults = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/code.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/code.js
 var require_code2 = __commonJS({
-  "node_modules/ajv/dist/vocabularies/code.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/code.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -33032,9 +33123,9 @@ var require_code2 = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/validate/keyword.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/keyword.js
 var require_keyword = __commonJS({
-  "node_modules/ajv/dist/compile/validate/keyword.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/keyword.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -33151,9 +33242,9 @@ var require_keyword = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/validate/subschema.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/subschema.js
 var require_subschema = __commonJS({
-  "node_modules/ajv/dist/compile/validate/subschema.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/subschema.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -33235,9 +33326,9 @@ var require_subschema = __commonJS({
   }
 });
 
-// node_modules/fast-deep-equal/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-deep-equal/index.js
 var require_fast_deep_equal = __commonJS({
-  "node_modules/fast-deep-equal/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-deep-equal/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = function equal(a, b) {
@@ -33271,9 +33362,9 @@ var require_fast_deep_equal = __commonJS({
   }
 });
 
-// node_modules/json-schema-traverse/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/json-schema-traverse/index.js
 var require_json_schema_traverse = __commonJS({
-  "node_modules/json-schema-traverse/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/json-schema-traverse/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var traverse = module.exports = function(schema, opts, cb) {
@@ -33360,9 +33451,9 @@ var require_json_schema_traverse = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/resolve.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/resolve.js
 var require_resolve = __commonJS({
-  "node_modules/ajv/dist/compile/resolve.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/resolve.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -33517,9 +33608,9 @@ var require_resolve = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/validate/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/index.js
 var require_validate = __commonJS({
-  "node_modules/ajv/dist/compile/validate/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/validate/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -34026,9 +34117,9 @@ var require_validate = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/runtime/validation_error.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/runtime/validation_error.js
 var require_validation_error = __commonJS({
-  "node_modules/ajv/dist/runtime/validation_error.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/runtime/validation_error.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -34043,9 +34134,9 @@ var require_validation_error = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/ref_error.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/ref_error.js
 var require_ref_error = __commonJS({
-  "node_modules/ajv/dist/compile/ref_error.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/ref_error.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -34061,9 +34152,9 @@ var require_ref_error = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/compile/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/index.js
 var require_compile2 = __commonJS({
-  "node_modules/ajv/dist/compile/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/compile/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -34286,9 +34377,9 @@ var require_compile2 = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/refs/data.json
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/refs/data.json
 var require_data = __commonJS({
-  "node_modules/ajv/dist/refs/data.json"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/refs/data.json"(exports, module) {
     module.exports = {
       $id: "https://raw.githubusercontent.com/ajv-validator/ajv/master/lib/refs/data.json#",
       description: "Meta-schema for $data reference (JSON AnySchema extension proposal)",
@@ -34305,9 +34396,9 @@ var require_data = __commonJS({
   }
 });
 
-// node_modules/fast-uri/lib/utils.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-uri/lib/utils.js
 var require_utils5 = __commonJS({
-  "node_modules/fast-uri/lib/utils.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-uri/lib/utils.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu);
@@ -34619,9 +34710,9 @@ var require_utils5 = __commonJS({
   }
 });
 
-// node_modules/fast-uri/lib/schemes.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-uri/lib/schemes.js
 var require_schemes = __commonJS({
-  "node_modules/fast-uri/lib/schemes.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-uri/lib/schemes.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var { isUUID } = require_utils5();
@@ -34830,9 +34921,9 @@ var require_schemes = __commonJS({
   }
 });
 
-// node_modules/fast-uri/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/fast-uri/index.js
 var require_fast_uri = __commonJS({
-  "node_modules/fast-uri/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/fast-uri/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, escapePreservingEscapes, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils5();
@@ -35117,9 +35208,9 @@ var require_fast_uri = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/runtime/uri.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/runtime/uri.js
 var require_uri = __commonJS({
-  "node_modules/ajv/dist/runtime/uri.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/runtime/uri.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -35129,9 +35220,9 @@ var require_uri = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/core.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/core.js
 var require_core = __commonJS({
-  "node_modules/ajv/dist/core.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/core.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -35741,9 +35832,9 @@ var require_core = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/core/id.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/core/id.js
 var require_id = __commonJS({
-  "node_modules/ajv/dist/vocabularies/core/id.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/core/id.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -35757,9 +35848,9 @@ var require_id = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/core/ref.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/core/ref.js
 var require_ref = __commonJS({
-  "node_modules/ajv/dist/vocabularies/core/ref.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/core/ref.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -35880,9 +35971,9 @@ var require_ref = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/core/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/core/index.js
 var require_core2 = __commonJS({
-  "node_modules/ajv/dist/vocabularies/core/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/core/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -35902,9 +35993,9 @@ var require_core2 = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/limitNumber.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/limitNumber.js
 var require_limitNumber = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/limitNumber.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/limitNumber.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -35935,9 +36026,9 @@ var require_limitNumber = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/multipleOf.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/multipleOf.js
 var require_multipleOf = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/multipleOf.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/multipleOf.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -35964,9 +36055,9 @@ var require_multipleOf = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/runtime/ucs2length.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/runtime/ucs2length.js
 var require_ucs2length = __commonJS({
-  "node_modules/ajv/dist/runtime/ucs2length.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/runtime/ucs2length.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -35991,9 +36082,9 @@ var require_ucs2length = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/limitLength.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/limitLength.js
 var require_limitLength = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/limitLength.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/limitLength.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36024,9 +36115,9 @@ var require_limitLength = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/pattern.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/pattern.js
 var require_pattern2 = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/pattern.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/pattern.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36062,9 +36153,9 @@ var require_pattern2 = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/limitProperties.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/limitProperties.js
 var require_limitProperties = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/limitProperties.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/limitProperties.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36092,9 +36183,9 @@ var require_limitProperties = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/required.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/required.js
 var require_required = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/required.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/required.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36175,9 +36266,9 @@ var require_required = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/limitItems.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/limitItems.js
 var require_limitItems = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/limitItems.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/limitItems.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36205,9 +36296,9 @@ var require_limitItems = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/runtime/equal.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/runtime/equal.js
 var require_equal = __commonJS({
-  "node_modules/ajv/dist/runtime/equal.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/runtime/equal.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36217,9 +36308,9 @@ var require_equal = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
 var require_uniqueItems = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/uniqueItems.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/uniqueItems.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36285,9 +36376,9 @@ var require_uniqueItems = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/const.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/const.js
 var require_const = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/const.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/const.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36315,9 +36406,9 @@ var require_const = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/enum.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/enum.js
 var require_enum = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/enum.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/enum.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36365,9 +36456,9 @@ var require_enum = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/validation/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/index.js
 var require_validation = __commonJS({
-  "node_modules/ajv/dist/vocabularies/validation/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/validation/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36404,9 +36495,9 @@ var require_validation = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
 var require_additionalItems = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/additionalItems.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/additionalItems.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36458,9 +36549,9 @@ var require_additionalItems = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/items.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/items.js
 var require_items = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/items.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/items.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36516,9 +36607,9 @@ var require_items = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
 var require_prefixItems = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/prefixItems.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/prefixItems.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36534,9 +36625,9 @@ var require_prefixItems = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/items2020.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/items2020.js
 var require_items2020 = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/items2020.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/items2020.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36570,9 +36661,9 @@ var require_items2020 = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/contains.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/contains.js
 var require_contains = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/contains.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/contains.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36665,9 +36756,9 @@ var require_contains = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/dependencies.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/dependencies.js
 var require_dependencies = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/dependencies.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/dependencies.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36760,9 +36851,9 @@ var require_dependencies = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
 var require_propertyNames = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/propertyNames.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/propertyNames.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36804,9 +36895,9 @@ var require_propertyNames = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
 var require_additionalProperties = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36911,9 +37002,9 @@ var require_additionalProperties = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/properties.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/properties.js
 var require_properties = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/properties.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/properties.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -36970,9 +37061,9 @@ var require_properties = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
 var require_patternProperties = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/patternProperties.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/patternProperties.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37045,9 +37136,9 @@ var require_patternProperties = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/not.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/not.js
 var require_not = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/not.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/not.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37077,9 +37168,9 @@ var require_not = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/anyOf.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/anyOf.js
 var require_anyOf = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/anyOf.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/anyOf.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37095,9 +37186,9 @@ var require_anyOf = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/oneOf.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/oneOf.js
 var require_oneOf = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/oneOf.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/oneOf.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37154,9 +37245,9 @@ var require_oneOf = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/allOf.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/allOf.js
 var require_allOf = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/allOf.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/allOf.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37182,9 +37273,9 @@ var require_allOf = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/if.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/if.js
 var require_if = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/if.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/if.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37252,9 +37343,9 @@ var require_if = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/thenElse.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/thenElse.js
 var require_thenElse = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/thenElse.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/thenElse.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37271,9 +37362,9 @@ var require_thenElse = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/applicator/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/index.js
 var require_applicator = __commonJS({
-  "node_modules/ajv/dist/vocabularies/applicator/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/applicator/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37320,9 +37411,9 @@ var require_applicator = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/format/format.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/format/format.js
 var require_format = __commonJS({
-  "node_modules/ajv/dist/vocabularies/format/format.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/format/format.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37411,9 +37502,9 @@ var require_format = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/format/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/format/index.js
 var require_format2 = __commonJS({
-  "node_modules/ajv/dist/vocabularies/format/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/format/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37423,9 +37514,9 @@ var require_format2 = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/metadata.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/metadata.js
 var require_metadata = __commonJS({
-  "node_modules/ajv/dist/vocabularies/metadata.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/metadata.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37447,9 +37538,9 @@ var require_metadata = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/draft7.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/draft7.js
 var require_draft7 = __commonJS({
-  "node_modules/ajv/dist/vocabularies/draft7.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/draft7.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37470,9 +37561,9 @@ var require_draft7 = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/discriminator/types.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/discriminator/types.js
 var require_types = __commonJS({
-  "node_modules/ajv/dist/vocabularies/discriminator/types.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/discriminator/types.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37485,9 +37576,9 @@ var require_types = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/vocabularies/discriminator/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/discriminator/index.js
 var require_discriminator = __commonJS({
-  "node_modules/ajv/dist/vocabularies/discriminator/index.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/vocabularies/discriminator/index.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37591,9 +37682,9 @@ var require_discriminator = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/refs/json-schema-draft-07.json
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/refs/json-schema-draft-07.json
 var require_json_schema_draft_07 = __commonJS({
-  "node_modules/ajv/dist/refs/json-schema-draft-07.json"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/refs/json-schema-draft-07.json"(exports, module) {
     module.exports = {
       $schema: "http://json-schema.org/draft-07/schema#",
       $id: "http://json-schema.org/draft-07/schema#",
@@ -37748,9 +37839,9 @@ var require_json_schema_draft_07 = __commonJS({
   }
 });
 
-// node_modules/ajv/dist/ajv.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/ajv.js
 var require_ajv = __commonJS({
-  "node_modules/ajv/dist/ajv.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv/dist/ajv.js"(exports, module) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37819,9 +37910,9 @@ var require_ajv = __commonJS({
   }
 });
 
-// node_modules/ajv-formats/dist/formats.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv-formats/dist/formats.js
 var require_formats = __commonJS({
-  "node_modules/ajv-formats/dist/formats.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv-formats/dist/formats.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -38023,9 +38114,9 @@ var require_formats = __commonJS({
   }
 });
 
-// node_modules/ajv-formats/dist/limit.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv-formats/dist/limit.js
 var require_limit = __commonJS({
-  "node_modules/ajv-formats/dist/limit.js"(exports) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv-formats/dist/limit.js"(exports) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -38096,9 +38187,9 @@ var require_limit = __commonJS({
   }
 });
 
-// node_modules/ajv-formats/dist/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/ajv-formats/dist/index.js
 var require_dist = __commonJS({
-  "node_modules/ajv-formats/dist/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/ajv-formats/dist/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -38139,7 +38230,7 @@ var require_dist = __commonJS({
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
 function createDefaultAjvInstance() {
   const ajv = new import_ajv.default({
     strict: false,
@@ -38153,7 +38244,7 @@ function createDefaultAjvInstance() {
 }
 var import_ajv, import_ajv_formats, AjvJsonSchemaValidator;
 var init_ajv_provider = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js"() {
     "use strict";
     init_esm_shims();
     import_ajv = __toESM(require_ajv(), 1);
@@ -38214,10 +38305,10 @@ var init_ajv_provider = __esm({
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/client.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/client.js
 var ExperimentalClientTasks;
 var init_client = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/client.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/client.js"() {
     "use strict";
     init_esm_shims();
     init_types();
@@ -38376,7 +38467,7 @@ var init_client = __esm({
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
 function assertToolsCallTaskCapability(requests, method, entityName) {
   if (!requests) {
     throw new Error(`${entityName} does not support task creation (required for ${method})`);
@@ -38411,13 +38502,13 @@ function assertClientRequestTaskCapability(requests, method, entityName) {
   }
 }
 var init_helpers = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js"() {
     "use strict";
     init_esm_shims();
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js
 var client_exports = {};
 __export(client_exports, {
   Client: () => Client,
@@ -38466,7 +38557,7 @@ function getSupportedElicitationModes(capabilities) {
 }
 var Client;
 var init_client2 = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js"() {
     "use strict";
     init_esm_shims();
     init_protocol();
@@ -38955,9 +39046,9 @@ var init_client2 = __esm({
   }
 });
 
-// node_modules/isexe/windows.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/isexe/windows.js
 var require_windows = __commonJS({
-  "node_modules/isexe/windows.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/isexe/windows.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = isexe;
@@ -38997,9 +39088,9 @@ var require_windows = __commonJS({
   }
 });
 
-// node_modules/isexe/mode.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/isexe/mode.js
 var require_mode = __commonJS({
-  "node_modules/isexe/mode.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/isexe/mode.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = isexe;
@@ -39032,9 +39123,9 @@ var require_mode = __commonJS({
   }
 });
 
-// node_modules/isexe/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/isexe/index.js
 var require_isexe = __commonJS({
-  "node_modules/isexe/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/isexe/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var fs = __require("fs");
@@ -39089,9 +39180,9 @@ var require_isexe = __commonJS({
   }
 });
 
-// node_modules/which/which.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/which/which.js
 var require_which = __commonJS({
-  "node_modules/which/which.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/which/which.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
@@ -39187,9 +39278,9 @@ var require_which = __commonJS({
   }
 });
 
-// node_modules/path-key/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/path-key/index.js
 var require_path_key = __commonJS({
-  "node_modules/path-key/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/path-key/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var pathKey = (options = {}) => {
@@ -39205,9 +39296,9 @@ var require_path_key = __commonJS({
   }
 });
 
-// node_modules/cross-spawn/lib/util/resolveCommand.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/util/resolveCommand.js
 var require_resolveCommand = __commonJS({
-  "node_modules/cross-spawn/lib/util/resolveCommand.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/util/resolveCommand.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var path3 = __require("path");
@@ -39248,9 +39339,9 @@ var require_resolveCommand = __commonJS({
   }
 });
 
-// node_modules/cross-spawn/lib/util/escape.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/util/escape.js
 var require_escape = __commonJS({
-  "node_modules/cross-spawn/lib/util/escape.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/util/escape.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
@@ -39274,18 +39365,18 @@ var require_escape = __commonJS({
   }
 });
 
-// node_modules/shebang-regex/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/shebang-regex/index.js
 var require_shebang_regex = __commonJS({
-  "node_modules/shebang-regex/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/shebang-regex/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     module.exports = /^#!(.*)/;
   }
 });
 
-// node_modules/shebang-command/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/shebang-command/index.js
 var require_shebang_command = __commonJS({
-  "node_modules/shebang-command/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/shebang-command/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var shebangRegex = require_shebang_regex();
@@ -39304,9 +39395,9 @@ var require_shebang_command = __commonJS({
   }
 });
 
-// node_modules/cross-spawn/lib/util/readShebang.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/util/readShebang.js
 var require_readShebang = __commonJS({
-  "node_modules/cross-spawn/lib/util/readShebang.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/util/readShebang.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var fs = __require("fs");
@@ -39327,9 +39418,9 @@ var require_readShebang = __commonJS({
   }
 });
 
-// node_modules/cross-spawn/lib/parse.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/parse.js
 var require_parse3 = __commonJS({
-  "node_modules/cross-spawn/lib/parse.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/parse.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var path3 = __require("path");
@@ -39390,9 +39481,9 @@ var require_parse3 = __commonJS({
   }
 });
 
-// node_modules/cross-spawn/lib/enoent.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/enoent.js
 var require_enoent = __commonJS({
-  "node_modules/cross-spawn/lib/enoent.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/lib/enoent.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var isWin = process.platform === "win32";
@@ -39441,9 +39532,9 @@ var require_enoent = __commonJS({
   }
 });
 
-// node_modules/cross-spawn/index.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/index.js
 var require_cross_spawn = __commonJS({
-  "node_modules/cross-spawn/index.js"(exports, module) {
+  "../../../Users/me/Documents/code/mrclean/node_modules/cross-spawn/index.js"(exports, module) {
     "use strict";
     init_esm_shims();
     var cp = __require("child_process");
@@ -39469,7 +39560,7 @@ var require_cross_spawn = __commonJS({
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
 function deserializeMessage(line) {
   return JSONRPCMessageSchema.parse(JSON.parse(line));
 }
@@ -39478,7 +39569,7 @@ function serializeMessage(message) {
 }
 var ReadBuffer;
 var init_stdio = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js"() {
     "use strict";
     init_esm_shims();
     init_types();
@@ -39505,7 +39596,7 @@ var init_stdio = __esm({
   }
 });
 
-// node_modules/@modelcontextprotocol/sdk/dist/esm/client/stdio.js
+// ../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/client/stdio.js
 var stdio_exports = {};
 __export(stdio_exports, {
   DEFAULT_INHERITED_ENV_VARS: () => DEFAULT_INHERITED_ENV_VARS,
@@ -39530,7 +39621,7 @@ function getDefaultEnvironment() {
 }
 var import_cross_spawn, DEFAULT_INHERITED_ENV_VARS, StdioClientTransport;
 var init_stdio2 = __esm({
-  "node_modules/@modelcontextprotocol/sdk/dist/esm/client/stdio.js"() {
+  "../../../Users/me/Documents/code/mrclean/node_modules/@modelcontextprotocol/sdk/dist/esm/client/stdio.js"() {
     "use strict";
     init_esm_shims();
     import_cross_spawn = __toESM(require_cross_spawn(), 1);
@@ -40339,7 +40430,7 @@ var init_doctor = __esm({
 // src/cli.ts
 init_esm_shims();
 
-// node_modules/commander/esm.mjs
+// ../../../Users/me/Documents/code/mrclean/node_modules/commander/esm.mjs
 init_esm_shims();
 var import_index = __toESM(require_commander(), 1);
 var {
