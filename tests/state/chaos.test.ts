@@ -206,8 +206,8 @@ describe('chaos one-way parity (handler level, real state modules)', () => {
     // regression), raw secret never on the wire.
     expect(baseline).not.toBeNull()
     expect(enabled).not.toBeNull()
-    expect(baseline!.hookSpecificOutput.hookEventName).toBe('PostToolUse')
-    expect(typeof enabled!.hookSpecificOutput.updatedToolOutput).toBe('string')
+    expect(baseline!.hookSpecificOutput?.hookEventName).toBe('PostToolUse')
+    expect(typeof enabled!.hookSpecificOutput?.updatedToolOutput).toBe('string')
     expect(JSON.stringify(baseline)).not.toContain(SECRET)
     expect(JSON.stringify(enabled)).not.toContain(SECRET)
 
