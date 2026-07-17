@@ -15,8 +15,11 @@ import { isMrcleanEntry } from './markers.js'
  * The five hook events mrclean registers for.
  * Ordered per RESEARCH.md §1.1 for consistent output.
  * Phase 8 (08-02): SessionEnd added + SessionStart matcher widened (REVMODE-07).
+ * Exported so install's success banner derives its count from this single
+ * source of truth (08-UAT gap 2 — the hardcoded count went stale when 08-02
+ * widened this list).
  */
-const HOOK_EVENTS = ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse'] as const
+export const HOOK_EVENTS = ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse'] as const
 type HookEvent = (typeof HOOK_EVENTS)[number]
 
 /** Matcher per event. `undefined` means no matcher field (UserPromptSubmit, SessionEnd). */
