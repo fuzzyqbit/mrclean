@@ -556,7 +556,7 @@ export async function checkConfigLoad(homeDir: string, cwd: string): Promise<Che
  */
 const REVERSIBLE_DETAIL_DISABLED = 'reversible mode: disabled (default one-way)'
 const REVERSIBLE_DETAIL_ENABLED =
-  'reversible mode: enabled — plumbing only (session state adapter lands in Phase 9)'
+  'reversible mode: enabled — encrypted session state adapter active'
 const REVERSIBLE_DETAIL_CONFIG_ERROR = 'config unreadable — see config check'
 
 /**
@@ -569,7 +569,7 @@ const REVERSIBLE_DETAIL_CONFIG_ERROR = 'config unreadable — see config check'
  *
  * Status mapping:
  *   PASS — reversible disabled (default; absent [reversible] table)
- *   PASS — reversible enabled (honest "plumbing only" copy until Phase 9)
+ *   PASS — reversible enabled (encrypted session state adapter active — 09-08)
  *   SKIP — config unreadable (ConfigReadError or any loader error);
  *          checkConfigLoad owns the FAIL for that root cause — never
  *          double-FAIL one root cause (T-08-10)

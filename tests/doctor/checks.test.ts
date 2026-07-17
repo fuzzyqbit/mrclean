@@ -502,7 +502,7 @@ describe('checkReversibleState', () => {
     await rm(cwd, { recursive: true, force: true })
   })
 
-  it('Test 16: PASS — [reversible] enabled = true → enabled, plumbing only', async () => {
+  it('Test 16: PASS — [reversible] enabled = true → enabled, adapter active', async () => {
     const homeDir = await makeTmpDir()
     const cwd = await makeTmpDir()
     const configDir = join(cwd, '.mrclean')
@@ -511,14 +511,17 @@ describe('checkReversibleState', () => {
 
     const result = await checkReversibleState(homeDir, cwd)
 
+    // Byte-for-byte lock on the 09-08 copy: the adapter is REAL now — the
+    // Phase 8 "plumbing only" framing is retired. State-only detail: never
+    // config values, paths, or map contents (T-08-08 / T-09-08-04).
     expect(result).toEqual({
       name: 'reversible',
       status: 'PASS',
-      detail: 'reversible mode: enabled — plumbing only (session state adapter lands in Phase 9)',
+      detail: 'reversible mode: enabled — encrypted session state adapter active',
       exitCodeOnFail: 1,
     })
     expect(result.detail).toMatch(/enabled/)
-    expect(result.detail).toMatch(/Phase 9/)
+    expect(result.detail).toMatch(/session state adapter/)
 
     await rm(homeDir, { recursive: true, force: true })
     await rm(cwd, { recursive: true, force: true })
