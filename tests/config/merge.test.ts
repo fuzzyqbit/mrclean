@@ -94,14 +94,15 @@ describe('mergeConfigs', () => {
     expect(result.reversible.enabled).toBe(true)
   })
 
-  // Test F (Phase 8-01, regression guard): absent [reversible] in every layer means the
-  // merged config carries the frozen default — absent table == shipped one-way guarantee.
-  it('defaults reversible to { enabled: false } when no layer sets it', () => {
+  // Test F (Phase 8-01, regression guard; widened 09-01): absent [reversible] in every
+  // layer means the merged config carries the frozen default — absent table == shipped
+  // one-way guarantee. Phase 9-01: the default shape now includes ttl_hours = 24 (D-09).
+  it('defaults reversible to { enabled: false, ttl_hours: 24 } when no layer sets it', () => {
     // Arrange + Act
     const result = mergeConfigs(DEFAULT_CONFIG, {}, {})
 
     // Assert
-    expect(result.reversible).toEqual({ enabled: false })
+    expect(result.reversible).toEqual({ enabled: false, ttl_hours: 24 })
   })
 })
 

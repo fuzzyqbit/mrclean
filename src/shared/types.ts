@@ -344,12 +344,12 @@ export interface MrcleanPiiConfigLayer {
 
 /**
  * Reversible-mode configuration ([reversible] in TOML).
- * Phase 8-01 contract: REVMODE-02 groundwork — the config table only.
- * The session state adapter that consumes it lands in Phase 9.
+ * Phase 8-01 contract: REVMODE-02 groundwork — the config table.
+ * Phase 9-01: the store-schema ownership landed — `ttl_hours` added per D-09
+ * (the ONLY new [reversible] key this phase; no cipher choice, no path overrides).
  *
- * Merge semantics: LAST-WINS (scalar), same as pii.enabled.
- * YAGNI fence: `enabled` is the ONLY field this phase — Phase 9 owns
- * store-schema fields (ttl_hours etc.); do not speculate here.
+ * Merge semantics: per-field LAST-WINS-WHEN-SET (scalar), same as [pii.ner] fields.
+ * YAGNI fence: `enabled` + `ttl_hours` are the ONLY fields — do not speculate here.
  */
 export interface MrcleanReversibleConfig {
   /**
@@ -358,6 +358,8 @@ export interface MrcleanReversibleConfig {
    * absent-[reversible] == shipped one-way guarantee.
    */
   enabled: boolean
+  /** Orphan-sweep TTL in hours; integer >= 1; default 24 (D-09). */
+  ttl_hours: number
 }
 
 /**
@@ -369,6 +371,8 @@ export interface MrcleanReversibleConfig {
  */
 export interface MrcleanReversibleConfigLayer {
   enabled?: boolean
+  /** Orphan-sweep TTL in hours; integer >= 1; default 24 (D-09). */
+  ttl_hours?: number
 }
 
 /**
