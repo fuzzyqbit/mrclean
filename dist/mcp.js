@@ -39,6 +39,18 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// node_modules/tsup/assets/esm_shims.js
+import path from "path";
+import { fileURLToPath } from "url";
+var getFilename, __filename;
+var init_esm_shims = __esm({
+  "node_modules/tsup/assets/esm_shims.js"() {
+    "use strict";
+    getFilename = () => fileURLToPath(import.meta.url);
+    __filename = /* @__PURE__ */ getFilename();
+  }
+});
+
 // package.json
 var package_default;
 var init_package = __esm({
@@ -142,6 +154,7 @@ var VERSION;
 var init_version = __esm({
   "src/shared/version.ts"() {
     "use strict";
+    init_esm_shims();
     init_package();
     VERSION = package_default.version;
   }
@@ -168,6 +181,7 @@ function installShutdownHandlers(closeFn) {
 var init_lifecycle = __esm({
   "src/mcp/lifecycle.ts"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -177,6 +191,7 @@ var MODEL_ID, MODEL_DOWNLOAD_URL, PINNED_MODEL_SHA256, MODEL_CACHE_PATH, PIIRANH
 var init_constants = __esm({
   "src/model/constants.ts"() {
     "use strict";
+    init_esm_shims();
     MODEL_ID = "Xenova/bert-base-NER";
     MODEL_DOWNLOAD_URL = "https://huggingface.co/Xenova/bert-base-NER/resolve/main/onnx/model_int8.onnx";
     PINNED_MODEL_SHA256 = "7de0a4606c65b60da275a72f37b76a102c41e2b79c6463096a9d0cb800bf3f2c";
@@ -298,6 +313,7 @@ var ModelIntegrityError;
 var init_model_cache = __esm({
   "src/model/model-cache.ts"() {
     "use strict";
+    init_esm_shims();
     init_constants();
     ModelIntegrityError = class extends Error {
       constructor(kind, expected, actual) {
@@ -381,6 +397,7 @@ var instance, backendLabel, resolvedModelSha, resolvedDtype;
 var init_pipeline_singleton = __esm({
   "src/model/pipeline-singleton.ts"() {
     "use strict";
+    init_esm_shims();
     init_constants();
     init_model_cache();
     instance = null;
@@ -393,6 +410,7 @@ var util, objectUtil, ZodParsedType, getParsedType;
 var init_util = __esm({
   "node_modules/zod/v3/helpers/util.js"() {
     "use strict";
+    init_esm_shims();
     (function(util2) {
       util2.assertEqual = (_) => {
       };
@@ -531,6 +549,7 @@ var ZodIssueCode, ZodError;
 var init_ZodError = __esm({
   "node_modules/zod/v3/ZodError.js"() {
     "use strict";
+    init_esm_shims();
     init_util();
     ZodIssueCode = util.arrayToEnum([
       "invalid_type",
@@ -652,6 +671,7 @@ var errorMap, en_default;
 var init_en = __esm({
   "node_modules/zod/v3/locales/en.js"() {
     "use strict";
+    init_esm_shims();
     init_ZodError();
     init_util();
     errorMap = (issue2, _ctx) => {
@@ -766,6 +786,7 @@ var overrideErrorMap;
 var init_errors = __esm({
   "node_modules/zod/v3/errors.js"() {
     "use strict";
+    init_esm_shims();
     init_en();
     overrideErrorMap = en_default;
   }
@@ -795,11 +816,12 @@ var makeIssue, ParseStatus, INVALID, DIRTY, OK, isAborted, isDirty, isValid, isA
 var init_parseUtil = __esm({
   "node_modules/zod/v3/helpers/parseUtil.js"() {
     "use strict";
+    init_esm_shims();
     init_errors();
     init_en();
     makeIssue = (params) => {
-      const { data, path: path2, errorMaps, issueData } = params;
-      const fullPath = [...path2, ...issueData.path || []];
+      const { data, path: path3, errorMaps, issueData } = params;
+      const fullPath = [...path3, ...issueData.path || []];
       const fullIssue = {
         ...issueData,
         path: fullPath
@@ -892,6 +914,7 @@ var init_parseUtil = __esm({
 var init_typeAliases = __esm({
   "node_modules/zod/v3/helpers/typeAliases.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -900,6 +923,7 @@ var errorUtil;
 var init_errorUtil = __esm({
   "node_modules/zod/v3/helpers/errorUtil.js"() {
     "use strict";
+    init_esm_shims();
     (function(errorUtil2) {
       errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
       errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
@@ -1076,17 +1100,18 @@ var ParseInputLazyPath, handleResult, ZodType, cuidRegex, cuid2Regex, ulidRegex,
 var init_types = __esm({
   "node_modules/zod/v3/types.js"() {
     "use strict";
+    init_esm_shims();
     init_ZodError();
     init_errors();
     init_errorUtil();
     init_parseUtil();
     init_util();
     ParseInputLazyPath = class {
-      constructor(parent, value, path2, key) {
+      constructor(parent, value, path3, key) {
         this._cachedPath = [];
         this.parent = parent;
         this.data = value;
-        this._path = path2;
+        this._path = path3;
         this._key = key;
       }
       get path() {
@@ -4323,6 +4348,7 @@ var init_types = __esm({
 var init_external = __esm({
   "node_modules/zod/v3/external.js"() {
     "use strict";
+    init_esm_shims();
     init_errors();
     init_parseUtil();
     init_typeAliases();
@@ -4336,6 +4362,7 @@ var init_external = __esm({
 var init_v3 = __esm({
   "node_modules/zod/v3/index.js"() {
     "use strict";
+    init_esm_shims();
     init_external();
   }
 });
@@ -4402,6 +4429,7 @@ var _a, NEVER, $brand, $ZodAsyncError, $ZodEncodeError, globalConfig;
 var init_core = __esm({
   "node_modules/zod/v4/core/core.js"() {
     "use strict";
+    init_esm_shims();
     NEVER = /* @__PURE__ */ Object.freeze({
       status: "aborted"
     });
@@ -4588,10 +4616,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path2) {
-  if (!path2)
+function getElementAtPath(obj, path3) {
+  if (!path3)
     return obj;
-  return path2.reduce((acc, key) => acc?.[key], obj);
+  return path3.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -4919,11 +4947,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path2, issues) {
+function prefixIssues(path3, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path2);
+    iss.path.unshift(path3);
     return iss;
   });
 }
@@ -5035,6 +5063,7 @@ var EVALUATING, captureStackTrace, allowsEval, getParsedType2, propertyKeyTypes,
 var init_util2 = __esm({
   "node_modules/zod/v4/core/util.js"() {
     "use strict";
+    init_esm_shims();
     init_core();
     EVALUATING = /* @__PURE__ */ Symbol("evaluating");
     captureStackTrace = "captureStackTrace" in Error ? Error.captureStackTrace : (..._args) => {
@@ -5141,16 +5170,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path2 = []) => {
+  const processError = (error52, path3 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path2, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
       } else {
-        const fullpath = [...path2, ...issue2.path];
+        const fullpath = [...path3, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -5177,17 +5206,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path2 = []) => {
+  const processError = (error52, path3 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path2, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
       } else {
-        const fullpath = [...path2, ...issue2.path];
+        const fullpath = [...path3, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -5219,8 +5248,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path2 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path2) {
+  const path3 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path3) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -5249,6 +5278,7 @@ var initializer, $ZodError, $ZodRealError;
 var init_errors2 = __esm({
   "node_modules/zod/v4/core/errors.js"() {
     "use strict";
+    init_esm_shims();
     init_core();
     init_util2();
     initializer = (inst, def) => {
@@ -5277,6 +5307,7 @@ var _parse, parse, _parseAsync, parseAsync, _safeParse, safeParse, _safeParseAsy
 var init_parse = __esm({
   "node_modules/zod/v4/core/parse.js"() {
     "use strict";
+    init_esm_shims();
     init_core();
     init_errors2();
     init_util2();
@@ -5463,6 +5494,7 @@ var cuid, cuid2, ulid, xid, ksuid, nanoid, duration, extendedDuration, guid, uui
 var init_regexes = __esm({
   "node_modules/zod/v4/core/regexes.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     cuid = /^[cC][0-9a-z]{6,}$/;
     cuid2 = /^[0-9a-z]+$/;
@@ -5545,6 +5577,7 @@ var $ZodCheck, numericOriginMap, $ZodCheckLessThan, $ZodCheckGreaterThan, $ZodCh
 var init_checks = __esm({
   "node_modules/zod/v4/core/checks.js"() {
     "use strict";
+    init_esm_shims();
     init_core();
     init_regexes();
     init_util2();
@@ -6097,6 +6130,7 @@ var Doc;
 var init_doc = __esm({
   "node_modules/zod/v4/core/doc.js"() {
     "use strict";
+    init_esm_shims();
     Doc = class {
       constructor(args = []) {
         this.content = [];
@@ -6139,6 +6173,7 @@ var version;
 var init_versions = __esm({
   "node_modules/zod/v4/core/versions.js"() {
     "use strict";
+    init_esm_shims();
     version = {
       major: 4,
       minor: 4,
@@ -6555,6 +6590,7 @@ var $ZodType, $ZodString, $ZodStringFormat, $ZodGUID, $ZodUUID, $ZodEmail, $ZodU
 var init_schemas = __esm({
   "node_modules/zod/v4/core/schemas.js"() {
     "use strict";
+    init_esm_shims();
     init_checks();
     init_core();
     init_doc();
@@ -8264,6 +8300,7 @@ var error;
 var init_ar = __esm({
   "node_modules/zod/v4/locales/ar.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error = () => {
       const Sizable = {
@@ -8378,6 +8415,7 @@ var error2;
 var init_az = __esm({
   "node_modules/zod/v4/locales/az.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error2 = () => {
       const Sizable = {
@@ -8506,6 +8544,7 @@ var error3;
 var init_be = __esm({
   "node_modules/zod/v4/locales/be.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error3 = () => {
       const Sizable = {
@@ -8655,6 +8694,7 @@ var error4;
 var init_bg = __esm({
   "node_modules/zod/v4/locales/bg.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error4 = () => {
       const Sizable = {
@@ -8783,6 +8823,7 @@ var error5;
 var init_ca = __esm({
   "node_modules/zod/v4/locales/ca.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error5 = () => {
       const Sizable = {
@@ -8899,6 +8940,7 @@ var error6;
 var init_cs = __esm({
   "node_modules/zod/v4/locales/cs.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error6 = () => {
       const Sizable = {
@@ -9018,6 +9060,7 @@ var error7;
 var init_da = __esm({
   "node_modules/zod/v4/locales/da.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error7 = () => {
       const Sizable = {
@@ -9141,6 +9184,7 @@ var error8;
 var init_de = __esm({
   "node_modules/zod/v4/locales/de.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error8 = () => {
       const Sizable = {
@@ -9257,6 +9301,7 @@ var error9;
 var init_el = __esm({
   "node_modules/zod/v4/locales/el.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error9 = () => {
       const Sizable = {
@@ -9374,6 +9419,7 @@ var error10;
 var init_en2 = __esm({
   "node_modules/zod/v4/locales/en.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error10 = () => {
       const Sizable = {
@@ -9494,6 +9540,7 @@ var error11;
 var init_eo = __esm({
   "node_modules/zod/v4/locales/eo.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error11 = () => {
       const Sizable = {
@@ -9611,6 +9658,7 @@ var error12;
 var init_es = __esm({
   "node_modules/zod/v4/locales/es.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error12 = () => {
       const Sizable = {
@@ -9751,6 +9799,7 @@ var error13;
 var init_fa = __esm({
   "node_modules/zod/v4/locales/fa.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error13 = () => {
       const Sizable = {
@@ -9873,6 +9922,7 @@ var error14;
 var init_fi = __esm({
   "node_modules/zod/v4/locales/fi.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error14 = () => {
       const Sizable = {
@@ -9993,6 +10043,7 @@ var error15;
 var init_fr = __esm({
   "node_modules/zod/v4/locales/fr.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error15 = () => {
       const Sizable = {
@@ -10126,6 +10177,7 @@ var error16;
 var init_fr_CA = __esm({
   "node_modules/zod/v4/locales/fr-CA.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error16 = () => {
       const Sizable = {
@@ -10241,6 +10293,7 @@ var error17;
 var init_he = __esm({
   "node_modules/zod/v4/locales/he.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error17 = () => {
       const TypeNames = {
@@ -10443,6 +10496,7 @@ var error18;
 var init_hr = __esm({
   "node_modules/zod/v4/locales/hr.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error18 = () => {
       const Sizable = {
@@ -10573,6 +10627,7 @@ var error19;
 var init_hu = __esm({
   "node_modules/zod/v4/locales/hu.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error19 = () => {
       const Sizable = {
@@ -10699,6 +10754,7 @@ var error20;
 var init_hy = __esm({
   "node_modules/zod/v4/locales/hy.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error20 = () => {
       const Sizable = {
@@ -10844,6 +10900,7 @@ var error21;
 var init_id = __esm({
   "node_modules/zod/v4/locales/id.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error21 = () => {
       const Sizable = {
@@ -10958,6 +11015,7 @@ var error22;
 var init_is = __esm({
   "node_modules/zod/v4/locales/is.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error22 = () => {
       const Sizable = {
@@ -11075,6 +11133,7 @@ var error23;
 var init_it = __esm({
   "node_modules/zod/v4/locales/it.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error23 = () => {
       const Sizable = {
@@ -11191,6 +11250,7 @@ var error24;
 var init_ja = __esm({
   "node_modules/zod/v4/locales/ja.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error24 = () => {
       const Sizable = {
@@ -11306,6 +11366,7 @@ var error25;
 var init_ka = __esm({
   "node_modules/zod/v4/locales/ka.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error25 = () => {
       const Sizable = {
@@ -11426,6 +11487,7 @@ var error26;
 var init_km = __esm({
   "node_modules/zod/v4/locales/km.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error26 = () => {
       const Sizable = {
@@ -11541,6 +11603,7 @@ function kh_default() {
 var init_kh = __esm({
   "node_modules/zod/v4/locales/kh.js"() {
     "use strict";
+    init_esm_shims();
     init_km();
   }
 });
@@ -11555,6 +11618,7 @@ var error27;
 var init_ko = __esm({
   "node_modules/zod/v4/locales/ko.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error27 = () => {
       const Sizable = {
@@ -11684,6 +11748,7 @@ var capitalizeFirstCharacter, error28;
 var init_lt = __esm({
   "node_modules/zod/v4/locales/lt.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     capitalizeFirstCharacter = (text) => {
       return text.charAt(0).toUpperCase() + text.slice(1);
@@ -11885,6 +11950,7 @@ var error29;
 var init_mk = __esm({
   "node_modules/zod/v4/locales/mk.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error29 = () => {
       const Sizable = {
@@ -12002,6 +12068,7 @@ var error30;
 var init_ms = __esm({
   "node_modules/zod/v4/locales/ms.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error30 = () => {
       const Sizable = {
@@ -12117,6 +12184,7 @@ var error31;
 var init_nl = __esm({
   "node_modules/zod/v4/locales/nl.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error31 = () => {
       const Sizable = {
@@ -12235,6 +12303,7 @@ var error32;
 var init_no = __esm({
   "node_modules/zod/v4/locales/no.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error32 = () => {
       const Sizable = {
@@ -12351,6 +12420,7 @@ var error33;
 var init_ota = __esm({
   "node_modules/zod/v4/locales/ota.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error33 = () => {
       const Sizable = {
@@ -12468,6 +12538,7 @@ var error34;
 var init_ps = __esm({
   "node_modules/zod/v4/locales/ps.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error34 = () => {
       const Sizable = {
@@ -12590,6 +12661,7 @@ var error35;
 var init_pl = __esm({
   "node_modules/zod/v4/locales/pl.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error35 = () => {
       const Sizable = {
@@ -12707,6 +12779,7 @@ var error36;
 var init_pt = __esm({
   "node_modules/zod/v4/locales/pt.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error36 = () => {
       const Sizable = {
@@ -12823,6 +12896,7 @@ var error37;
 var init_ro = __esm({
   "node_modules/zod/v4/locales/ro.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error37 = () => {
       const Sizable = {
@@ -12965,6 +13039,7 @@ var error38;
 var init_ru = __esm({
   "node_modules/zod/v4/locales/ru.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error38 = () => {
       const Sizable = {
@@ -13114,6 +13189,7 @@ var error39;
 var init_sl = __esm({
   "node_modules/zod/v4/locales/sl.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error39 = () => {
       const Sizable = {
@@ -13231,6 +13307,7 @@ var error40;
 var init_sv = __esm({
   "node_modules/zod/v4/locales/sv.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error40 = () => {
       const Sizable = {
@@ -13349,6 +13426,7 @@ var error41;
 var init_ta = __esm({
   "node_modules/zod/v4/locales/ta.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error41 = () => {
       const Sizable = {
@@ -13467,6 +13545,7 @@ var error42;
 var init_th = __esm({
   "node_modules/zod/v4/locales/th.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error42 = () => {
       const Sizable = {
@@ -13585,6 +13664,7 @@ var error43;
 var init_tr = __esm({
   "node_modules/zod/v4/locales/tr.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error43 = () => {
       const Sizable = {
@@ -13698,6 +13778,7 @@ var error44;
 var init_uk = __esm({
   "node_modules/zod/v4/locales/uk.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error44 = () => {
       const Sizable = {
@@ -13811,6 +13892,7 @@ function ua_default() {
 var init_ua = __esm({
   "node_modules/zod/v4/locales/ua.js"() {
     "use strict";
+    init_esm_shims();
     init_uk();
   }
 });
@@ -13825,6 +13907,7 @@ var error45;
 var init_ur = __esm({
   "node_modules/zod/v4/locales/ur.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error45 = () => {
       const Sizable = {
@@ -13943,6 +14026,7 @@ var error46;
 var init_uz = __esm({
   "node_modules/zod/v4/locales/uz.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error46 = () => {
       const Sizable = {
@@ -14061,6 +14145,7 @@ var error47;
 var init_vi = __esm({
   "node_modules/zod/v4/locales/vi.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error47 = () => {
       const Sizable = {
@@ -14177,6 +14262,7 @@ var error48;
 var init_zh_CN = __esm({
   "node_modules/zod/v4/locales/zh-CN.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error48 = () => {
       const Sizable = {
@@ -14294,6 +14380,7 @@ var error49;
 var init_zh_TW = __esm({
   "node_modules/zod/v4/locales/zh-TW.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error49 = () => {
       const Sizable = {
@@ -14409,6 +14496,7 @@ var error50;
 var init_yo = __esm({
   "node_modules/zod/v4/locales/yo.js"() {
     "use strict";
+    init_esm_shims();
     init_util2();
     error50 = () => {
       const Sizable = {
@@ -14573,6 +14661,7 @@ __export(locales_exports, {
 var init_locales = __esm({
   "node_modules/zod/v4/locales/index.js"() {
     "use strict";
+    init_esm_shims();
     init_ar();
     init_az();
     init_be();
@@ -14636,6 +14725,7 @@ var _a2, $output, $input, $ZodRegistry, globalRegistry;
 var init_registries = __esm({
   "node_modules/zod/v4/core/registries.js"() {
     "use strict";
+    init_esm_shims();
     $output = /* @__PURE__ */ Symbol("ZodOutput");
     $input = /* @__PURE__ */ Symbol("ZodInput");
     $ZodRegistry = class {
@@ -15718,6 +15808,7 @@ var TimePrecision;
 var init_api = __esm({
   "node_modules/zod/v4/core/api.js"() {
     "use strict";
+    init_esm_shims();
     init_checks();
     init_registries();
     init_schemas();
@@ -16081,6 +16172,7 @@ var createToJSONSchemaMethod, createStandardJSONSchemaMethod;
 var init_to_json_schema = __esm({
   "node_modules/zod/v4/core/to-json-schema.js"() {
     "use strict";
+    init_esm_shims();
     init_registries();
     createToJSONSchemaMethod = (schema, processors = {}) => (params) => {
       const ctx = initializeContext({ ...params, processors });
@@ -16137,6 +16229,7 @@ var formatMap, stringProcessor, numberProcessor, booleanProcessor, bigintProcess
 var init_json_schema_processors = __esm({
   "node_modules/zod/v4/core/json-schema-processors.js"() {
     "use strict";
+    init_esm_shims();
     init_to_json_schema();
     init_util2();
     formatMap = {
@@ -16655,6 +16748,7 @@ var JSONSchemaGenerator;
 var init_json_schema_generator = __esm({
   "node_modules/zod/v4/core/json-schema-generator.js"() {
     "use strict";
+    init_esm_shims();
     init_json_schema_processors();
     init_to_json_schema();
     JSONSchemaGenerator = class {
@@ -16738,6 +16832,7 @@ var json_schema_exports = {};
 var init_json_schema = __esm({
   "node_modules/zod/v4/core/json-schema.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -17022,6 +17117,7 @@ __export(core_exports2, {
 var init_core2 = __esm({
   "node_modules/zod/v4/core/index.js"() {
     "use strict";
+    init_esm_shims();
     init_core();
     init_parse();
     init_errors2();
@@ -17045,6 +17141,7 @@ var init_core2 = __esm({
 var init_parse2 = __esm({
   "node_modules/zod/v4/mini/parse.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
   }
 });
@@ -17063,6 +17160,7 @@ var ZodMiniType, ZodMiniObject;
 var init_schemas2 = __esm({
   "node_modules/zod/v4/mini/schemas.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
     init_util2();
     init_parse2();
@@ -17108,6 +17206,7 @@ var init_schemas2 = __esm({
 var init_checks2 = __esm({
   "node_modules/zod/v4/mini/checks.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -17115,6 +17214,7 @@ var init_checks2 = __esm({
 var init_iso = __esm({
   "node_modules/zod/v4/mini/iso.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -17122,6 +17222,7 @@ var init_iso = __esm({
 var init_coerce = __esm({
   "node_modules/zod/v4/mini/coerce.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -17129,6 +17230,7 @@ var init_coerce = __esm({
 var init_external2 = __esm({
   "node_modules/zod/v4/mini/external.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
     init_parse2();
     init_schemas2();
@@ -17144,6 +17246,7 @@ var init_external2 = __esm({
 var init_v4_mini = __esm({
   "node_modules/zod/v4-mini/index.js"() {
     "use strict";
+    init_esm_shims();
     init_external2();
   }
 });
@@ -17294,6 +17397,7 @@ function getLiteralValue(schema) {
 var init_zod_compat = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js"() {
     "use strict";
+    init_esm_shims();
     init_v3();
     init_v4_mini();
   }
@@ -17335,6 +17439,7 @@ __export(checks_exports2, {
 var init_checks3 = __esm({
   "node_modules/zod/v4/classic/checks.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
   }
 });
@@ -17367,6 +17472,7 @@ var ZodISODateTime, ZodISODate, ZodISOTime, ZodISODuration;
 var init_iso2 = __esm({
   "node_modules/zod/v4/classic/iso.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
     init_schemas3();
     ZodISODateTime = /* @__PURE__ */ $constructor("ZodISODateTime", (inst, def) => {
@@ -17393,6 +17499,7 @@ var initializer2, ZodError2, ZodRealError;
 var init_errors3 = __esm({
   "node_modules/zod/v4/classic/errors.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
     init_core2();
     init_util2();
@@ -17442,6 +17549,7 @@ var parse2, parseAsync2, safeParse3, safeParseAsync3, encode2, decode2, encodeAs
 var init_parse3 = __esm({
   "node_modules/zod/v4/classic/parse.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
     init_errors3();
     parse2 = /* @__PURE__ */ _parse(ZodRealError);
@@ -18145,6 +18253,7 @@ var _installedGroups, ZodType2, _ZodString, ZodString2, ZodStringFormat, ZodEmai
 var init_schemas3 = __esm({
   "node_modules/zod/v4/classic/schemas.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
     init_core2();
     init_json_schema_processors();
@@ -18944,6 +19053,7 @@ var ZodIssueCode2, ZodFirstPartyTypeKind2;
 var init_compat = __esm({
   "node_modules/zod/v4/classic/compat.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
     ZodIssueCode2 = {
       invalid_type: "invalid_type",
@@ -18981,13 +19091,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path2 = ref.slice(1).split("/").filter(Boolean);
-  if (path2.length === 0) {
+  const path3 = ref.slice(1).split("/").filter(Boolean);
+  if (path3.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path2[0] === defsKey) {
-    const key = path2[1];
+  if (path3[0] === defsKey) {
+    const key = path3[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -19370,6 +19480,7 @@ var z, RECOGNIZED_KEYS;
 var init_from_json_schema = __esm({
   "node_modules/zod/v4/classic/from-json-schema.js"() {
     "use strict";
+    init_esm_shims();
     init_registries();
     init_checks3();
     init_iso2();
@@ -19480,6 +19591,7 @@ function date4(params) {
 var init_coerce2 = __esm({
   "node_modules/zod/v4/classic/coerce.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
     init_schemas3();
   }
@@ -19730,6 +19842,7 @@ __export(external_exports, {
 var init_external3 = __esm({
   "node_modules/zod/v4/classic/external.js"() {
     "use strict";
+    init_esm_shims();
     init_core2();
     init_schemas3();
     init_checks3();
@@ -19753,6 +19866,7 @@ var init_external3 = __esm({
 var init_classic = __esm({
   "node_modules/zod/v4/classic/index.js"() {
     "use strict";
+    init_esm_shims();
     init_external3();
     init_external3();
   }
@@ -19762,6 +19876,7 @@ var init_classic = __esm({
 var init_v4 = __esm({
   "node_modules/zod/v4/index.js"() {
     "use strict";
+    init_esm_shims();
     init_classic();
   }
 });
@@ -19783,6 +19898,7 @@ var LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS, RELATED_TASK_META_KEY,
 var init_types2 = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/types.js"() {
     "use strict";
+    init_esm_shims();
     init_v4();
     LATEST_PROTOCOL_VERSION = "2025-11-25";
     SUPPORTED_PROTOCOL_VERSIONS = [LATEST_PROTOCOL_VERSION, "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"];
@@ -21310,6 +21426,7 @@ function isTerminal(status) {
 var init_interfaces = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -21318,6 +21435,7 @@ var ignoreOverride, defaultOptions, getDefaultOptions;
 var init_Options = __esm({
   "node_modules/zod-to-json-schema/dist/esm/Options.js"() {
     "use strict";
+    init_esm_shims();
     ignoreOverride = /* @__PURE__ */ Symbol("Let zodToJsonSchema decide on which parser to use");
     defaultOptions = {
       name: void 0,
@@ -21358,6 +21476,7 @@ var getRefs;
 var init_Refs = __esm({
   "node_modules/zod-to-json-schema/dist/esm/Refs.js"() {
     "use strict";
+    init_esm_shims();
     init_Options();
     getRefs = (options) => {
       const _options = getDefaultOptions(options);
@@ -21399,6 +21518,7 @@ function setResponseValueAndErrors(res, key, value, errorMessage, refs) {
 var init_errorMessages = __esm({
   "node_modules/zod-to-json-schema/dist/esm/errorMessages.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -21407,6 +21527,7 @@ var getRelativePath;
 var init_getRelativePath = __esm({
   "node_modules/zod-to-json-schema/dist/esm/getRelativePath.js"() {
     "use strict";
+    init_esm_shims();
     getRelativePath = (pathA, pathB) => {
       let i = 0;
       for (; i < pathA.length && i < pathB.length; i++) {
@@ -21436,6 +21557,7 @@ function parseAnyDef(refs) {
 var init_any = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/any.js"() {
     "use strict";
+    init_esm_shims();
     init_getRelativePath();
   }
 });
@@ -21466,6 +21588,7 @@ function parseArrayDef(def, refs) {
 var init_array = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/array.js"() {
     "use strict";
+    init_esm_shims();
     init_v3();
     init_errorMessages();
     init_parseDef();
@@ -21520,6 +21643,7 @@ function parseBigintDef(def, refs) {
 var init_bigint = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js"() {
     "use strict";
+    init_esm_shims();
     init_errorMessages();
   }
 });
@@ -21533,6 +21657,7 @@ function parseBooleanDef() {
 var init_boolean = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -21543,6 +21668,7 @@ function parseBrandedDef(_def, refs) {
 var init_branded = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/branded.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
   }
 });
@@ -21552,6 +21678,7 @@ var parseCatchDef;
 var init_catch = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/catch.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     parseCatchDef = (def, refs) => {
       return parseDef(def.innerType._def, refs);
@@ -21587,6 +21714,7 @@ var integerDateParser;
 var init_date = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/date.js"() {
     "use strict";
+    init_esm_shims();
     init_errorMessages();
     integerDateParser = (def, refs) => {
       const res = {
@@ -21635,6 +21763,7 @@ function parseDefaultDef(_def, refs) {
 var init_default = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/default.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
   }
 });
@@ -21646,6 +21775,7 @@ function parseEffectsDef(_def, refs) {
 var init_effects = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/effects.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     init_any();
   }
@@ -21661,6 +21791,7 @@ function parseEnumDef(def) {
 var init_enum = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/enum.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -21704,6 +21835,7 @@ var isJsonSchema7AllOfType;
 var init_intersection = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     isJsonSchema7AllOfType = (type) => {
       if ("type" in type && type.type === "string")
@@ -21735,6 +21867,7 @@ function parseLiteralDef(def, refs) {
 var init_literal = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/literal.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -22017,6 +22150,7 @@ var emojiRegex2, zodPatterns, ALPHA_NUMERIC;
 var init_string = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/string.js"() {
     "use strict";
+    init_esm_shims();
     init_errorMessages();
     emojiRegex2 = void 0;
     zodPatterns = {
@@ -22124,6 +22258,7 @@ function parseRecordDef(def, refs) {
 var init_record = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/record.js"() {
     "use strict";
+    init_esm_shims();
     init_v3();
     init_parseDef();
     init_string();
@@ -22159,6 +22294,7 @@ function parseMapDef(def, refs) {
 var init_map = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/map.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     init_record();
     init_any();
@@ -22181,6 +22317,7 @@ function parseNativeEnumDef(def) {
 var init_nativeEnum = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -22196,6 +22333,7 @@ function parseNeverDef(refs) {
 var init_never = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/never.js"() {
     "use strict";
+    init_esm_shims();
     init_any();
   }
 });
@@ -22212,6 +22350,7 @@ function parseNullDef(refs) {
 var init_null = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/null.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -22272,6 +22411,7 @@ var primitiveMappings, asAnyOf;
 var init_union = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/union.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     primitiveMappings = {
       ZodString: "string",
@@ -22324,6 +22464,7 @@ function parseNullableDef(def, refs) {
 var init_nullable = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     init_union();
   }
@@ -22380,6 +22521,7 @@ function parseNumberDef(def, refs) {
 var init_number = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/number.js"() {
     "use strict";
+    init_esm_shims();
     init_errorMessages();
   }
 });
@@ -22456,6 +22598,7 @@ function safeIsOptional(schema) {
 var init_object = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/object.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
   }
 });
@@ -22465,6 +22608,7 @@ var parseOptionalDef;
 var init_optional = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/optional.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     init_any();
     parseOptionalDef = (def, refs) => {
@@ -22492,6 +22636,7 @@ var parsePipelineDef;
 var init_pipeline = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     parsePipelineDef = (def, refs) => {
       if (refs.pipeStrategy === "input") {
@@ -22521,6 +22666,7 @@ function parsePromiseDef(def, refs) {
 var init_promise = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/promise.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
   }
 });
@@ -22547,6 +22693,7 @@ function parseSetDef(def, refs) {
 var init_set = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/set.js"() {
     "use strict";
+    init_esm_shims();
     init_errorMessages();
     init_parseDef();
   }
@@ -22582,6 +22729,7 @@ function parseTupleDef(def, refs) {
 var init_tuple = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
   }
 });
@@ -22595,6 +22743,7 @@ function parseUndefinedDef(refs) {
 var init_undefined = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js"() {
     "use strict";
+    init_esm_shims();
     init_any();
   }
 });
@@ -22606,6 +22755,7 @@ function parseUnknownDef(refs) {
 var init_unknown = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js"() {
     "use strict";
+    init_esm_shims();
     init_any();
   }
 });
@@ -22615,6 +22765,7 @@ var parseReadonlyDef;
 var init_readonly = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     parseReadonlyDef = (def, refs) => {
       return parseDef(def.innerType._def, refs);
@@ -22627,6 +22778,7 @@ var selectParser;
 var init_selectParser = __esm({
   "node_modules/zod-to-json-schema/dist/esm/selectParser.js"() {
     "use strict";
+    init_esm_shims();
     init_v3();
     init_any();
     init_array();
@@ -22769,6 +22921,7 @@ var get$ref, addMeta;
 var init_parseDef = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parseDef.js"() {
     "use strict";
+    init_esm_shims();
     init_Options();
     init_selectParser();
     init_getRelativePath();
@@ -22805,6 +22958,7 @@ var init_parseDef = __esm({
 var init_parseTypes = __esm({
   "node_modules/zod-to-json-schema/dist/esm/parseTypes.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -22813,6 +22967,7 @@ var zodToJsonSchema;
 var init_zodToJsonSchema = __esm({
   "node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js"() {
     "use strict";
+    init_esm_shims();
     init_parseDef();
     init_Refs();
     init_any();
@@ -22883,6 +23038,7 @@ var init_zodToJsonSchema = __esm({
 var init_esm = __esm({
   "node_modules/zod-to-json-schema/dist/esm/index.js"() {
     "use strict";
+    init_esm_shims();
     init_Options();
     init_Refs();
     init_errorMessages();
@@ -22969,6 +23125,7 @@ function parseWithCompat(schema, data) {
 var init_zod_json_schema_compat = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js"() {
     "use strict";
+    init_esm_shims();
     init_v4_mini();
     init_zod_compat();
     init_esm();
@@ -22999,6 +23156,7 @@ var DEFAULT_REQUEST_TIMEOUT_MSEC, Protocol;
 var init_protocol = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js"() {
     "use strict";
+    init_esm_shims();
     init_zod_compat();
     init_types2();
     init_interfaces();
@@ -23943,6 +24101,7 @@ var init_protocol = __esm({
 var require_code = __commonJS({
   "node_modules/ajv/dist/compile/codegen/code.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.regexpCode = exports.getEsmExportName = exports.getProperty = exports.safeStringify = exports.stringify = exports.strConcat = exports.addCodeArg = exports.str = exports._ = exports.nil = exports._Code = exports.Name = exports.IDENTIFIER = exports._CodeOrName = void 0;
     var _CodeOrName = class {
@@ -24097,6 +24256,7 @@ var require_code = __commonJS({
 var require_scope = __commonJS({
   "node_modules/ajv/dist/compile/codegen/scope.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ValueScope = exports.ValueScopeName = exports.Scope = exports.varKinds = exports.UsedValueState = void 0;
     var code_1 = require_code();
@@ -24242,6 +24402,7 @@ var require_scope = __commonJS({
 var require_codegen = __commonJS({
   "node_modules/ajv/dist/compile/codegen/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.or = exports.and = exports.not = exports.CodeGen = exports.operators = exports.varKinds = exports.ValueScopeName = exports.ValueScope = exports.Scope = exports.Name = exports.regexpCode = exports.stringify = exports.getProperty = exports.nil = exports.strConcat = exports.str = exports._ = void 0;
     var code_1 = require_code();
@@ -24962,6 +25123,7 @@ var require_codegen = __commonJS({
 var require_util = __commonJS({
   "node_modules/ajv/dist/compile/util.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.checkStrictMode = exports.getErrorPath = exports.Type = exports.useFunc = exports.setEvaluated = exports.evaluatedPropsToName = exports.mergeEvaluated = exports.eachItem = exports.unescapeJsonPointer = exports.escapeJsonPointer = exports.escapeFragment = exports.unescapeFragment = exports.schemaRefOrVal = exports.schemaHasRulesButRef = exports.schemaHasRules = exports.checkUnknownRules = exports.alwaysValidSchema = exports.toHash = void 0;
     var codegen_1 = require_codegen();
@@ -25129,6 +25291,7 @@ var require_util = __commonJS({
 var require_names = __commonJS({
   "node_modules/ajv/dist/compile/names.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var names = {
@@ -25168,6 +25331,7 @@ var require_names = __commonJS({
 var require_errors = __commonJS({
   "node_modules/ajv/dist/compile/errors.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.extendErrors = exports.resetErrorsCount = exports.reportExtraError = exports.reportError = exports.keyword$DataError = exports.keywordError = void 0;
     var codegen_1 = require_codegen();
@@ -25290,6 +25454,7 @@ var require_errors = __commonJS({
 var require_boolSchema = __commonJS({
   "node_modules/ajv/dist/compile/validate/boolSchema.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.boolOrEmptySchema = exports.topBoolOrEmptySchema = void 0;
     var errors_1 = require_errors();
@@ -25341,6 +25506,7 @@ var require_boolSchema = __commonJS({
 var require_rules = __commonJS({
   "node_modules/ajv/dist/compile/rules.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getRules = exports.isJSONType = void 0;
     var _jsonTypes = ["string", "number", "integer", "boolean", "null", "object", "array"];
@@ -25372,6 +25538,7 @@ var require_rules = __commonJS({
 var require_applicability = __commonJS({
   "node_modules/ajv/dist/compile/validate/applicability.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.shouldUseRule = exports.shouldUseGroup = exports.schemaHasRulesForType = void 0;
     function schemaHasRulesForType({ schema, self: self2 }, type) {
@@ -25395,6 +25562,7 @@ var require_applicability = __commonJS({
 var require_dataType = __commonJS({
   "node_modules/ajv/dist/compile/validate/dataType.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.reportTypeError = exports.checkDataTypes = exports.checkDataType = exports.coerceAndCheckDataType = exports.getJSONTypes = exports.getSchemaTypes = exports.DataType = void 0;
     var rules_1 = require_rules();
@@ -25579,6 +25747,7 @@ var require_dataType = __commonJS({
 var require_defaults = __commonJS({
   "node_modules/ajv/dist/compile/validate/defaults.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.assignDefaults = void 0;
     var codegen_1 = require_codegen();
@@ -25616,6 +25785,7 @@ var require_defaults = __commonJS({
 var require_code2 = __commonJS({
   "node_modules/ajv/dist/vocabularies/code.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateUnion = exports.validateArray = exports.usePattern = exports.callValidateCode = exports.schemaProperties = exports.allSchemaProperties = exports.noPropertyInData = exports.propertyInData = exports.isOwnProperty = exports.hasPropFunc = exports.reportMissingProp = exports.checkMissingProp = exports.checkReportMissingProp = void 0;
     var codegen_1 = require_codegen();
@@ -25749,6 +25919,7 @@ var require_code2 = __commonJS({
 var require_keyword = __commonJS({
   "node_modules/ajv/dist/compile/validate/keyword.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateKeywordUsage = exports.validSchemaType = exports.funcKeywordCode = exports.macroKeywordCode = void 0;
     var codegen_1 = require_codegen();
@@ -25867,6 +26038,7 @@ var require_keyword = __commonJS({
 var require_subschema = __commonJS({
   "node_modules/ajv/dist/compile/validate/subschema.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.extendSubschemaMode = exports.extendSubschemaData = exports.getSubschema = void 0;
     var codegen_1 = require_codegen();
@@ -25950,6 +26122,7 @@ var require_subschema = __commonJS({
 var require_fast_deep_equal = __commonJS({
   "node_modules/fast-deep-equal/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     module.exports = function equal(a, b) {
       if (a === b) return true;
       if (a && b && typeof a == "object" && typeof b == "object") {
@@ -25985,6 +26158,7 @@ var require_fast_deep_equal = __commonJS({
 var require_json_schema_traverse = __commonJS({
   "node_modules/json-schema-traverse/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var traverse = module.exports = function(schema, opts, cb) {
       if (typeof opts == "function") {
         cb = opts;
@@ -26073,6 +26247,7 @@ var require_json_schema_traverse = __commonJS({
 var require_resolve = __commonJS({
   "node_modules/ajv/dist/compile/resolve.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getSchemaRefs = exports.resolveUrl = exports.normalizeId = exports._getFullPath = exports.getFullPath = exports.inlineRef = void 0;
     var util_1 = require_util();
@@ -26229,6 +26404,7 @@ var require_resolve = __commonJS({
 var require_validate = __commonJS({
   "node_modules/ajv/dist/compile/validate/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getData = exports.KeywordCxt = exports.validateFunctionCode = void 0;
     var boolSchema_1 = require_boolSchema();
@@ -26737,6 +26913,7 @@ var require_validate = __commonJS({
 var require_validation_error = __commonJS({
   "node_modules/ajv/dist/runtime/validation_error.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var ValidationError = class extends Error {
       constructor(errors) {
@@ -26753,6 +26930,7 @@ var require_validation_error = __commonJS({
 var require_ref_error = __commonJS({
   "node_modules/ajv/dist/compile/ref_error.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var resolve_1 = require_resolve();
     var MissingRefError = class extends Error {
@@ -26770,6 +26948,7 @@ var require_ref_error = __commonJS({
 var require_compile = __commonJS({
   "node_modules/ajv/dist/compile/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.resolveSchema = exports.getCompilingSchema = exports.resolveRef = exports.compileSchema = exports.SchemaEnv = void 0;
     var codegen_1 = require_codegen();
@@ -27013,6 +27192,7 @@ var require_data = __commonJS({
 var require_utils = __commonJS({
   "node_modules/fast-uri/lib/utils.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu);
     var isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u);
     var isHexPair = RegExp.prototype.test.bind(/^[\da-f]{2}$/iu);
@@ -27135,8 +27315,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path2) {
-      let input = path2;
+    function removeDotSegments(path3) {
+      let input = path3;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -27326,6 +27506,7 @@ var require_utils = __commonJS({
 var require_schemes = __commonJS({
   "node_modules/fast-uri/lib/schemes.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var { isUUID } = require_utils();
     var URN_REG = /([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-.:;=@]|%[\da-f]{2})+)/iu;
     var supportedSchemeNames = (
@@ -27388,8 +27569,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path2, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path2 && path2 !== "/" ? path2 : void 0;
+        const [path3, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path3 && path3 !== "/" ? path3 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -27536,6 +27717,7 @@ var require_schemes = __commonJS({
 var require_fast_uri = __commonJS({
   "node_modules/fast-uri/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, escapePreservingEscapes, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
     function normalize(uri, options) {
@@ -27822,6 +28004,7 @@ var require_fast_uri = __commonJS({
 var require_uri = __commonJS({
   "node_modules/ajv/dist/runtime/uri.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var uri = require_fast_uri();
     uri.code = 'require("ajv/dist/runtime/uri").default';
@@ -27833,6 +28016,7 @@ var require_uri = __commonJS({
 var require_core = __commonJS({
   "node_modules/ajv/dist/core.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
     var validate_1 = require_validate();
@@ -28444,6 +28628,7 @@ var require_core = __commonJS({
 var require_id = __commonJS({
   "node_modules/ajv/dist/vocabularies/core/id.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var def = {
       keyword: "id",
@@ -28459,6 +28644,7 @@ var require_id = __commonJS({
 var require_ref = __commonJS({
   "node_modules/ajv/dist/vocabularies/core/ref.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.callRef = exports.getValidate = void 0;
     var ref_error_1 = require_ref_error();
@@ -28581,6 +28767,7 @@ var require_ref = __commonJS({
 var require_core2 = __commonJS({
   "node_modules/ajv/dist/vocabularies/core/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var id_1 = require_id();
     var ref_1 = require_ref();
@@ -28602,6 +28789,7 @@ var require_core2 = __commonJS({
 var require_limitNumber = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/limitNumber.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var ops = codegen_1.operators;
@@ -28634,6 +28822,7 @@ var require_limitNumber = __commonJS({
 var require_multipleOf = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/multipleOf.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var error51 = {
@@ -28662,6 +28851,7 @@ var require_multipleOf = __commonJS({
 var require_ucs2length = __commonJS({
   "node_modules/ajv/dist/runtime/ucs2length.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     function ucs2length(str) {
       const len = str.length;
@@ -28688,6 +28878,7 @@ var require_ucs2length = __commonJS({
 var require_limitLength = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/limitLength.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
@@ -28720,6 +28911,7 @@ var require_limitLength = __commonJS({
 var require_pattern = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/pattern.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
     var util_1 = require_util();
@@ -28757,6 +28949,7 @@ var require_pattern = __commonJS({
 var require_limitProperties = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/limitProperties.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var error51 = {
@@ -28786,6 +28979,7 @@ var require_limitProperties = __commonJS({
 var require_required = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/required.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
     var codegen_1 = require_codegen();
@@ -28868,6 +29062,7 @@ var require_required = __commonJS({
 var require_limitItems = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/limitItems.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var error51 = {
@@ -28897,6 +29092,7 @@ var require_limitItems = __commonJS({
 var require_equal = __commonJS({
   "node_modules/ajv/dist/runtime/equal.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var equal = require_fast_deep_equal();
     equal.code = 'require("ajv/dist/runtime/equal").default';
@@ -28908,6 +29104,7 @@ var require_equal = __commonJS({
 var require_uniqueItems = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/uniqueItems.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var dataType_1 = require_dataType();
     var codegen_1 = require_codegen();
@@ -28975,6 +29172,7 @@ var require_uniqueItems = __commonJS({
 var require_const = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/const.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
@@ -29004,6 +29202,7 @@ var require_const = __commonJS({
 var require_enum = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/enum.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
@@ -29053,6 +29252,7 @@ var require_enum = __commonJS({
 var require_validation = __commonJS({
   "node_modules/ajv/dist/vocabularies/validation/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var limitNumber_1 = require_limitNumber();
     var multipleOf_1 = require_multipleOf();
@@ -29091,6 +29291,7 @@ var require_validation = __commonJS({
 var require_additionalItems = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/additionalItems.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateAdditionalItems = void 0;
     var codegen_1 = require_codegen();
@@ -29144,6 +29345,7 @@ var require_additionalItems = __commonJS({
 var require_items = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/items.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateTuple = void 0;
     var codegen_1 = require_codegen();
@@ -29201,6 +29403,7 @@ var require_items = __commonJS({
 var require_prefixItems = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/prefixItems.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var items_1 = require_items();
     var def = {
@@ -29218,6 +29421,7 @@ var require_prefixItems = __commonJS({
 var require_items2020 = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/items2020.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
@@ -29253,6 +29457,7 @@ var require_items2020 = __commonJS({
 var require_contains = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/contains.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
@@ -29347,6 +29552,7 @@ var require_contains = __commonJS({
 var require_dependencies = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/dependencies.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateSchemaDeps = exports.validatePropertyDeps = exports.error = void 0;
     var codegen_1 = require_codegen();
@@ -29441,6 +29647,7 @@ var require_dependencies = __commonJS({
 var require_propertyNames = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/propertyNames.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
@@ -29484,6 +29691,7 @@ var require_propertyNames = __commonJS({
 var require_additionalProperties = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
     var codegen_1 = require_codegen();
@@ -29590,6 +29798,7 @@ var require_additionalProperties = __commonJS({
 var require_properties = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/properties.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var validate_1 = require_validate();
     var code_1 = require_code2();
@@ -29648,6 +29857,7 @@ var require_properties = __commonJS({
 var require_patternProperties = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/patternProperties.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
     var codegen_1 = require_codegen();
@@ -29722,6 +29932,7 @@ var require_patternProperties = __commonJS({
 var require_not = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/not.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var util_1 = require_util();
     var def = {
@@ -29753,6 +29964,7 @@ var require_not = __commonJS({
 var require_anyOf = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/anyOf.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
     var def = {
@@ -29770,6 +29982,7 @@ var require_anyOf = __commonJS({
 var require_oneOf = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/oneOf.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
@@ -29828,6 +30041,7 @@ var require_oneOf = __commonJS({
 var require_allOf = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/allOf.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var util_1 = require_util();
     var def = {
@@ -29855,6 +30069,7 @@ var require_allOf = __commonJS({
 var require_if = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/if.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
@@ -29924,6 +30139,7 @@ var require_if = __commonJS({
 var require_thenElse = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/thenElse.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var util_1 = require_util();
     var def = {
@@ -29942,6 +30158,7 @@ var require_thenElse = __commonJS({
 var require_applicator = __commonJS({
   "node_modules/ajv/dist/vocabularies/applicator/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var additionalItems_1 = require_additionalItems();
     var prefixItems_1 = require_prefixItems();
@@ -29990,6 +30207,7 @@ var require_applicator = __commonJS({
 var require_format = __commonJS({
   "node_modules/ajv/dist/vocabularies/format/format.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var error51 = {
@@ -30080,6 +30298,7 @@ var require_format = __commonJS({
 var require_format2 = __commonJS({
   "node_modules/ajv/dist/vocabularies/format/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var format_1 = require_format();
     var format = [format_1.default];
@@ -30091,6 +30310,7 @@ var require_format2 = __commonJS({
 var require_metadata = __commonJS({
   "node_modules/ajv/dist/vocabularies/metadata.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.contentVocabulary = exports.metadataVocabulary = void 0;
     exports.metadataVocabulary = [
@@ -30114,6 +30334,7 @@ var require_metadata = __commonJS({
 var require_draft7 = __commonJS({
   "node_modules/ajv/dist/vocabularies/draft7.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var core_1 = require_core2();
     var validation_1 = require_validation();
@@ -30136,6 +30357,7 @@ var require_draft7 = __commonJS({
 var require_types = __commonJS({
   "node_modules/ajv/dist/vocabularies/discriminator/types.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DiscrError = void 0;
     var DiscrError;
@@ -30150,6 +30372,7 @@ var require_types = __commonJS({
 var require_discriminator = __commonJS({
   "node_modules/ajv/dist/vocabularies/discriminator/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var types_1 = require_types();
@@ -30412,6 +30635,7 @@ var require_json_schema_draft_07 = __commonJS({
 var require_ajv = __commonJS({
   "node_modules/ajv/dist/ajv.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv = void 0;
     var core_1 = require_core();
@@ -30482,6 +30706,7 @@ var require_ajv = __commonJS({
 var require_formats = __commonJS({
   "node_modules/ajv-formats/dist/formats.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.formatNames = exports.fastFormats = exports.fullFormats = void 0;
     function fmtDef(validate, compare) {
@@ -30685,6 +30910,7 @@ var require_formats = __commonJS({
 var require_limit = __commonJS({
   "node_modules/ajv-formats/dist/limit.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.formatLimitDefinition = void 0;
     var ajv_1 = require_ajv();
@@ -30757,6 +30983,7 @@ var require_limit = __commonJS({
 var require_dist = __commonJS({
   "node_modules/ajv-formats/dist/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var formats_1 = require_formats();
     var limit_1 = require_limit();
@@ -30811,6 +31038,7 @@ var import_ajv, import_ajv_formats, AjvJsonSchemaValidator;
 var init_ajv_provider = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js"() {
     "use strict";
+    init_esm_shims();
     import_ajv = __toESM(require_ajv(), 1);
     import_ajv_formats = __toESM(require_dist(), 1);
     AjvJsonSchemaValidator = class {
@@ -30874,6 +31102,7 @@ var ExperimentalServerTasks;
 var init_server = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/server.js"() {
     "use strict";
+    init_esm_shims();
     init_types2();
     ExperimentalServerTasks = class {
       constructor(_server) {
@@ -31126,6 +31355,7 @@ function assertClientRequestTaskCapability(requests, method, entityName) {
 var init_helpers = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -31134,6 +31364,7 @@ var Server;
 var init_server2 = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/server/index.js"() {
     "use strict";
+    init_esm_shims();
     init_protocol();
     init_types2();
     init_ajv_provider();
@@ -31533,6 +31764,7 @@ var COMPLETABLE_SYMBOL, McpZodTypeKind;
 var init_completable = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/server/completable.js"() {
     "use strict";
+    init_esm_shims();
     COMPLETABLE_SYMBOL = /* @__PURE__ */ Symbol.for("mcp.completable");
     (function(McpZodTypeKind2) {
       McpZodTypeKind2["Completable"] = "McpCompletable";
@@ -31545,6 +31777,7 @@ var MAX_TEMPLATE_LENGTH, MAX_VARIABLE_LENGTH, MAX_TEMPLATE_EXPRESSIONS, MAX_REGE
 var init_uriTemplate = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/shared/uriTemplate.js"() {
     "use strict";
+    init_esm_shims();
     MAX_TEMPLATE_LENGTH = 1e6;
     MAX_VARIABLE_LENGTH = 1e6;
     MAX_TEMPLATE_EXPRESSIONS = 1e4;
@@ -31828,6 +32061,7 @@ var TOOL_NAME_REGEX;
 var init_toolNameValidation = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js"() {
     "use strict";
+    init_esm_shims();
     TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
   }
 });
@@ -31837,6 +32071,7 @@ var ExperimentalMcpServerTasks;
 var init_mcp_server = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js"() {
     "use strict";
+    init_esm_shims();
     ExperimentalMcpServerTasks = class {
       constructor(_mcpServer) {
         this._mcpServer = _mcpServer;
@@ -31857,6 +32092,7 @@ var init_mcp_server = __esm({
 var init_zod = __esm({
   "node_modules/zod/index.js"() {
     "use strict";
+    init_esm_shims();
     init_external3();
   }
 });
@@ -31936,6 +32172,7 @@ var McpServer, ResourceTemplate, EMPTY_OBJECT_JSON_SCHEMA, EMPTY_COMPLETION_RESU
 var init_mcp = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js"() {
     "use strict";
+    init_esm_shims();
     init_server2();
     init_zod_compat();
     init_zod_json_schema_compat();
@@ -32708,6 +32945,7 @@ var ReadBuffer;
 var init_stdio = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js"() {
     "use strict";
+    init_esm_shims();
     init_types2();
     ReadBuffer = class {
       append(chunk) {
@@ -32742,6 +32980,7 @@ var StdioServerTransport;
 var init_stdio2 = __esm({
   "node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js"() {
     "use strict";
+    init_esm_shims();
     init_stdio();
     StdioServerTransport = class {
       constructor(_stdin = process3.stdin, _stdout = process3.stdout) {
@@ -32833,6 +33072,7 @@ var TomlError;
 var init_error = __esm({
   "node_modules/smol-toml/dist/error.js"() {
     "use strict";
+    init_esm_shims();
     TomlError = class extends Error {
       line;
       column;
@@ -32932,6 +33172,7 @@ function getStringEnd(str, seek) {
 var init_util3 = __esm({
   "node_modules/smol-toml/dist/util.js"() {
     "use strict";
+    init_esm_shims();
     init_error();
   }
 });
@@ -32941,6 +33182,7 @@ var DATE_TIME_RE, TomlDate;
 var init_date2 = __esm({
   "node_modules/smol-toml/dist/date.js"() {
     "use strict";
+    init_esm_shims();
     DATE_TIME_RE = /^(\d{4}-\d{2}-\d{2})?[T ]?(?:(\d{2}):\d{2}(?::\d{2}(?:\.\d+)?)?)?(Z|[-+]\d{2}:\d{2})?$/i;
     TomlDate = class _TomlDate extends Date {
       #hasDate = false;
@@ -33162,6 +33404,7 @@ var INT_REGEX, FLOAT_REGEX, LEADING_ZERO, ESCAPE_REGEX, ESC_MAP;
 var init_primitive = __esm({
   "node_modules/smol-toml/dist/primitive.js"() {
     "use strict";
+    init_esm_shims();
     init_util3();
     init_date2();
     init_error();
@@ -33251,6 +33494,7 @@ function extractValue(str, ptr, end, depth, integersAsBigInt) {
 var init_extract = __esm({
   "node_modules/smol-toml/dist/extract.js"() {
     "use strict";
+    init_esm_shims();
     init_primitive();
     init_struct();
     init_util3();
@@ -33408,6 +33652,7 @@ var KEY_PART_RE;
 var init_struct = __esm({
   "node_modules/smol-toml/dist/struct.js"() {
     "use strict";
+    init_esm_shims();
     init_primitive();
     init_extract();
     init_util3();
@@ -33543,6 +33788,7 @@ function parse3(toml, { maxDepth = 1e3, integersAsBigInt } = {}) {
 var init_parse4 = __esm({
   "node_modules/smol-toml/dist/parse.js"() {
     "use strict";
+    init_esm_shims();
     init_struct();
     init_extract();
     init_util3();
@@ -33554,6 +33800,7 @@ var init_parse4 = __esm({
 var init_stringify = __esm({
   "node_modules/smol-toml/dist/stringify.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -33561,6 +33808,7 @@ var init_stringify = __esm({
 var init_dist = __esm({
   "node_modules/smol-toml/dist/index.js"() {
     "use strict";
+    init_esm_shims();
     init_parse4();
     init_stringify();
     init_date2();
@@ -33573,6 +33821,7 @@ var DEFAULT_CONFIG;
 var init_defaults = __esm({
   "src/config/defaults.ts"() {
     "use strict";
+    init_esm_shims();
     DEFAULT_CONFIG = Object.freeze({
       dry_run: false,
       allowlist: Object.freeze({
@@ -33970,13 +34219,14 @@ var ConfigReadError, VALID_PII_ACTIONS;
 var init_config = __esm({
   "src/config/index.ts"() {
     "use strict";
+    init_esm_shims();
     init_dist();
     init_defaults();
     init_constants();
     ConfigReadError = class extends Error {
-      constructor(path2, reason) {
-        super(`mrclean config: failed to read ${path2}: ${reason}`);
-        this.path = path2;
+      constructor(path3, reason) {
+        super(`mrclean config: failed to read ${path3}: ${reason}`);
+        this.path = path3;
         this.reason = reason;
         this.name = "ConfigReadError";
       }
@@ -34042,6 +34292,7 @@ var SOURCE_PRECEDENCE;
 var init_findings = __esm({
   "src/detect/findings.ts"() {
     "use strict";
+    init_esm_shims();
     SOURCE_PRECEDENCE = ["secretlint", "gitleaks", "entropy", "env", "words", "pii-regex", "pii-ner"];
   }
 });
@@ -34057,6 +34308,7 @@ var SHAPE_ALLOWLIST_PATTERNS;
 var init_shape_allowlist = __esm({
   "src/detect/shape-allowlist.ts"() {
     "use strict";
+    init_esm_shims();
     SHAPE_ALLOWLIST_PATTERNS = Object.freeze([
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
       // UUID v4/v7
@@ -34080,6 +34332,7 @@ var init_shape_allowlist = __esm({
 var require_array = __commonJS({
   "node_modules/fast-glob/out/utils/array.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.splitWhen = exports.flatten = void 0;
     function flatten(items) {
@@ -34107,6 +34360,7 @@ var require_array = __commonJS({
 var require_errno = __commonJS({
   "node_modules/fast-glob/out/utils/errno.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.isEnoentCodeError = void 0;
     function isEnoentCodeError(error51) {
@@ -34120,6 +34374,7 @@ var require_errno = __commonJS({
 var require_fs = __commonJS({
   "node_modules/fast-glob/out/utils/fs.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.createDirentFromStats = void 0;
     var DirentFromStats = class {
@@ -34145,10 +34400,11 @@ var require_fs = __commonJS({
 var require_path = __commonJS({
   "node_modules/fast-glob/out/utils/path.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.convertPosixPathToPattern = exports.convertWindowsPathToPattern = exports.convertPathToPattern = exports.escapePosixPath = exports.escapeWindowsPath = exports.escape = exports.removeLeadingDotSegment = exports.makeAbsolute = exports.unixify = void 0;
     var os = __require("os");
-    var path2 = __require("path");
+    var path3 = __require("path");
     var IS_WINDOWS_PLATFORM = os.platform() === "win32";
     var LEADING_DOT_SEGMENT_CHARACTERS_COUNT = 2;
     var POSIX_UNESCAPED_GLOB_SYMBOLS_RE = /(\\?)([()*?[\]{|}]|^!|[!+@](?=\()|\\(?![!()*+?@[\]{|}]))/g;
@@ -34160,7 +34416,7 @@ var require_path = __commonJS({
     }
     exports.unixify = unixify;
     function makeAbsolute(cwd, filepath) {
-      return path2.resolve(cwd, filepath);
+      return path3.resolve(cwd, filepath);
     }
     exports.makeAbsolute = makeAbsolute;
     function removeLeadingDotSegment(entry) {
@@ -34198,6 +34454,7 @@ var require_path = __commonJS({
 var require_is_extglob = __commonJS({
   "node_modules/is-extglob/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     module.exports = function isExtglob(str) {
       if (typeof str !== "string" || str === "") {
         return false;
@@ -34216,6 +34473,7 @@ var require_is_extglob = __commonJS({
 var require_is_glob = __commonJS({
   "node_modules/is-glob/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var isExtglob = require_is_extglob();
     var chars = { "{": "}", "(": ")", "[": "]" };
     var strictCheck = function(str) {
@@ -34348,6 +34606,7 @@ var require_is_glob = __commonJS({
 var require_glob_parent = __commonJS({
   "node_modules/glob-parent/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var isGlob = require_is_glob();
     var pathPosixDirname = __require("path").posix.dirname;
     var isWin32 = __require("os").platform() === "win32";
@@ -34377,6 +34636,7 @@ var require_glob_parent = __commonJS({
 var require_utils2 = __commonJS({
   "node_modules/braces/lib/utils.js"(exports) {
     "use strict";
+    init_esm_shims();
     exports.isInteger = (num) => {
       if (typeof num === "number") {
         return Number.isInteger(num);
@@ -34459,6 +34719,7 @@ var require_utils2 = __commonJS({
 var require_stringify = __commonJS({
   "node_modules/braces/lib/stringify.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var utils = require_utils2();
     module.exports = (ast, options = {}) => {
       const stringify2 = (node, parent = {}) => {
@@ -34490,6 +34751,7 @@ var require_stringify = __commonJS({
 var require_is_number = __commonJS({
   "node_modules/is-number/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     module.exports = function(num) {
       if (typeof num === "number") {
         return num - num === 0;
@@ -34506,6 +34768,7 @@ var require_is_number = __commonJS({
 var require_to_regex_range = __commonJS({
   "node_modules/to-regex-range/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var isNumber = require_is_number();
     var toRegexRange = (min, max, options) => {
       if (isNumber(min) === false) {
@@ -34717,6 +34980,7 @@ var require_to_regex_range = __commonJS({
 var require_fill_range = __commonJS({
   "node_modules/fill-range/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var util2 = __require("util");
     var toRegexRange = require_to_regex_range();
     var isObject2 = (val) => val !== null && typeof val === "object" && !Array.isArray(val);
@@ -34911,6 +35175,7 @@ var require_fill_range = __commonJS({
 var require_compile2 = __commonJS({
   "node_modules/braces/lib/compile.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var fill = require_fill_range();
     var utils = require_utils2();
     var compile = (ast, options = {}) => {
@@ -34963,6 +35228,7 @@ var require_compile2 = __commonJS({
 var require_expand = __commonJS({
   "node_modules/braces/lib/expand.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var fill = require_fill_range();
     var stringify2 = require_stringify();
     var utils = require_utils2();
@@ -35057,6 +35323,7 @@ var require_expand = __commonJS({
 var require_constants = __commonJS({
   "node_modules/braces/lib/constants.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     module.exports = {
       MAX_LENGTH: 1e4,
       // Digits
@@ -35158,6 +35425,7 @@ var require_constants = __commonJS({
 var require_parse = __commonJS({
   "node_modules/braces/lib/parse.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var stringify2 = require_stringify();
     var {
       MAX_LENGTH,
@@ -35396,6 +35664,7 @@ var require_parse = __commonJS({
 var require_braces = __commonJS({
   "node_modules/braces/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var stringify2 = require_stringify();
     var compile = require_compile2();
     var expand = require_expand();
@@ -35459,7 +35728,8 @@ var require_braces = __commonJS({
 var require_constants2 = __commonJS({
   "node_modules/micromatch/node_modules/picomatch/lib/constants.js"(exports, module) {
     "use strict";
-    var path2 = __require("path");
+    init_esm_shims();
+    var path3 = __require("path");
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
     var DEFAULT_MAX_EXTGLOB_RECURSION = 0;
@@ -35633,7 +35903,7 @@ var require_constants2 = __commonJS({
       /* | */
       CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279,
       /* \uFEFF */
-      SEP: path2.sep,
+      SEP: path3.sep,
       /**
        * Create EXTGLOB_CHARS
        */
@@ -35660,7 +35930,8 @@ var require_constants2 = __commonJS({
 var require_utils3 = __commonJS({
   "node_modules/micromatch/node_modules/picomatch/lib/utils.js"(exports) {
     "use strict";
-    var path2 = __require("path");
+    init_esm_shims();
+    var path3 = __require("path");
     var win32 = process.platform === "win32";
     var {
       REGEX_BACKSLASH,
@@ -35689,7 +35960,7 @@ var require_utils3 = __commonJS({
       if (options && typeof options.windows === "boolean") {
         return options.windows;
       }
-      return win32 === true || path2.sep === "\\";
+      return win32 === true || path3.sep === "\\";
     };
     exports.escapeLast = (input, char, lastIdx) => {
       const idx = input.lastIndexOf(char, lastIdx);
@@ -35721,6 +35992,7 @@ var require_utils3 = __commonJS({
 var require_scan = __commonJS({
   "node_modules/micromatch/node_modules/picomatch/lib/scan.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var utils = require_utils3();
     var {
       CHAR_ASTERISK,
@@ -36051,6 +36323,7 @@ var require_scan = __commonJS({
 var require_parse2 = __commonJS({
   "node_modules/micromatch/node_modules/picomatch/lib/parse.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var constants = require_constants2();
     var utils = require_utils3();
     var {
@@ -37053,7 +37326,8 @@ var require_parse2 = __commonJS({
 var require_picomatch = __commonJS({
   "node_modules/micromatch/node_modules/picomatch/lib/picomatch.js"(exports, module) {
     "use strict";
-    var path2 = __require("path");
+    init_esm_shims();
+    var path3 = __require("path");
     var scan = require_scan();
     var parse4 = require_parse2();
     var utils = require_utils3();
@@ -37138,7 +37412,7 @@ var require_picomatch = __commonJS({
     };
     picomatch.matchBase = (input, glob, options, posix = utils.isWindows(options)) => {
       const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options);
-      return regex.test(path2.basename(input));
+      return regex.test(path3.basename(input));
     };
     picomatch.isMatch = (str, patterns, options) => picomatch(patterns, options)(str);
     picomatch.parse = (pattern, options) => {
@@ -37194,6 +37468,7 @@ var require_picomatch = __commonJS({
 var require_picomatch2 = __commonJS({
   "node_modules/micromatch/node_modules/picomatch/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     module.exports = require_picomatch();
   }
 });
@@ -37202,6 +37477,7 @@ var require_picomatch2 = __commonJS({
 var require_micromatch = __commonJS({
   "node_modules/micromatch/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var util2 = __require("util");
     var braces = require_braces();
     var picomatch = require_picomatch2();
@@ -37363,9 +37639,10 @@ var require_micromatch = __commonJS({
 var require_pattern2 = __commonJS({
   "node_modules/fast-glob/out/utils/pattern.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.isAbsolute = exports.partitionAbsoluteAndRelative = exports.removeDuplicateSlashes = exports.matchAny = exports.convertPatternsToRe = exports.makeRe = exports.getPatternParts = exports.expandBraceExpansion = exports.expandPatternsWithBraceExpansion = exports.isAffectDepthOfReadingPattern = exports.endsWithSlashGlobStar = exports.hasGlobStar = exports.getBaseDirectory = exports.isPatternRelatedToParentDirectory = exports.getPatternsOutsideCurrentDirectory = exports.getPatternsInsideCurrentDirectory = exports.getPositivePatterns = exports.getNegativePatterns = exports.isPositivePattern = exports.isNegativePattern = exports.convertToNegativePattern = exports.convertToPositivePattern = exports.isDynamicPattern = exports.isStaticPattern = void 0;
-    var path2 = __require("path");
+    var path3 = __require("path");
     var globParent = require_glob_parent();
     var micromatch = require_micromatch();
     var GLOBSTAR = "**";
@@ -37460,7 +37737,7 @@ var require_pattern2 = __commonJS({
     }
     exports.endsWithSlashGlobStar = endsWithSlashGlobStar;
     function isAffectDepthOfReadingPattern(pattern) {
-      const basename = path2.basename(pattern);
+      const basename = path3.basename(pattern);
       return endsWithSlashGlobStar(pattern) || isStaticPattern(basename);
     }
     exports.isAffectDepthOfReadingPattern = isAffectDepthOfReadingPattern;
@@ -37518,7 +37795,7 @@ var require_pattern2 = __commonJS({
     }
     exports.partitionAbsoluteAndRelative = partitionAbsoluteAndRelative;
     function isAbsolute(pattern) {
-      return path2.isAbsolute(pattern);
+      return path3.isAbsolute(pattern);
     }
     exports.isAbsolute = isAbsolute;
   }
@@ -37528,6 +37805,7 @@ var require_pattern2 = __commonJS({
 var require_merge2 = __commonJS({
   "node_modules/merge2/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var Stream = __require("stream");
     var PassThrough = Stream.PassThrough;
     var slice = Array.prototype.slice;
@@ -37647,6 +37925,7 @@ var require_merge2 = __commonJS({
 var require_stream = __commonJS({
   "node_modules/fast-glob/out/utils/stream.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.merge = void 0;
     var merge2 = require_merge2();
@@ -37670,6 +37949,7 @@ var require_stream = __commonJS({
 var require_string = __commonJS({
   "node_modules/fast-glob/out/utils/string.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.isEmpty = exports.isString = void 0;
     function isString(input) {
@@ -37687,6 +37967,7 @@ var require_string = __commonJS({
 var require_utils4 = __commonJS({
   "node_modules/fast-glob/out/utils/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.string = exports.stream = exports.pattern = exports.path = exports.fs = exports.errno = exports.array = void 0;
     var array2 = require_array();
@@ -37695,8 +37976,8 @@ var require_utils4 = __commonJS({
     exports.errno = errno;
     var fs = require_fs();
     exports.fs = fs;
-    var path2 = require_path();
-    exports.path = path2;
+    var path3 = require_path();
+    exports.path = path3;
     var pattern = require_pattern2();
     exports.pattern = pattern;
     var stream = require_stream();
@@ -37710,6 +37991,7 @@ var require_utils4 = __commonJS({
 var require_tasks = __commonJS({
   "node_modules/fast-glob/out/managers/tasks.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.convertPatternGroupToTask = exports.convertPatternGroupsToTasks = exports.groupPatternsByBaseDirectory = exports.getNegativePatternsAsPositive = exports.getPositivePatterns = exports.convertPatternsToTasks = exports.generate = void 0;
     var utils = require_utils4();
@@ -37806,10 +38088,11 @@ var require_tasks = __commonJS({
 var require_async = __commonJS({
   "node_modules/@nodelib/fs.stat/out/providers/async.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.read = void 0;
-    function read(path2, settings, callback) {
-      settings.fs.lstat(path2, (lstatError, lstat) => {
+    function read(path3, settings, callback) {
+      settings.fs.lstat(path3, (lstatError, lstat) => {
         if (lstatError !== null) {
           callFailureCallback(callback, lstatError);
           return;
@@ -37818,7 +38101,7 @@ var require_async = __commonJS({
           callSuccessCallback(callback, lstat);
           return;
         }
-        settings.fs.stat(path2, (statError, stat3) => {
+        settings.fs.stat(path3, (statError, stat3) => {
           if (statError !== null) {
             if (settings.throwErrorOnBrokenSymbolicLink) {
               callFailureCallback(callback, statError);
@@ -37848,15 +38131,16 @@ var require_async = __commonJS({
 var require_sync = __commonJS({
   "node_modules/@nodelib/fs.stat/out/providers/sync.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.read = void 0;
-    function read(path2, settings) {
-      const lstat = settings.fs.lstatSync(path2);
+    function read(path3, settings) {
+      const lstat = settings.fs.lstatSync(path3);
       if (!lstat.isSymbolicLink() || !settings.followSymbolicLink) {
         return lstat;
       }
       try {
-        const stat3 = settings.fs.statSync(path2);
+        const stat3 = settings.fs.statSync(path3);
         if (settings.markSymbolicLink) {
           stat3.isSymbolicLink = () => true;
         }
@@ -37876,6 +38160,7 @@ var require_sync = __commonJS({
 var require_fs2 = __commonJS({
   "node_modules/@nodelib/fs.stat/out/adapters/fs.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.createFileSystemAdapter = exports.FILE_SYSTEM_ADAPTER = void 0;
     var fs = __require("fs");
@@ -37899,6 +38184,7 @@ var require_fs2 = __commonJS({
 var require_settings = __commonJS({
   "node_modules/@nodelib/fs.stat/out/settings.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var fs = require_fs2();
     var Settings = class {
@@ -37921,23 +38207,24 @@ var require_settings = __commonJS({
 var require_out = __commonJS({
   "node_modules/@nodelib/fs.stat/out/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.statSync = exports.stat = exports.Settings = void 0;
     var async = require_async();
     var sync = require_sync();
     var settings_1 = require_settings();
     exports.Settings = settings_1.default;
-    function stat3(path2, optionsOrSettingsOrCallback, callback) {
+    function stat3(path3, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
-        async.read(path2, getSettings(), optionsOrSettingsOrCallback);
+        async.read(path3, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
-      async.read(path2, getSettings(optionsOrSettingsOrCallback), callback);
+      async.read(path3, getSettings(optionsOrSettingsOrCallback), callback);
     }
     exports.stat = stat3;
-    function statSync(path2, optionsOrSettings) {
+    function statSync(path3, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
-      return sync.read(path2, settings);
+      return sync.read(path3, settings);
     }
     exports.statSync = statSync;
     function getSettings(settingsOrOptions = {}) {
@@ -37953,6 +38240,7 @@ var require_out = __commonJS({
 var require_queue_microtask = __commonJS({
   "node_modules/queue-microtask/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var promise2;
     module.exports = typeof queueMicrotask === "function" ? queueMicrotask.bind(typeof window !== "undefined" ? window : global) : (cb) => (promise2 || (promise2 = Promise.resolve())).then(cb).catch((err) => setTimeout(() => {
       throw err;
@@ -37964,6 +38252,7 @@ var require_queue_microtask = __commonJS({
 var require_run_parallel = __commonJS({
   "node_modules/run-parallel/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     module.exports = runParallel;
     var queueMicrotask2 = require_queue_microtask();
     function runParallel(tasks, cb) {
@@ -38015,6 +38304,7 @@ var require_run_parallel = __commonJS({
 var require_constants3 = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/constants.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.IS_SUPPORT_READDIR_WITH_FILE_TYPES = void 0;
     var NODE_PROCESS_VERSION_PARTS = process.versions.node.split(".");
@@ -38035,6 +38325,7 @@ var require_constants3 = __commonJS({
 var require_fs3 = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/utils/fs.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.createDirentFromStats = void 0;
     var DirentFromStats = class {
@@ -38060,6 +38351,7 @@ var require_fs3 = __commonJS({
 var require_utils5 = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/utils/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.fs = void 0;
     var fs = require_fs3();
@@ -38071,6 +38363,7 @@ var require_utils5 = __commonJS({
 var require_common = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/providers/common.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.joinPathSegments = void 0;
     function joinPathSegments(a, b, separator) {
@@ -38087,6 +38380,7 @@ var require_common = __commonJS({
 var require_async2 = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/providers/async.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.readdir = exports.readdirWithFileTypes = exports.read = void 0;
     var fsStat = require_out();
@@ -38155,16 +38449,16 @@ var require_async2 = __commonJS({
           return;
         }
         const tasks = names.map((name) => {
-          const path2 = common.joinPathSegments(directory, name, settings.pathSegmentSeparator);
+          const path3 = common.joinPathSegments(directory, name, settings.pathSegmentSeparator);
           return (done) => {
-            fsStat.stat(path2, settings.fsStatSettings, (error51, stats) => {
+            fsStat.stat(path3, settings.fsStatSettings, (error51, stats) => {
               if (error51 !== null) {
                 done(error51);
                 return;
               }
               const entry = {
                 name,
-                path: path2,
+                path: path3,
                 dirent: utils.fs.createDirentFromStats(name, stats)
               };
               if (settings.stats) {
@@ -38197,6 +38491,7 @@ var require_async2 = __commonJS({
 var require_sync2 = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/providers/sync.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.readdir = exports.readdirWithFileTypes = exports.read = void 0;
     var fsStat = require_out();
@@ -38256,6 +38551,7 @@ var require_sync2 = __commonJS({
 var require_fs4 = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/adapters/fs.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.createFileSystemAdapter = exports.FILE_SYSTEM_ADAPTER = void 0;
     var fs = __require("fs");
@@ -38281,8 +38577,9 @@ var require_fs4 = __commonJS({
 var require_settings2 = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/settings.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
-    var path2 = __require("path");
+    var path3 = __require("path");
     var fsStat = require_out();
     var fs = require_fs4();
     var Settings = class {
@@ -38290,7 +38587,7 @@ var require_settings2 = __commonJS({
         this._options = _options;
         this.followSymbolicLinks = this._getValue(this._options.followSymbolicLinks, false);
         this.fs = fs.createFileSystemAdapter(this._options.fs);
-        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path2.sep);
+        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path3.sep);
         this.stats = this._getValue(this._options.stats, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
         this.fsStatSettings = new fsStat.Settings({
@@ -38311,23 +38608,24 @@ var require_settings2 = __commonJS({
 var require_out2 = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Settings = exports.scandirSync = exports.scandir = void 0;
     var async = require_async2();
     var sync = require_sync2();
     var settings_1 = require_settings2();
     exports.Settings = settings_1.default;
-    function scandir(path2, optionsOrSettingsOrCallback, callback) {
+    function scandir(path3, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
-        async.read(path2, getSettings(), optionsOrSettingsOrCallback);
+        async.read(path3, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
-      async.read(path2, getSettings(optionsOrSettingsOrCallback), callback);
+      async.read(path3, getSettings(optionsOrSettingsOrCallback), callback);
     }
     exports.scandir = scandir;
-    function scandirSync(path2, optionsOrSettings) {
+    function scandirSync(path3, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
-      return sync.read(path2, settings);
+      return sync.read(path3, settings);
     }
     exports.scandirSync = scandirSync;
     function getSettings(settingsOrOptions = {}) {
@@ -38343,6 +38641,7 @@ var require_out2 = __commonJS({
 var require_reusify = __commonJS({
   "node_modules/reusify/reusify.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     function reusify(Constructor) {
       var head = new Constructor();
       var tail = head;
@@ -38374,6 +38673,7 @@ var require_reusify = __commonJS({
 var require_queue = __commonJS({
   "node_modules/fastq/queue.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var reusify = require_reusify();
     function fastqueue(context, worker, _concurrency) {
       if (typeof context === "function") {
@@ -38658,6 +38958,7 @@ var require_queue = __commonJS({
 var require_common2 = __commonJS({
   "node_modules/@nodelib/fs.walk/out/readers/common.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.joinPathSegments = exports.replacePathSegmentSeparator = exports.isAppliedFilter = exports.isFatalError = void 0;
     function isFatalError(settings, error51) {
@@ -38692,6 +38993,7 @@ var require_common2 = __commonJS({
 var require_reader = __commonJS({
   "node_modules/@nodelib/fs.walk/out/readers/reader.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var common = require_common2();
     var Reader = class {
@@ -38709,6 +39011,7 @@ var require_reader = __commonJS({
 var require_async3 = __commonJS({
   "node_modules/@nodelib/fs.walk/out/readers/async.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var events_1 = __require("events");
     var fsScandir = require_out2();
@@ -38812,6 +39115,7 @@ var require_async3 = __commonJS({
 var require_async4 = __commonJS({
   "node_modules/@nodelib/fs.walk/out/providers/async.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var async_1 = require_async3();
     var AsyncProvider = class {
@@ -38848,6 +39152,7 @@ var require_async4 = __commonJS({
 var require_stream2 = __commonJS({
   "node_modules/@nodelib/fs.walk/out/providers/stream.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var stream_1 = __require("stream");
     var async_1 = require_async3();
@@ -38889,6 +39194,7 @@ var require_stream2 = __commonJS({
 var require_sync3 = __commonJS({
   "node_modules/@nodelib/fs.walk/out/readers/sync.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var fsScandir = require_out2();
     var common = require_common2();
@@ -38953,6 +39259,7 @@ var require_sync3 = __commonJS({
 var require_sync4 = __commonJS({
   "node_modules/@nodelib/fs.walk/out/providers/sync.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var sync_1 = require_sync3();
     var SyncProvider = class {
@@ -38973,8 +39280,9 @@ var require_sync4 = __commonJS({
 var require_settings3 = __commonJS({
   "node_modules/@nodelib/fs.walk/out/settings.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
-    var path2 = __require("path");
+    var path3 = __require("path");
     var fsScandir = require_out2();
     var Settings = class {
       constructor(_options = {}) {
@@ -38984,7 +39292,7 @@ var require_settings3 = __commonJS({
         this.deepFilter = this._getValue(this._options.deepFilter, null);
         this.entryFilter = this._getValue(this._options.entryFilter, null);
         this.errorFilter = this._getValue(this._options.errorFilter, null);
-        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path2.sep);
+        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path3.sep);
         this.fsScandirSettings = new fsScandir.Settings({
           followSymbolicLinks: this._options.followSymbolicLinks,
           fs: this._options.fs,
@@ -39005,6 +39313,7 @@ var require_settings3 = __commonJS({
 var require_out3 = __commonJS({
   "node_modules/@nodelib/fs.walk/out/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Settings = exports.walkStream = exports.walkSync = exports.walk = void 0;
     var async_1 = require_async4();
@@ -39045,8 +39354,9 @@ var require_out3 = __commonJS({
 var require_reader2 = __commonJS({
   "node_modules/fast-glob/out/readers/reader.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
-    var path2 = __require("path");
+    var path3 = __require("path");
     var fsStat = require_out();
     var utils = require_utils4();
     var Reader = class {
@@ -39059,7 +39369,7 @@ var require_reader2 = __commonJS({
         });
       }
       _getFullEntryPath(filepath) {
-        return path2.resolve(this._settings.cwd, filepath);
+        return path3.resolve(this._settings.cwd, filepath);
       }
       _makeEntry(stats, pattern) {
         const entry = {
@@ -39084,6 +39394,7 @@ var require_reader2 = __commonJS({
 var require_stream3 = __commonJS({
   "node_modules/fast-glob/out/readers/stream.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var stream_1 = __require("stream");
     var fsStat = require_out();
@@ -39141,6 +39452,7 @@ var require_stream3 = __commonJS({
 var require_async5 = __commonJS({
   "node_modules/fast-glob/out/readers/async.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var fsWalk = require_out3();
     var reader_1 = require_reader2();
@@ -39180,6 +39492,7 @@ var require_async5 = __commonJS({
 var require_matcher = __commonJS({
   "node_modules/fast-glob/out/providers/matchers/matcher.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var utils = require_utils4();
     var Matcher = class {
@@ -39231,6 +39544,7 @@ var require_matcher = __commonJS({
 var require_partial = __commonJS({
   "node_modules/fast-glob/out/providers/matchers/partial.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var matcher_1 = require_matcher();
     var PartialMatcher = class extends matcher_1.default {
@@ -39268,6 +39582,7 @@ var require_partial = __commonJS({
 var require_deep = __commonJS({
   "node_modules/fast-glob/out/providers/filters/deep.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var utils = require_utils4();
     var partial_1 = require_partial();
@@ -39333,6 +39648,7 @@ var require_deep = __commonJS({
 var require_entry = __commonJS({
   "node_modules/fast-glob/out/providers/filters/entry.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var utils = require_utils4();
     var EntryFilter = class {
@@ -39421,6 +39737,7 @@ var require_entry = __commonJS({
 var require_error = __commonJS({
   "node_modules/fast-glob/out/providers/filters/error.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var utils = require_utils4();
     var ErrorFilter = class {
@@ -39442,6 +39759,7 @@ var require_error = __commonJS({
 var require_entry2 = __commonJS({
   "node_modules/fast-glob/out/providers/transformers/entry.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var utils = require_utils4();
     var EntryTransformer = class {
@@ -39474,8 +39792,9 @@ var require_entry2 = __commonJS({
 var require_provider = __commonJS({
   "node_modules/fast-glob/out/providers/provider.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
-    var path2 = __require("path");
+    var path3 = __require("path");
     var deep_1 = require_deep();
     var entry_1 = require_entry();
     var error_1 = require_error();
@@ -39489,7 +39808,7 @@ var require_provider = __commonJS({
         this.entryTransformer = new entry_2.default(this._settings);
       }
       _getRootDirectory(task) {
-        return path2.resolve(this._settings.cwd, task.base);
+        return path3.resolve(this._settings.cwd, task.base);
       }
       _getReaderOptions(task) {
         const basePath = task.base === "." ? "" : task.base;
@@ -39528,6 +39847,7 @@ var require_provider = __commonJS({
 var require_async6 = __commonJS({
   "node_modules/fast-glob/out/providers/async.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var async_1 = require_async5();
     var provider_1 = require_provider();
@@ -39557,6 +39877,7 @@ var require_async6 = __commonJS({
 var require_stream4 = __commonJS({
   "node_modules/fast-glob/out/providers/stream.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var stream_1 = __require("stream");
     var stream_2 = require_stream3();
@@ -39591,6 +39912,7 @@ var require_stream4 = __commonJS({
 var require_sync5 = __commonJS({
   "node_modules/fast-glob/out/readers/sync.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var fsStat = require_out();
     var fsWalk = require_out3();
@@ -39639,6 +39961,7 @@ var require_sync5 = __commonJS({
 var require_sync6 = __commonJS({
   "node_modules/fast-glob/out/providers/sync.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     var sync_1 = require_sync5();
     var provider_1 = require_provider();
@@ -39668,6 +39991,7 @@ var require_sync6 = __commonJS({
 var require_settings4 = __commonJS({
   "node_modules/fast-glob/out/settings.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DEFAULT_FILE_SYSTEM_ADAPTER = void 0;
     var fs = __require("fs");
@@ -39728,6 +40052,7 @@ var require_settings4 = __commonJS({
 var require_out4 = __commonJS({
   "node_modules/fast-glob/out/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var taskManager = require_tasks();
     var async_1 = require_async6();
     var stream_1 = require_stream4();
@@ -39829,8 +40154,9 @@ var require_out4 = __commonJS({
 var require_main = __commonJS({
   "node_modules/dotenv/lib/main.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var fs = __require("fs");
-    var path2 = __require("path");
+    var path3 = __require("path");
     var os = __require("os");
     var crypto = __require("crypto");
     var TIPS = [
@@ -39969,7 +40295,7 @@ var require_main = __commonJS({
           possibleVaultPath = options.path.endsWith(".vault") ? options.path : `${options.path}.vault`;
         }
       } else {
-        possibleVaultPath = path2.resolve(process.cwd(), ".env.vault");
+        possibleVaultPath = path3.resolve(process.cwd(), ".env.vault");
       }
       if (fs.existsSync(possibleVaultPath)) {
         return possibleVaultPath;
@@ -39977,7 +40303,7 @@ var require_main = __commonJS({
       return null;
     }
     function _resolveHome(envPath) {
-      return envPath[0] === "~" ? path2.join(os.homedir(), envPath.slice(1)) : envPath;
+      return envPath[0] === "~" ? path3.join(os.homedir(), envPath.slice(1)) : envPath;
     }
     function _configVault(options) {
       const debug2 = parseBoolean(process.env.DOTENV_CONFIG_DEBUG || options && options.debug);
@@ -39994,7 +40320,7 @@ var require_main = __commonJS({
       return { parsed };
     }
     function configDotenv(options) {
-      const dotenvPath = path2.resolve(process.cwd(), ".env");
+      const dotenvPath = path3.resolve(process.cwd(), ".env");
       let encoding = "utf8";
       let processEnv = process.env;
       if (options && options.processEnv != null) {
@@ -40022,13 +40348,13 @@ var require_main = __commonJS({
       }
       let lastError;
       const parsedAll = {};
-      for (const path3 of optionPaths) {
+      for (const path4 of optionPaths) {
         try {
-          const parsed = DotenvModule.parse(fs.readFileSync(path3, { encoding }));
+          const parsed = DotenvModule.parse(fs.readFileSync(path4, { encoding }));
           DotenvModule.populate(parsedAll, parsed, options);
         } catch (e) {
           if (debug2) {
-            _debug(`failed to load ${path3} ${e.message}`);
+            _debug(`failed to load ${path4} ${e.message}`);
           }
           lastError = e;
         }
@@ -40041,7 +40367,7 @@ var require_main = __commonJS({
         const shortPaths = [];
         for (const filePath of optionPaths) {
           try {
-            const relative = path2.relative(process.cwd(), filePath);
+            const relative = path3.relative(process.cwd(), filePath);
             shortPaths.push(relative);
           } catch (e) {
             if (debug2) {
@@ -40225,6 +40551,7 @@ var import_fast_glob, import_dotenv, ENV_EXCLUDE_GLOBS, BOOLEAN_LITERALS, MIN_VA
 var init_layer3_env = __esm({
   "src/detect/layer3-env.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
     init_shape_allowlist();
     import_fast_glob = __toESM(require_out4(), 1);
@@ -40325,6 +40652,7 @@ function runLayer4Words(text, entries, coveredSpans = []) {
 var init_layer4_words = __esm({
   "src/detect/layer4-words.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
   }
 });
@@ -40368,6 +40696,7 @@ var cachedSessionState;
 var init_session_state = __esm({
   "src/detect/session-state.ts"() {
     "use strict";
+    init_esm_shims();
     init_layer3_env();
     init_layer4_words();
     cachedSessionState = null;
@@ -40378,6 +40707,7 @@ var init_session_state = __esm({
 var require_signals = __commonJS({
   "node_modules/signal-exit/dist/cjs/signals.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.signals = void 0;
     exports.signals = [];
@@ -40409,6 +40739,7 @@ var require_signals = __commonJS({
 var require_cjs = __commonJS({
   "node_modules/signal-exit/dist/cjs/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     var _a3;
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.unload = exports.load = exports.onExit = exports.signals = void 0;
@@ -40644,6 +40975,7 @@ var require_cjs = __commonJS({
 var require_lib = __commonJS({
   "node_modules/write-file-atomic/lib/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     module.exports = writeFile2;
     module.exports.sync = writeFileSync;
     module.exports._getTmpname = getTmpname;
@@ -40651,7 +40983,7 @@ var require_lib = __commonJS({
     var fs = __require("fs");
     var crypto = __require("crypto");
     var { onExit } = require_cjs();
-    var path2 = __require("path");
+    var path3 = __require("path");
     var { promisify } = __require("util");
     var activeFiles = {};
     var threadId = (function getId() {
@@ -40704,7 +41036,7 @@ var require_lib = __commonJS({
       let fd;
       let tmpfile;
       const removeOnExitHandler = onExit(cleanupOnExit(() => tmpfile));
-      const absoluteName = path2.resolve(filename);
+      const absoluteName = path3.resolve(filename);
       try {
         await serializeActiveFile(absoluteName);
         const truename = await promisify(fs.realpath)(filename).catch(() => filename);
@@ -40873,6 +41205,7 @@ var TYPE_VOCABULARY, RULE_ID_TO_TYPE;
 var init_type_map = __esm({
   "src/detect/type-map.ts"() {
     "use strict";
+    init_esm_shims();
     TYPE_VOCABULARY = Object.freeze([
       "AWS_KEY",
       "AWS_SECRET",
@@ -41013,6 +41346,7 @@ var RESTORABLE_TYPES, RESTORABLE_SET, NEVER_RESTORABLE_TYPES, SESSION_ID_RE;
 var init_session_map = __esm({
   "src/state/session-map.ts"() {
     "use strict";
+    init_esm_shims();
     init_type_map();
     RESTORABLE_TYPES = Object.freeze([
       "WORD",
@@ -41048,6 +41382,7 @@ var import_write_file_atomic, ENVELOPE_MAGIC, VERSION_OFFSET, IV_LENGTH, IV_OFFS
 var init_map_store = __esm({
   "src/state/map-store.ts"() {
     "use strict";
+    init_esm_shims();
     import_write_file_atomic = __toESM(require_lib(), 1);
     init_session_map();
     ENVELOPE_MAGIC = Buffer.from("MRCLNMAP");
@@ -41081,9 +41416,9 @@ function warnJanitor(message, sessionId) {
   } catch {
   }
 }
-async function deleteQuietly(path2, sessionId) {
+async function deleteQuietly(path3, sessionId) {
   try {
-    await unlink2(path2);
+    await unlink2(path3);
   } catch (err) {
     if (err.code !== "ENOENT") {
       warnJanitor("mrclean janitor delete failed", sessionId);
@@ -41100,9 +41435,9 @@ async function readDirSafe(dir) {
     return null;
   }
 }
-async function ageOf(path2, now) {
+async function ageOf(path3, now) {
   try {
-    return now - (await stat2(path2)).mtimeMs;
+    return now - (await stat2(path3)).mtimeMs;
   } catch {
     return null;
   }
@@ -41204,6 +41539,7 @@ var ORPHAN_GRACE_MS, MS_PER_HOUR;
 var init_janitor = __esm({
   "src/state/janitor.ts"() {
     "use strict";
+    init_esm_shims();
     init_map_store();
     init_session_map();
     ORPHAN_GRACE_MS = 6e4;
@@ -41229,6 +41565,7 @@ function isAllowlisted(finding, config2) {
 var init_allowlist = __esm({
   "src/detect/allowlist.ts"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -41236,6 +41573,7 @@ var init_allowlist = __esm({
 var require_lib2 = __commonJS({
   "node_modules/boundary/lib/index.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.binarySearch = exports.upperBound = exports.lowerBound = exports.compare = void 0;
     function compare(v1, v2) {
@@ -41286,6 +41624,7 @@ var require_lib2 = __commonJS({
 var require_structured_source = __commonJS({
   "node_modules/structured-source/lib/structured-source.js"(exports) {
     "use strict";
+    init_esm_shims();
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.StructuredSource = void 0;
     var boundary_1 = require_lib2();
@@ -41368,6 +41707,7 @@ function invariant(condition, message) {
 var init_invariant = __esm({
   "node_modules/@secretlint/core/module/helper/invariant.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -41376,6 +41716,7 @@ var import_structured_source, SecretLintSourceCodeImpl;
 var init_SecretLintSourceCodeImpl = __esm({
   "node_modules/@secretlint/core/module/SecretLintSourceCodeImpl.js"() {
     "use strict";
+    init_esm_shims();
     import_structured_source = __toESM(require_structured_source(), 1);
     init_invariant();
     SecretLintSourceCodeImpl = class {
@@ -41469,6 +41810,7 @@ var EventEmitter, PromiseEventEmitter;
 var init_promise_event_emitter = __esm({
   "node_modules/@secretlint/core/module/helper/promise-event-emitter.js"() {
     "use strict";
+    init_esm_shims();
     EventEmitter = class {
       #listeners = /* @__PURE__ */ new Map();
       on(type, listener) {
@@ -41534,6 +41876,7 @@ var DEFAULT_LOCAL, formatMessage, getMatchedLocaleMessage, createTranslator;
 var init_SecretLintRuleMessageTranslator = __esm({
   "node_modules/@secretlint/core/module/helper/SecretLintRuleMessageTranslator.js"() {
     "use strict";
+    init_esm_shims();
     DEFAULT_LOCAL = "en";
     formatMessage = (messageHandler, props) => {
       if (typeof props !== "object" || props === null) {
@@ -41604,6 +41947,7 @@ var createContextEvents, createRuleContext;
 var init_RuleContext = __esm({
   "node_modules/@secretlint/core/module/RuleContext.js"() {
     "use strict";
+    init_esm_shims();
     init_promise_event_emitter();
     init_SecretLintRuleMessageTranslator();
     createContextEvents = () => {
@@ -41697,6 +42041,7 @@ var SecretLintRule;
 var init_SecretLintRuleImpl = __esm({
   "node_modules/@secretlint/core/module/SecretLintRuleImpl.js"() {
     "use strict";
+    init_esm_shims();
     SecretLintRule = class {
       ruleReportHandle;
       ruleCreator;
@@ -41745,6 +42090,7 @@ var SecretLintProfiler;
 var init_module = __esm({
   "node_modules/@secretlint/profiler/module/index.js"() {
     "use strict";
+    init_esm_shims();
     SecretLintProfiler = class {
       perf;
       entries = [];
@@ -41809,6 +42155,7 @@ var NullPerformanceObserver, secretLintProfiler;
 var init_node = __esm({
   "node_modules/@secretlint/profiler/module/node.js"() {
     "use strict";
+    init_esm_shims();
     init_module();
     NullPerformanceObserver = class {
       disconnect() {
@@ -41828,6 +42175,7 @@ var createRunningEvents;
 var init_RunningEvents = __esm({
   "node_modules/@secretlint/core/module/RunningEvents.js"() {
     "use strict";
+    init_esm_shims();
     init_promise_event_emitter();
     init_SecretLintRuleImpl();
     init_node();
@@ -41895,6 +42243,7 @@ var createRulePresetContext;
 var init_RulePresetContext = __esm({
   "node_modules/@secretlint/core/module/RulePresetContext.js"() {
     "use strict";
+    init_esm_shims();
     init_RuleContext();
     createRulePresetContext = ({ configRulePreset, sourceCode, runningEvents, contextEvents, sharedOptions, locale }) => {
       const presetRules = configRulePreset.rules || [];
@@ -41968,6 +42317,7 @@ var isContainedRange;
 var init_filter_ignored_process = __esm({
   "node_modules/@secretlint/core/module/messages/filter-ignored-process.js"() {
     "use strict";
+    init_esm_shims();
     isContainedRange = (index, range) => {
       const [start, end] = range;
       return start <= index && index <= end;
@@ -41980,6 +42330,7 @@ var createMessageProcessor;
 var init_MessageProcessManager = __esm({
   "node_modules/@secretlint/core/module/messages/MessageProcessManager.js"() {
     "use strict";
+    init_esm_shims();
     createMessageProcessor = (processors) => {
       return {
         /**
@@ -42012,6 +42363,7 @@ var isEqualMessage;
 var init_filter_duplicated_process = __esm({
   "node_modules/@secretlint/core/module/messages/filter-duplicated-process.js"() {
     "use strict";
+    init_esm_shims();
     isEqualMessage = (aMessage, bMessage) => {
       return aMessage.range[0] === bMessage.range[0] && aMessage.range[1] === bMessage.range[1] && "severity" in aMessage && "severity" in bMessage && aMessage.severity === bMessage.severity && aMessage.message === bMessage.message;
     };
@@ -42032,6 +42384,7 @@ function sortMessagesByLocation(messages2) {
 var init_sort_messages_process = __esm({
   "node_modules/@secretlint/core/module/messages/sort-messages-process.js"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -42040,6 +42393,7 @@ var filterByAllowMessageIds;
 var init_filter_message_id = __esm({
   "node_modules/@secretlint/core/module/messages/filter-message-id.js"() {
     "use strict";
+    init_esm_shims();
     filterByAllowMessageIds = (messages2, allowMessageIds) => {
       const disabledSet = new Set(allowMessageIds.map((allowMessage) => {
         return `${allowMessage.ruleId}--${allowMessage.messageId}`;
@@ -42056,6 +42410,7 @@ var deepMask, createMaskValue, maskWithValues, filterMaskSecretsData;
 var init_filter_mask_secrets = __esm({
   "node_modules/@secretlint/core/module/messages/filter-mask-secrets.js"() {
     "use strict";
+    init_esm_shims();
     deepMask = (object3, handler) => {
       for (const key of Object.keys(object3)) {
         if (typeof object3[key] === "object") {
@@ -42107,6 +42462,7 @@ var cleanupMessages;
 var init_messages = __esm({
   "node_modules/@secretlint/core/module/messages/index.js"() {
     "use strict";
+    init_esm_shims();
     init_filter_ignored_process();
     init_MessageProcessManager();
     init_filter_duplicated_process();
@@ -42127,6 +42483,7 @@ var init_messages = __esm({
 var require_ms = __commonJS({
   "node_modules/ms/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var s = 1e3;
     var m = s * 60;
     var h = m * 60;
@@ -42244,6 +42601,7 @@ var require_ms = __commonJS({
 var require_common3 = __commonJS({
   "node_modules/debug/src/common.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     function setup(env) {
       createDebug.debug = createDebug;
       createDebug.default = createDebug;
@@ -42422,6 +42780,7 @@ var require_common3 = __commonJS({
 var require_browser = __commonJS({
   "node_modules/debug/src/browser.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     exports.formatArgs = formatArgs;
     exports.save = save;
     exports.load = load;
@@ -42593,6 +42952,7 @@ var require_browser = __commonJS({
 var require_has_flag = __commonJS({
   "node_modules/has-flag/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     module.exports = (flag, argv = process.argv) => {
       const prefix = flag.startsWith("-") ? "" : flag.length === 1 ? "-" : "--";
       const position = argv.indexOf(prefix + flag);
@@ -42606,6 +42966,7 @@ var require_has_flag = __commonJS({
 var require_supports_color = __commonJS({
   "node_modules/supports-color/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var os = __require("os");
     var tty = __require("tty");
     var hasFlag = require_has_flag();
@@ -42708,6 +43069,7 @@ var require_supports_color = __commonJS({
 var require_node = __commonJS({
   "node_modules/debug/src/node.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     var tty = __require("tty");
     var util2 = __require("util");
     exports.init = init;
@@ -42883,6 +43245,7 @@ var require_node = __commonJS({
 var require_src = __commonJS({
   "node_modules/debug/src/index.js"(exports, module) {
     "use strict";
+    init_esm_shims();
     if (typeof process === "undefined" || process.type === "renderer" || process.browser === true || process.__nwjs) {
       module.exports = require_browser();
     } else {
@@ -42900,6 +43263,7 @@ var import_debug, debug, lintSource, isRulePreset, isRule, registerRule;
 var init_module2 = __esm({
   "node_modules/@secretlint/core/module/index.js"() {
     "use strict";
+    init_esm_shims();
     init_SecretLintSourceCodeImpl();
     init_RuleContext();
     init_RunningEvents();
@@ -43036,7 +43400,7 @@ __export(module_exports2, {
   creator: () => creator,
   rules: () => rules
 });
-import path from "path";
+import path2 from "path";
 function requireLodash_uniq() {
   if (hasRequiredLodash_uniq) return lodash_uniq;
   hasRequiredLodash_uniq = 1;
@@ -44009,11 +44373,11 @@ function requireLodash_sortby() {
     function baseForOwn(object3, iteratee) {
       return object3 && baseFor(object3, iteratee, keys);
     }
-    function baseGet(object3, path2) {
-      path2 = isKey(path2, object3) ? [path2] : castPath(path2);
-      var index = 0, length = path2.length;
+    function baseGet(object3, path3) {
+      path3 = isKey(path3, object3) ? [path3] : castPath(path3);
+      var index = 0, length = path3.length;
       while (object3 != null && index < length) {
-        object3 = object3[toKey(path2[index++])];
+        object3 = object3[toKey(path3[index++])];
       }
       return index && index == length ? object3 : void 0;
     }
@@ -44140,13 +44504,13 @@ function requireLodash_sortby() {
         return object3 === source || baseIsMatch(object3, source, matchData);
       };
     }
-    function baseMatchesProperty(path2, srcValue) {
-      if (isKey(path2) && isStrictComparable(srcValue)) {
-        return matchesStrictComparable(toKey(path2), srcValue);
+    function baseMatchesProperty(path3, srcValue) {
+      if (isKey(path3) && isStrictComparable(srcValue)) {
+        return matchesStrictComparable(toKey(path3), srcValue);
       }
       return function(object3) {
-        var objValue = get(object3, path2);
-        return objValue === void 0 && objValue === srcValue ? hasIn(object3, path2) : baseIsEqual(srcValue, objValue, void 0, UNORDERED_COMPARE_FLAG | PARTIAL_COMPARE_FLAG);
+        var objValue = get(object3, path3);
+        return objValue === void 0 && objValue === srcValue ? hasIn(object3, path3) : baseIsEqual(srcValue, objValue, void 0, UNORDERED_COMPARE_FLAG | PARTIAL_COMPARE_FLAG);
       };
     }
     function baseOrderBy(collection, iteratees, orders) {
@@ -44162,9 +44526,9 @@ function requireLodash_sortby() {
         return compareMultiple(object3, other, orders);
       });
     }
-    function basePropertyDeep(path2) {
+    function basePropertyDeep(path3) {
       return function(object3) {
-        return baseGet(object3, path2);
+        return baseGet(object3, path3);
       };
     }
     function baseRest(func, start) {
@@ -44419,11 +44783,11 @@ function requireLodash_sortby() {
         return result;
       };
     }
-    function hasPath(object3, path2, hasFunc) {
-      path2 = isKey(path2, object3) ? [path2] : castPath(path2);
-      var result, index = -1, length = path2.length;
+    function hasPath(object3, path3, hasFunc) {
+      path3 = isKey(path3, object3) ? [path3] : castPath(path3);
+      var result, index = -1, length = path3.length;
       while (++index < length) {
-        var key = toKey(path2[index]);
+        var key = toKey(path3[index]);
         if (!(result = object3 != null && hasFunc(object3, key))) {
           break;
         }
@@ -44578,12 +44942,12 @@ function requireLodash_sortby() {
     function toString(value) {
       return value == null ? "" : baseToString(value);
     }
-    function get(object3, path2, defaultValue) {
-      var result = object3 == null ? void 0 : baseGet(object3, path2);
+    function get(object3, path3, defaultValue) {
+      var result = object3 == null ? void 0 : baseGet(object3, path3);
       return result === void 0 ? defaultValue : result;
     }
-    function hasIn(object3, path2) {
-      return object3 != null && hasPath(object3, path2, baseHasIn);
+    function hasIn(object3, path3) {
+      return object3 != null && hasPath(object3, path3, baseHasIn);
     }
     function keys(object3) {
       return isArrayLike(object3) ? arrayLikeKeys(object3) : baseKeys(object3);
@@ -44591,8 +44955,8 @@ function requireLodash_sortby() {
     function identity(value) {
       return value;
     }
-    function property(path2) {
-      return isKey(path2) ? baseProperty(toKey(path2)) : basePropertyDeep(path2);
+    function property(path3) {
+      return isKey(path3) ? baseProperty(toKey(path3)) : basePropertyDeep(path3);
     }
     module.exports = sortBy;
   })(lodash_sortby, lodash_sortby.exports);
@@ -44884,7 +45248,7 @@ async function reportIfFoundPrivateKeyP12Format({ source, context, t }) {
   }
   try {
     const fs = await import("fs");
-    const path2 = await import("path");
+    const path3 = await import("path");
     const pfxBytes = new Uint8Array(fs.readFileSync(source.filePath));
     const isGcpServiceAccountP12 = await verifyPkcs12Mac(pfxBytes, GCP_SERVICE_ACCOUNT_P12_PASSWORD);
     if (!isGcpServiceAccountP12) {
@@ -44892,7 +45256,7 @@ async function reportIfFoundPrivateKeyP12Format({ source, context, t }) {
     }
     context.report({
       message: t("PrivateKeyP12", {
-        FILE_NAME: path2.basename(source.filePath)
+        FILE_NAME: path3.basename(source.filePath)
       }),
       range: [0, source.content.length]
     });
@@ -44909,7 +45273,7 @@ function reportIfFoundPrivateKeyJSONFormat({ source, context, t }) {
     }
     context.report({
       message: t("PrivateKeyJSON", {
-        FILE_NAME: source.filePath ? path.basename(source.filePath) : ""
+        FILE_NAME: source.filePath ? path2.basename(source.filePath) : ""
       }),
       range: [0, source.content.length]
     });
@@ -45411,6 +45775,7 @@ var commonjsGlobal, regexpStringMatcher, lodash_uniq, hasRequiredLodash_uniq, lo
 var init_module3 = __esm({
   "node_modules/@secretlint/secretlint-rule-preset-recommend/module/index.js"() {
     "use strict";
+    init_esm_shims();
     commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
     regexpStringMatcher = {};
     lodash_sortby = { exports: {} };
@@ -46998,6 +47363,7 @@ async function runSecretlint(text) {
 var init_secretlint_engine = __esm({
   "src/detect/layer1-regex/secretlint-engine.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
     init_type_map();
   }
@@ -47006,7 +47372,7 @@ var init_secretlint_engine = __esm({
 // src/detect/layer1-regex/gitleaks-adapter.ts
 import { readFileSync } from "fs";
 import { join as join7, dirname as dirname2 } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath as fileURLToPath2 } from "url";
 import { existsSync as _existsSync } from "fs";
 function adaptGitleaksPattern(rawRegex) {
   if (!rawRegex) return null;
@@ -47016,7 +47382,7 @@ function adaptGitleaksPattern(rawRegex) {
   return { pattern: rawRegex, flags: "" };
 }
 function resolveVendorPathSync() {
-  const thisFile = fileURLToPath(import.meta.url);
+  const thisFile = fileURLToPath2(import.meta.url);
   const thisDir = dirname2(thisFile);
   const candidates = [
     join7(thisDir, "..", "..", "..", "vendor", "gitleaks-rules.toml"),
@@ -47085,6 +47451,7 @@ var _cachedRules;
 var init_gitleaks_adapter = __esm({
   "src/detect/layer1-regex/gitleaks-adapter.ts"() {
     "use strict";
+    init_esm_shims();
     init_dist();
     _cachedRules = null;
   }
@@ -47174,6 +47541,7 @@ var BUDGET_TIMEOUT_LIMIT;
 var init_gitleaks_engine = __esm({
   "src/detect/layer1-regex/gitleaks-engine.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
     init_gitleaks_adapter();
     BUDGET_TIMEOUT_LIMIT = 5;
@@ -47185,6 +47553,7 @@ import { Worker } from "worker_threads";
 var init_redos_worker = __esm({
   "src/detect/layer1-regex/redos-worker.ts"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -47227,6 +47596,7 @@ async function runLayer1(text, config2, pool2) {
 var init_layer1_regex = __esm({
   "src/detect/layer1-regex/index.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
     init_allowlist();
     init_secretlint_engine();
@@ -47300,6 +47670,7 @@ var ENTROPY_KEYWORDS, KEYWORD_WINDOW, ESCALATION_MIN_LENGTH, ESCALATION_MIN_ENTR
 var init_layer2_entropy = __esm({
   "src/detect/layer2-entropy.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
     init_shape_allowlist();
     ENTROPY_KEYWORDS = /\b(?:secret|key|token|password|bearer|api[_-]?key|access[_-]?token|client[_-]?secret|private[_-]?key|auth)\b/i;
@@ -47383,6 +47754,7 @@ var PII_PATTERN_SOURCES;
 var init_layer6a_pii = __esm({
   "src/detect/layer6a-pii.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
     init_allowlist();
     PII_PATTERN_SOURCES = /* @__PURE__ */ new Map([
@@ -47425,6 +47797,7 @@ function dropNerOverlaps(findings) {
 var init_ner_overlap = __esm({
   "src/detect/ner-overlap.ts"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -47434,6 +47807,7 @@ var POOL_WORKER_CODE, SINGLE_SHOT_CODE, WorkerPool;
 var init_worker_pool = __esm({
   "src/detect/layer1-regex/worker-pool.ts"() {
     "use strict";
+    init_esm_shims();
     POOL_WORKER_CODE = `
 const { parentPort } = require('worker_threads');
 parentPort.on('message', ({ pattern, flags, text }) => {
@@ -47595,6 +47969,7 @@ var PlaceholderManager;
 var init_manager = __esm({
   "src/placeholder/manager.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
     PlaceholderManager = class {
       sessionId;
@@ -47788,6 +48163,7 @@ function substituteFindings(text, findings) {
 var init_substitute = __esm({
   "src/placeholder/substitute.ts"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -47838,6 +48214,7 @@ var AuditWriteError;
 var init_log = __esm({
   "src/audit/log.ts"() {
     "use strict";
+    init_esm_shims();
     AuditWriteError = class extends Error {
       constructor(message, cause) {
         super(message);
@@ -47856,6 +48233,7 @@ function applyDryRun(findings) {
 var init_dry_run = __esm({
   "src/detect/dry-run.ts"() {
     "use strict";
+    init_esm_shims();
   }
 });
 
@@ -47874,6 +48252,7 @@ var MODEL_LABEL_MAPS;
 var init_ner_entities = __esm({
   "src/detect/ner-entities.ts"() {
     "use strict";
+    init_esm_shims();
     init_constants();
     MODEL_LABEL_MAPS = Object.freeze({
       // bert-base-NER: PER/ORG/LOC are substitutable; MISC + O are intentionally absent → null.
@@ -48006,6 +48385,7 @@ async function runLayer6bNer(text, ner, config2, coveredSpans = []) {
 var init_layer6b_ner = __esm({
   "src/detect/layer6b-ner.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
     init_allowlist();
     init_pipeline_singleton();
@@ -48160,6 +48540,7 @@ var pool, cachedManagers;
 var init_detect = __esm({
   "src/detect/index.ts"() {
     "use strict";
+    init_esm_shims();
     init_findings();
     init_layer1_regex();
     init_layer2_entropy();
@@ -48212,6 +48593,7 @@ var STATIC_CONTEXT_FREE_MESSAGE, MIN_PARTIAL_LEAK_FRAGMENT_LENGTH;
 var init_sanitize_output = __esm({
   "src/shared/sanitize-output.ts"() {
     "use strict";
+    init_esm_shims();
     STATIC_CONTEXT_FREE_MESSAGE = "mrclean: an internal error occurred; details withheld to avoid leaking sensitive input";
     MIN_PARTIAL_LEAK_FRAGMENT_LENGTH = 8;
   }
@@ -48235,6 +48617,7 @@ async function supervisedToolCall(fn) {
 var init_supervisor = __esm({
   "src/mcp/supervisor.ts"() {
     "use strict";
+    init_esm_shims();
     init_detect();
     init_sanitize_output();
   }
@@ -48245,6 +48628,7 @@ var PII_BEST_EFFORT_DISCLAIMER;
 var init_strings = __esm({
   "src/shared/strings.ts"() {
     "use strict";
+    init_esm_shims();
     PII_BEST_EFFORT_DISCLAIMER = "PII/NER detection is a best-effort ML hint, not a guarantee \u2014 NER false negatives can leak; for data that must not leak, rely on words.txt and the deterministic layers (secrets + checksummed PII).";
   }
 });
@@ -48314,6 +48698,7 @@ var checkInputSchema, findingSchema, checkOutputSchema;
 var init_check = __esm({
   "src/mcp/tools/check.ts"() {
     "use strict";
+    init_esm_shims();
     init_v4();
     init_detect();
     init_supervisor();
@@ -48416,6 +48801,7 @@ var redactInputSchema, findingSchema2, redactOutputSchema;
 var init_redact = __esm({
   "src/mcp/tools/redact.ts"() {
     "use strict";
+    init_esm_shims();
     init_v4();
     init_detect();
     init_supervisor();
@@ -48455,6 +48841,7 @@ function computeAllowlistCount(config2) {
 var init_banner = __esm({
   "src/hook/banner.ts"() {
     "use strict";
+    init_esm_shims();
     init_version();
   }
 });
@@ -48501,6 +48888,7 @@ var statusInputSchema, statusOutputSchema;
 var init_status = __esm({
   "src/mcp/tools/status.ts"() {
     "use strict";
+    init_esm_shims();
     init_v4();
     init_version();
     init_layer1_regex();
@@ -48587,12 +48975,14 @@ async function runMcpServer() {
 var init_server3 = __esm({
   "src/mcp/server.ts"() {
     "use strict";
+    init_esm_shims();
     init_version();
     init_lifecycle();
   }
 });
 
 // src/mcp.ts
+init_esm_shims();
 var isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
   const { runMcpServer: runMcpServer2 } = await Promise.resolve().then(() => (init_server3(), server_exports));
