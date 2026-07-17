@@ -22,7 +22,7 @@
 
 - [x] **REVMODE-10**: Hook-contract behaviors are empirically verified in live headless sessions and documented — terminal rendering of `updatedToolOutput`, PreToolUse `updatedInput` context echo, `session_id` continuity across `--resume`, 10K-char output-cap applicability — and an upstream feature request for a display-only rewrite channel is filed
 - [ ] **REVMODE-11**: CI proves reversible mode never re-exposes originals on any wire path — hook stdout is unchanged by reversible mode, no plaintext canary appears in any written buffer (including atomic-write temp files), chaos tests show redaction survives a corrupt/missing/chmod'd map, and an 8–16-process concurrency stress test gates the build
-- [ ] **REVMODE-12**: Doctor and status stay honest — `mrclean doctor` reports reversible-mode state and FAILs loud (never silent no-op) on unsupported configuration; `mrclean_status` exposes map entry counts by class and restored/unmatched counters, never values
+- [x] **REVMODE-12**: Doctor and status stay honest — `mrclean doctor` reports reversible-mode state and FAILs loud (never silent no-op) on unsupported configuration; `mrclean_status` exposes map entry counts by class and restored/unmatched counters, never values
 
 ### Threat Model & Docs
 
@@ -66,7 +66,7 @@ Mapped by v3.0 roadmap creation (2026-07-14). Coverage: 12/12 v3.0 requirements 
 | REVMODE-09 | Phase 10 — Operator Restore | Complete |
 | REVMODE-10 | Phase 8 — Contract Verification & Reversible Plumbing | Complete |
 | REVMODE-11 | Phase 11 — Wire-Safety Verification & Hardening | Pending |
-| REVMODE-12 | Phase 10 — Operator Restore | Pending |
+| REVMODE-12 | Phase 10 — Operator Restore | Complete |
 
 ---
 *Defined: 2026-07-14 — v3.0 milestone requirements (12 REQ-IDs) after research synthesis + T1 reshape. Traceability mapped 2026-07-14 (Phases 8–11).*
