@@ -390,6 +390,35 @@ describe('runTtlSweep — atomic-write litter + stale lock dirs under sessions/ 
   })
 })
 
+describe('runTtlSweep — key-publish tmp litter under keys/ (WR-03 shape)', () => {
+  it('key-publish litter <sid>.key.<digits> 120s old is deleted', async () => {
+    // Arrange — map-store's atomic create-once tmp; a crash between the tmp
+    // write and its link(2) publication leaves exactly this shape
+    const litterPath = join(statePaths(baseDir).keysDir, `${randomUUID()}.key.305419896`)
+    await writeFile(litterPath, randomBytes(32))
+    await backdate(litterPath, 120 * SECOND_MS)
+
+    // Act
+    await runTtlSweep({ ttlHours: 24, baseDir })
+
+    // Assert
+    expect(await exists(litterPath)).toBe(false)
+  })
+
+  it('key-publish litter 10s old survives (an in-flight publish is not litter)', async () => {
+    // Arrange
+    const litterPath = join(statePaths(baseDir).keysDir, `${randomUUID()}.key.7`)
+    await writeFile(litterPath, randomBytes(32))
+    await backdate(litterPath, 10 * SECOND_MS)
+
+    // Act
+    await runTtlSweep({ ttlHours: 24, baseDir })
+
+    // Assert
+    expect(await exists(litterPath)).toBe(true)
+  })
+})
+
 describe('runTtlSweep — never delete what we did not create (T-09-06-06)', () => {
   it('non-conforming filenames survive no matter how old they are', async () => {
     // Arrange — WAY past every threshold; only name-shape protects them
@@ -408,6 +437,7 @@ describe('runTtlSweep — never delete what we did not create (T-09-06-06)', () 
       join(sessionsDir, 'notauuid.map.lock'),
       join(keysDir, 'README.md'),
       join(keysDir, 'notauuid.key'),
+      join(keysDir, 'notauuid.key.123'),
     ]
     for (const path of foreign) {
       await writeFile(path, 'foreign-content')

@@ -31,7 +31,7 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { link, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import writeFileAtomic from 'write-file-atomic'
 
@@ -172,29 +172,108 @@ export function decryptMapBuffer(envelope: Buffer, key: Buffer, sessionId: strin
 // ---------------------------------------------------------------------------
 
 /**
+ * Internally-typed key-custody failure. Reason strings are static shape
+ * descriptions ONLY — never key bytes or paths (hash-only discipline). The
+ * 09-05 facade's write path catches this and degrades.
+ */
+class SessionKeyError extends Error {
+  constructor(reason: string) {
+    super(`mrclean session key invalid: ${reason}`)
+    this.name = 'SessionKeyError'
+  }
+}
+
+/** Read the key file, or null when it does not exist. Other fs failures
+ *  (EACCES, EISDIR, …) propagate — the facade owns degrade semantics. */
+async function readKeyIfPresent(keyPath: string): Promise<Buffer | null> {
+  try {
+    return await readFile(keyPath)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null
+    }
+    throw err
+  }
+}
+
+/**
+ * Publish a fully-written key file atomically with create-once semantics
+ * (WR-03): the 32 bytes land in a private `<keyPath>.<uint32>` tmp first
+ * (0600, wx), then link(2) makes them visible at keyPath in ONE step — link
+ * fails with EEXIST when another process already published, preserving the
+ * wx winner/loser contract WITHOUT the open-then-write torn window. The tmp
+ * name matches the janitor's `<uuid>.key.<digits>` litter shape, so a crash
+ * between write and link is swept after the orphan grace.
+ */
+async function publishKeyOnce(keyPath: string, key: Buffer): Promise<boolean> {
+  const tmpPath = `${keyPath}.${randomBytes(4).readUInt32BE(0)}`
+  await writeFile(tmpPath, key, { flag: 'wx', mode: FILE_MODE })
+  try {
+    await link(tmpPath, keyPath)
+    return true
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+      return false
+    }
+    throw err
+  } finally {
+    await unlink(tmpPath).catch(() => {})
+  }
+}
+
+/** Bounded read → (self-heal) → publish → re-read attempts. */
+const KEY_ENSURE_ATTEMPTS = 2
+
+/**
  * Ensure the per-session key exists and return its 32 bytes.
  *
- * 'wx' create-once: exactly one process wins the creation race; EEXIST
- * losers fall through and read the winner's bytes, so every process ends
- * up with identical key material (D-04). Key content is pure CSPRNG —
- * never derived from sid/hostname/env (T-09-03-04).
+ * Create-once is ATOMIC (WR-03): key bytes are fully written to a private
+ * tmp file and published with link(2) — there is NO window in which keyPath
+ * exists with partial content, and losers (link EEXIST) read the winner's
+ * complete bytes, so every process ends up with identical key material
+ * (D-04). Key content is pure CSPRNG — never derived from sid/hostname/env
+ * (T-09-03-04).
  *
- * May throw on non-EEXIST fs failures (e.g. EACCES) — the 09-05 facade owns
+ * The read-back validates length (WR-03): a wrong-length key file (torn
+ * write from a pre-fix version, local corruption) is treated as ABSENT and
+ * healed by unlink-and-recreate — without this, a torn key silently
+ * degrades EVERY event until the TTL sweep. Production callers run inside
+ * the map lock, which serializes the heal; the retry is bounded.
+ *
+ * May throw on unexpected fs failures (e.g. EACCES) — the 09-05 facade owns
  * degrade semantics for the write path; only readSessionMapFile is total.
  */
 export async function ensureSessionKey(baseDir: string, sid: string): Promise<Buffer> {
   const { keysDir } = statePaths(baseDir)
   await mkdir(keysDir, { recursive: true, mode: DIR_MODE })
   const keyPath = keyPathFor(baseDir, sid)
-  try {
-    await writeFile(keyPath, randomBytes(KEY_BYTES), { flag: 'wx', mode: FILE_MODE })
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') {
-      throw err
+
+  for (let attempt = 0; attempt < KEY_ENSURE_ATTEMPTS; attempt += 1) {
+    const existing = await readKeyIfPresent(keyPath)
+    if (existing !== null && existing.length === KEY_BYTES) {
+      return existing
     }
-    // EEXIST: another process won the wx race — read the winner's bytes.
+    if (existing !== null) {
+      // Wrong-length key: treated as ABSENT (fail-safe — nothing encrypted
+      // under a broken key was ever readable) and removed so the publish
+      // below can recreate it. ENOENT here means a concurrent healer won.
+      try {
+        await unlink(keyPath)
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw err
+        }
+      }
+    }
+    const fresh = randomBytes(KEY_BYTES)
+    if (await publishKeyOnce(keyPath, fresh)) {
+      return fresh
+    }
+    // EEXIST loser: another process published a complete key first — the
+    // next iteration reads the winner's bytes (whole-file visibility is
+    // guaranteed by link atomicity).
   }
-  return readFile(keyPath)
+  throw new SessionKeyError('unreadable after publish attempts')
 }
 
 // ---------------------------------------------------------------------------

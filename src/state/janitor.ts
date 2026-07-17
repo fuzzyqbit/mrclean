@@ -26,11 +26,12 @@
  * deletes NOTHING.
  *
  * Sweep candidacy (T-09-06-06): only filenames our own stack provably
- * creates are ever considered — `<uuid>.key` under keys/; `<uuid>.map`,
- * write-file-atomic tmp litter `<uuid>.map.<digits>` (v7 getTmpname appends
- * a uint32 — wfa NEVER produces `*.tmp`), and proper-lockfile's
- * `<uuid>.map.lock` lock DIRECTORIES under sessions/. Non-conforming names
- * (including foreign `*.tmp` files) are never touched.
+ * creates are ever considered — `<uuid>.key` and key-publish tmp litter
+ * `<uuid>.key.<digits>` under keys/; `<uuid>.map`, write-file-atomic tmp
+ * litter `<uuid>.map.<digits>` (v7 getTmpname appends a uint32 — wfa NEVER
+ * produces `*.tmp`), and proper-lockfile's `<uuid>.map.lock` lock
+ * DIRECTORIES under sessions/. Non-conforming names (including foreign
+ * `*.tmp` files) are never touched.
  *
  * TOTAL-ERROR DISCIPLINE (D-07/D-08): both exported functions resolve on
  * every input. Each unlink/stat/readdir is individually guarded; unexpected
@@ -201,6 +202,10 @@ interface SweepCandidates {
    *  tmp litter (getTmpname appends a uint32) left by SIGKILL/OOM/power loss
    *  (signal-exit only covers catchable exits). */
   mapLitter: string[]
+  /** `<uuid>.key.<digits>` basenames under keys/ — key-publish tmp litter
+   *  (map-store's atomic create-once dance) left by a crash between the tmp
+   *  write and its link(2) publication. */
+  keyLitter: string[]
   /** `<uuid>.map.lock` basenames under sessions/ — proper-lockfile lock DIRS
    *  left by a killed holder that never re-contended (stale takeover only
    *  fires when someone re-contends that map). */
@@ -249,10 +254,15 @@ function isOwnLockDirName(name: string): boolean {
  */
 function classifySweepEntries(keyNames: string[], sessionNames: string[]): SweepCandidates {
   const keySids = new Set<string>()
+  const keyLitter: string[] = []
   for (const name of keyNames) {
     const sid = sidFromName(name, '.key')
     if (sid !== null) {
       keySids.add(sid)
+      continue
+    }
+    if (isOwnLitterName(name, '.key')) {
+      keyLitter.push(name)
     }
   }
 
@@ -282,7 +292,7 @@ function classifySweepEntries(keyNames: string[], sessionNames: string[]): Sweep
   }
 
   const orphanKeys = [...keySids].filter((sid) => !mapSids.has(sid))
-  return { paired, orphanMaps, orphanKeys, mapLitter, staleLocks }
+  return { paired, orphanMaps, orphanKeys, mapLitter, keyLitter, staleLocks }
 }
 
 /**
@@ -294,8 +304,9 @@ function classifySweepEntries(keyNames: string[], sessionNames: string[]): Sweep
  *     order). The key's own mtime is NEVER consulted (Pitfall 4).
  *   - unpaired half (map w/o key, key w/o map): own mtime older than the
  *     60 s grace ⇒ delete.
- *   - write-file-atomic litter `<uuid>.map.<digits>` under sessions/ older
- *     than the grace ⇒ delete (wfa v7 tmp naming — never `*.tmp`).
+ *   - write-file-atomic litter `<uuid>.map.<digits>` under sessions/ and
+ *     key-publish litter `<uuid>.key.<digits>` under keys/ older than the
+ *     grace ⇒ delete (real tmp naming of our atomic writers — never `*.tmp`).
  *   - stale lock dirs `<uuid>.map.lock` under sessions/ older than the
  *     grace ⇒ remove (a HELD lock's mtime refreshes every ~1.25 s, so it
  *     can never age past the grace).
@@ -319,10 +330,8 @@ export async function runTtlSweep(opts: TtlSweepOpts): Promise<void> {
     return
   }
 
-  const { paired, orphanMaps, orphanKeys, mapLitter, staleLocks } = classifySweepEntries(
-    keyNames,
-    sessionNames,
-  )
+  const { paired, orphanMaps, orphanKeys, mapLitter, keyLitter, staleLocks } =
+    classifySweepEntries(keyNames, sessionNames)
 
   // Paired sessions age by MAP mtime ONLY (Pitfall 4): the map refreshes on
   // every write; the once-written key never does. A live session with an
@@ -359,6 +368,17 @@ export async function runTtlSweep(opts: TtlSweepOpts): Promise<void> {
   // cleanup) — same grace, no sessionId in warns.
   for (const name of mapLitter) {
     const litterPath = join(sessionsDir, name)
+    const age = await ageOf(litterPath, now)
+    if (age !== null && age > ORPHAN_GRACE_MS) {
+      await deleteQuietly(litterPath)
+    }
+  }
+
+  // Key-publish tmp litter (`<sid>.key.<digits>` — map-store's atomic
+  // create-once dance; a crash between the tmp write and its link(2)
+  // publication leaves the tmp behind).
+  for (const name of keyLitter) {
+    const litterPath = join(keysDir, name)
     const age = await ageOf(litterPath, now)
     if (age !== null && age > ORPHAN_GRACE_MS) {
       await deleteQuietly(litterPath)

@@ -33,6 +33,7 @@ import {
   chmod,
   copyFile,
   mkdir,
+  readdir,
   readFile,
   rm,
   stat,
@@ -362,6 +363,45 @@ describe('map-store', () => {
       const dirStat = await stat(statePaths(baseDir).keysDir)
       expect(keyStat.mode & 0o777).toBe(0o600)
       expect(dirStat.mode & 0o777).toBe(0o700)
+    })
+
+    it('self-heals a torn (wrong-length) key file: treated as absent, regenerated at 32 bytes (WR-03)', async () => {
+      // Arrange — a 17-byte key file: the torn window of a pre-fix
+      // open-then-write create, or local corruption
+      await mkdir(statePaths(baseDir).keysDir, { recursive: true, mode: 0o700 })
+      await writeFile(keyPathFor(baseDir, sid), Buffer.from('garbage-not-a-key'), { mode: 0o600 })
+
+      // Act
+      const key = await ensureSessionKey(baseDir, sid)
+
+      // Assert — fresh 32-byte key returned AND persisted: the session
+      // recovers immediately instead of degrading every event until the
+      // 24h TTL sweep deletes the pair
+      expect(key.length).toBe(KEY_BYTES)
+      const onDisk = await readFile(keyPathFor(baseDir, sid))
+      expect(onDisk.equals(key)).toBe(true)
+    })
+
+    it('self-heals an EMPTY key file (crash between open and write completion)', async () => {
+      // Arrange
+      await mkdir(statePaths(baseDir).keysDir, { recursive: true, mode: 0o700 })
+      await writeFile(keyPathFor(baseDir, sid), Buffer.alloc(0), { mode: 0o600 })
+
+      // Act
+      const key = await ensureSessionKey(baseDir, sid)
+
+      // Assert
+      expect(key.length).toBe(KEY_BYTES)
+      expect((await readFile(keyPathFor(baseDir, sid))).equals(key)).toBe(true)
+    })
+
+    it('leaves no tmp litter in keys/ after a create (atomic publish cleans up)', async () => {
+      // Act
+      await ensureSessionKey(baseDir, sid)
+
+      // Assert — exactly the key file; the `<sid>.key.<digits>` publish tmp
+      // was unlinked after link(2)
+      await expect(readdir(statePaths(baseDir).keysDir)).resolves.toEqual([`${sid}.key`])
     })
   })
 
