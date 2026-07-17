@@ -212,3 +212,142 @@ describe('SC1 operator inspection (literal dir inspection after a real flow)', (
     expect(IS_WIN32).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Plan 10-08 extension — a restore run leaves the store BYTE-INERT
+// (Pitfall 7: restore's write surface is EXACTLY stdout/stderr/audit.jsonl;
+// map mtime is the TTL heartbeat and a read must never refresh it)
+// ---------------------------------------------------------------------------
+
+/** Per-file mtimeMs snapshot over sessions/ + keys/ (sorted listings). */
+async function snapshotStateTree(
+  baseDir: string,
+): Promise<{ sessions: string[]; keys: string[]; mtimes: Record<string, number> }> {
+  const { keysDir, sessionsDir } = statePaths(baseDir)
+  const sessions = (await readdir(sessionsDir)).sort()
+  const keys = (await readdir(keysDir)).sort()
+  const mtimes: Record<string, number> = {}
+  for (const path of [
+    ...sessions.map((name) => join(sessionsDir, name)),
+    ...keys.map((name) => join(keysDir, name)),
+  ]) {
+    mtimes[path] = (await stat(path)).mtimeMs
+  }
+  return { sessions, keys, mtimes }
+}
+
+/**
+ * Drive runRestore with process.exit/stdout/stderr mirror mocks installed
+ * (tests/cli/restore.test.ts capture harness, duplicated by value — never
+ * cross-imported). A mocked exit throws to stop execution; non-exit throws
+ * repropagate (degrade paths must never throw).
+ */
+async function captureRestoreRun(opts: {
+  baseDir: string
+  cwd: string
+  stdin: NodeJS.ReadableStream
+}): Promise<{ stdout: string; stderr: string; exitCode: number | undefined }> {
+  const { runRestore } = await import('../../src/restore/cli.js')
+
+  const originalExit = process.exit
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout)
+  const originalStderrWrite = process.stderr.write.bind(process.stderr)
+  let exitCode: number | undefined
+  let stdout = ''
+  let stderr = ''
+
+  process.exit = ((code?: number) => {
+    exitCode = code ?? 0
+    throw new Error(`process.exit(${code})`)
+  }) as typeof process.exit
+  process.stdout.write = ((chunk: unknown) => {
+    stdout += String(chunk)
+    return true
+  }) as typeof process.stdout.write
+  process.stderr.write = ((chunk: unknown) => {
+    stderr += String(chunk)
+    return true
+  }) as typeof process.stderr.write
+
+  try {
+    await runRestore(opts)
+  } catch (err) {
+    if (exitCode === undefined) {
+      throw err // a real escape — restore degrade paths must NEVER throw
+    }
+  } finally {
+    process.exit = originalExit
+    process.stdout.write = originalStdoutWrite
+    process.stderr.write = originalStderrWrite
+  }
+
+  return { stdout, stderr, exitCode }
+}
+
+describe('SC1 inspection extension — restore leaves the session store byte-inert (Plan 10-08)', () => {
+  let baseDir: string
+  let cwdDir: string
+  let sid: string
+
+  beforeEach(async () => {
+    baseDir = join(tmpdir(), `mrclean-inspect-restore-${randomUUID()}`)
+    cwdDir = join(tmpdir(), `mrclean-inspect-restore-cwd-${randomUUID()}`)
+    sid = randomUUID()
+    await mkdir(baseDir, { recursive: true })
+    await mkdir(join(cwdDir, '.mrclean'), { recursive: true })
+  })
+
+  afterEach(async () => {
+    await rm(baseDir, { recursive: true, force: true })
+    await rm(cwdDir, { recursive: true, force: true })
+  })
+
+  it('post-restore: artifact byte-scan still clean; listings + per-file mtimes identical', async () => {
+    // Arrange — the SAME real two-event facade flow as the suite above, then
+    // read the PERSISTED placeholders back for the input document.
+    await runReversibleEvent(baseDir, sid, WORD_ORIGINAL, 'WORD')
+    await runReversibleEvent(baseDir, sid, SECRET_ORIGINAL, 'AWS_KEY')
+    const map = await readSessionMapFile(baseDir, sid)
+    expect(map).not.toBeNull()
+    const wordToken = map!.entries[hmacAddress(map!.hashSalt, WORD_ORIGINAL)]!.placeholder
+    const secretToken = map!.entries[hmacAddress(map!.hashSalt, SECRET_ORIGINAL)]!.placeholder
+
+    // Pre-restore snapshot: exact listings + per-file mtimeMs (the TTL
+    // heartbeat — a restore may never refresh it, Pitfall 7).
+    const before = await snapshotStateTree(baseDir)
+    expect(before.sessions).toEqual([`${sid}.map`])
+    expect(before.keys).toEqual([`${sid}.key`])
+
+    // Act — a REAL restore run against the persisted state (stdin document
+    // carrying both persisted placeholders; tmp cwd audit sink).
+    const { Readable } = await import('node:stream')
+    const input = `doc ${wordToken} and ${secretToken} end`
+    const run = await captureRestoreRun({ baseDir, cwd: cwdDir, stdin: Readable.from([input]) })
+
+    // Non-vacuity — the run REALLY exercised the store: the WORD original
+    // restored onto stdout, the secret placeholder survived byte-identical.
+    expect(run.exitCode).toBeUndefined()
+    expect(run.stdout).toBe(`doc ${WORD_ORIGINAL} and ${secretToken} end`)
+
+    // Assert (1) — the EXACT byte-scan again over sessions/*.map + keys/*
+    // raw bytes: no plaintext litter appeared during the restore run.
+    const { keysDir, sessionsDir } = statePaths(baseDir)
+    for (const path of [
+      ...before.sessions.map((name) => join(sessionsDir, name)),
+      ...before.keys.map((name) => join(keysDir, name)),
+    ]) {
+      const raw = await readFile(path)
+      expect(raw.includes(WORD_ORIGINAL)).toBe(false)
+      expect(raw.includes(SECRET_ORIGINAL)).toBe(false)
+      expect(raw.includes('"entries"')).toBe(false)
+    }
+
+    // Assert (2) — the store is BYTE-INERT across the run: readdir listings
+    // AND per-file mtimeMs identical to the pre-restore snapshot (restore's
+    // write surface is exactly stdout/stderr/audit.jsonl — nothing here).
+    const after = await snapshotStateTree(baseDir)
+    expect(after.sessions).toEqual(before.sessions)
+    expect(after.keys).toEqual(before.keys)
+    expect(after.mtimes).toEqual(before.mtimes)
+  })
+})
