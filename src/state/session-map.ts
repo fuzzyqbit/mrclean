@@ -307,6 +307,19 @@ export function formatV2Token(type: string, counter: number, nonce8: string): st
 /** Matcher for v2 tokens: `<MRCLEAN:TYPE:NNN|OVF:nonce8>`. */
 export const V2_TOKEN_RE = /^<MRCLEAN:([A-Z0-9_]+):(\d{3}|OVF):([a-f0-9]{8})>$/
 
+/**
+ * Unanchored global twin of V2_TOKEN_RE for the Phase 10 restore scan —
+ * same capture groups, `g` flag, no anchors. This is the single source of
+ * the token grammar: src/restore/ imports it and never re-declares the
+ * pattern (allocator/restorer drift fails the grammar-sync test loudly).
+ *
+ * CAUTION: `/g` regexes are stateful — .test()/.exec() on this carry
+ * lastIndex between calls. Consumers use String.prototype.replace (which
+ * resets lastIndex per the Symbol.replace spec) or take a non-global probe
+ * copy (tests/state/chaos.test.ts precedent).
+ */
+export const V2_TOKEN_SCAN_RE = /<MRCLEAN:([A-Z0-9_]+):(\d{3}|OVF):([a-f0-9]{8})>/g
+
 // ---------------------------------------------------------------------------
 // Session-id allowlist (Pitfall 5)
 // ---------------------------------------------------------------------------
