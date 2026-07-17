@@ -63,6 +63,11 @@ import type { SessionState } from './session-state.js'
 // `@huggingface/transformers` dynamic import are reached ONLY via a dynamic import inside the
 // MCP-gated L6b branch below — never as a runtime static import (cold-path safety, T-06-02-01).
 import type { NerStatus } from './layer6b-ner.js'
+// TYPE-ONLY imports from state (erased at compile). The Phase 9 reversible seam
+// below receives hydration data + closures from the 09-05 state facade — the
+// src/state RUNTIME never enters the hook cold-path module graph via this file
+// (Pitfall 7, T-09-04-04; enforced by the 09-07 import-graph test).
+import type { ReversibleHydration, PendingAllocation } from '../state/session-map.js'
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -170,6 +175,29 @@ function getOrCreateManager(sessionId: string): PlaceholderManager {
     cachedManagers.set(sessionId, manager)
   }
   return manager
+}
+
+/**
+ * Phase 9 reversible seam (09-04) — hydrate the cached PlaceholderManager for
+ * `sessionId` with reversible v2 state (nonce/counter-floor/HMAC lookup, all
+ * injected as data + closures by the 09-05 state facade).
+ *
+ * Consumed ONLY by hook handlers under `config.reversible.enabled` (wired in
+ * 09-07). The one-way default never calls this, so default sessions stay on
+ * the byte-identical v1 path (D-10).
+ */
+export function hydrateSessionManager(sessionId: string, h: ReversibleHydration): void {
+  getOrCreateManager(sessionId).hydrateReversible(h)
+}
+
+/**
+ * Phase 9 reversible seam (09-04) — drain the NEW allocations accumulated by
+ * the session's manager since hydrate/last drain. The 09-05 facade persists
+ * these under the store lock after each event (drained exactly once per
+ * event). Returns [] for never-hydrated (v1 one-way) sessions.
+ */
+export function drainSessionAllocations(sessionId: string): PendingAllocation[] {
+  return getOrCreateManager(sessionId).drainPendingAllocations()
 }
 
 /**
