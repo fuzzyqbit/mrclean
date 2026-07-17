@@ -299,6 +299,62 @@ describe('allocation facade (readSessionMapForHydration + persistAllocations)', 
   })
 
   // -------------------------------------------------------------------------
+  // Reconcile: rename CHAIN (CR-01 regression — renames apply in ONE
+  // simultaneous pass; sequential application cascades and corrupts identity)
+  // -------------------------------------------------------------------------
+
+  it('applies a reconcile rename chain without cascading: two allocations + one foreign insertion land on DISTINCT store tokens', async () => {
+    // Arrange — a committed store at counter 5, so B's provisionals share the
+    // STORE nonce (a chain needs rename i's `to` === rename i+1's `from`,
+    // which requires hydration from the REAL map)
+    await seedStore(baseDir, [{ value: 'val-SEED', type: 'WORD', counter: 5 }])
+
+    // Arrange — process B hydrates (floor 5) and allocates TWO new values:
+    // provisionals :006: and :007: under the store nonce
+    const cycleB = await hydrateAndAllocate(baseDir, [
+      { value: 'val-Y', type: 'WORD' },
+      { value: 'val-Z', type: 'WORD' },
+    ])
+    expect(cycleB.provisionals[0]).toContain(':006:')
+    expect(cycleB.provisionals[1]).toContain(':007:')
+    const substituted = `y=${cycleB.provisionals[0]} z=${cycleB.provisionals[1]}`
+
+    // Arrange — between B's hydrate and persist, a concurrent process commits
+    // ONE allocation: val-FOREIGN takes :006: and advances the store counter
+    const cycleF = await hydrateAndAllocate(baseDir, [{ value: 'val-FOREIGN', type: 'WORD' }])
+    const persistedF = await persistAllocations({
+      sessionId: SID,
+      baseDir,
+      pending: cycleF.pending,
+      deadlineMs: DEADLINE_MS,
+    })
+    expect(persistedF.status).toBe('ok')
+
+    // Act — B persists; reconcile renumbers BOTH pendings, emitting the chain
+    // [{ :006:→:007: }, { :007:→:008: }], then B corrects its substituted text
+    const result = await persistAllocations({
+      sessionId: SID,
+      baseDir,
+      pending: cycleB.pending,
+      deadlineMs: DEADLINE_MS,
+    })
+    expect(result.status).toBe('ok')
+    expect(result.renames).toHaveLength(2)
+    const corrected = applyRenamesToText(substituted, result.renames)
+
+    // Assert — each emitted token equals the STORE's authoritative
+    // placeholder for its original, and the two finals are DISTINCT (PH-03).
+    // Sequential split/join application would cascade :006:→:007:→:008: and
+    // emit :008: for BOTH values (duplicate on-wire token + wrong-value
+    // restore in Phase 10 — the CR-01 defect).
+    const final = await readSessionMapFile(baseDir, SID)
+    const tokenY = final!.entries[hmacAddress(final!.hashSalt, 'val-Y')]!.placeholder
+    const tokenZ = final!.entries[hmacAddress(final!.hashSalt, 'val-Z')]!.placeholder
+    expect(tokenY).not.toBe(tokenZ)
+    expect(corrected).toBe(`y=${tokenY} z=${tokenZ}`)
+  })
+
+  // -------------------------------------------------------------------------
   // Deadline degrade: held lock ⇒ 'degraded', map untouched, ONE hash-only warn
   // -------------------------------------------------------------------------
 
@@ -462,6 +518,22 @@ describe('allocation facade (readSessionMapForHydration + persistAllocations)', 
     )
     // Empty rename list is the identity
     expect(applyRenamesToText(text, [])).toBe(text)
+  })
+
+  it('applyRenamesToText applies a chained rename set in ONE simultaneous pass (CR-01: a rename output is never re-matched)', () => {
+    // Arrange — the CR-01 chain shape: renames[0].to === renames[1].from
+    // (routine reconcile output when >= 2 allocations renumber together)
+    const renames: PlaceholderRename[] = [
+      { from: '<MRCLEAN:WORD:006:939ff7d7>', to: '<MRCLEAN:WORD:007:939ff7d7>' },
+      { from: '<MRCLEAN:WORD:007:939ff7d7>', to: '<MRCLEAN:WORD:008:939ff7d7>' },
+    ]
+    const text = 'y=<MRCLEAN:WORD:006:939ff7d7> z=<MRCLEAN:WORD:007:939ff7d7>'
+
+    // Act
+    const renamed = applyRenamesToText(text, renames)
+
+    // Assert — :006:→:007: and :007:→:008:, NEVER :006:→(:007:)→:008:
+    expect(renamed).toBe('y=<MRCLEAN:WORD:007:939ff7d7> z=<MRCLEAN:WORD:008:939ff7d7>')
   })
 
   it('applyRenamesDeep renames nested string leaves immutably', () => {
