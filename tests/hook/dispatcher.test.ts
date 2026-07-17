@@ -17,6 +17,9 @@ vi.mock('../../src/config/index.js', () => ({
     entropy: { threshold: 4.5, min_length: 20 },
     secrets_files: [],
     rules: [],
+    // 09-06: MrcleanConfig requires reversible — session-start gates its TTL
+    // sweep on it. Disabled here, mirroring the shipped default.
+    reversible: { enabled: false, ttl_hours: 24 },
   }),
 }))
 
