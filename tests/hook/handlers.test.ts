@@ -19,10 +19,19 @@ vi.mock('../../src/config/index.js', () => ({
     entropy: { threshold: 4.5, min_length: 20 },
     secrets_files: [],
     rules: [],
-    // 09-06: MrcleanConfig requires reversible — session-start gates its TTL
-    // sweep on it. Disabled here, mirroring the shipped default.
+    // 09-06: MrcleanConfig requires reversible — ttl_hours feeds the
+    // SessionStart TTL sweep (UNCONDITIONAL since the 09 review WR-02 fix;
+    // janitor mocked below). Disabled here, mirroring the shipped default.
     reversible: { enabled: false, ttl_hours: 24 },
   }),
+}))
+
+// 09 review (WR-02): the SessionStart TTL sweep now runs regardless of
+// reversible.enabled — mock the janitor so this hermetic suite never sweeps
+// a real ~/.mrclean.
+vi.mock('../../src/state/janitor.js', () => ({
+  runTtlSweep: vi.fn().mockResolvedValue(undefined),
+  runSessionEndJanitor: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../../src/detect/session-state.js', () => ({
@@ -128,6 +137,26 @@ describe('handleSessionStart', () => {
 
     // Plan 07-03 (D-05): the honest-framing disclaimer is appended once per SessionStart.
     expect(ctx).toContain('not a guarantee')
+  })
+
+  it('runs the TTL sweep even with reversible DISABLED (WR-02) and survives a sweep rejection', async () => {
+    // Arrange — the config mock above has reversible.enabled === false
+    const { runTtlSweep } = await import('../../src/state/janitor.js')
+    vi.mocked(runTtlSweep).mockClear()
+
+    // Act
+    await handleSessionStart(sessionStartInput)
+
+    // Assert — swept anyway: orphan cleanup of PAST sessions is not gated on
+    // the flag (only map CREATION is)
+    expect(runTtlSweep).toHaveBeenCalledWith({ ttlHours: 24 })
+
+    // Arrange — a sweep blow-up must never disturb the banner path (D-07)
+    vi.mocked(runTtlSweep).mockRejectedValueOnce(new Error('sweep exploded'))
+
+    // Act + Assert — still resolves with the SessionStart output
+    const output = await handleSessionStart(sessionStartInput)
+    expect(output.hookSpecificOutput?.hookEventName).toBe('SessionStart')
   })
 })
 

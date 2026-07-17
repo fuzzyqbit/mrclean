@@ -17,10 +17,19 @@ vi.mock('../../src/config/index.js', () => ({
     entropy: { threshold: 4.5, min_length: 20 },
     secrets_files: [],
     rules: [],
-    // 09-06: MrcleanConfig requires reversible — session-start gates its TTL
-    // sweep on it. Disabled here, mirroring the shipped default.
+    // 09-06: MrcleanConfig requires reversible — ttl_hours feeds the
+    // SessionStart TTL sweep (UNCONDITIONAL since the 09 review WR-02 fix;
+    // janitor mocked below). Disabled here, mirroring the shipped default.
     reversible: { enabled: false, ttl_hours: 24 },
   }),
+}))
+
+// 09 review (WR-02): the SessionStart TTL sweep now runs regardless of
+// reversible.enabled — mock the janitor so routing tests never sweep a real
+// ~/.mrclean (SessionEnd routing gets the same hermetic seam).
+vi.mock('../../src/state/janitor.js', () => ({
+  runTtlSweep: vi.fn().mockResolvedValue(undefined),
+  runSessionEndJanitor: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../../src/detect/session-state.js', () => ({

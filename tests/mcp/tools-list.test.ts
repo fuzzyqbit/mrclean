@@ -17,14 +17,23 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { resolve } from 'node:path'
+import {
+  StdioClientTransport,
+  getDefaultEnvironment,
+} from '@modelcontextprotocol/sdk/client/stdio.js'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { VERSION } from '../../src/shared/version.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const PROJECT_ROOT = resolve(__dirname, '../..')
 const DIST_MCP = resolve(PROJECT_ROOT, 'dist/mcp.js')
+
+// 09 review (WR-02): dist/mcp.js now boot-sweeps UNCONDITIONALLY — sandbox
+// HOME so the spawned server can never touch the developer's real ~/.mrclean.
+const SANDBOX_HOME = mkdtempSync(join(tmpdir(), 'mrclean-toolslist-home-'))
 
 /**
  * MCP-03 invariant: these tool names must NEVER appear in tools/list.
@@ -67,6 +76,7 @@ describe('mrclean-mcp stdio integration', { timeout: 30000 }, () => {
     transport = new StdioClientTransport({
       command: process.execPath,
       args: [DIST_MCP],
+      env: { ...getDefaultEnvironment(), HOME: SANDBOX_HOME, USERPROFILE: SANDBOX_HOME },
     })
     // Client.connect() performs the MCP initialize handshake using the SDK's
     // bundled LATEST_PROTOCOL_VERSION — no hardcoded version string needed.

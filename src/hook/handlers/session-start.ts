@@ -34,13 +34,17 @@ export async function handleSessionStart(input: SessionStartInput): Promise<Sess
   // banner path. The ConfigReadError rethrow contract above stays UNTOUCHED:
   // this try/catch wraps ONLY the janitor call, never loadEffectiveConfig.
   // Lazy import keeps src/state/ off the one-way cold path (Pitfall 7).
-  if (config.reversible.enabled) {
-    try {
-      const { runTtlSweep } = await import('../../state/janitor.js')
-      await runTtlSweep({ ttlHours: config.reversible.ttl_hours })
-    } catch {
-      // non-fatal (D-07): a sweep bug must never turn SessionStart into exit-2
-    }
+  //
+  // UNCONDITIONAL (09 review WR-02): the sweep is cleanup of PAST sessions'
+  // residue — a crashed reversible session's key+map must not rest on disk
+  // forever just because the operator later turned [reversible] off. Only
+  // map CREATION is gated on config.reversible.enabled. Disabled-default
+  // cost: two ENOENT readdirs inside the janitor (total-error, silent).
+  try {
+    const { runTtlSweep } = await import('../../state/janitor.js')
+    await runTtlSweep({ ttlHours: config.reversible.ttl_hours })
+  } catch {
+    // non-fatal (D-07): a sweep bug must never turn SessionStart into exit-2
   }
 
   // Step 2: Initialize session state (Layer 3 env blocklist + Layer 4 words.txt)

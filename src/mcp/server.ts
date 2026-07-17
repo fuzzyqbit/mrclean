@@ -88,13 +88,15 @@ export async function runMcpServer(): Promise<void> {
   // fire SessionEnd, E5). sid-agnostic sweep ONLY: the MCP redact tool is
   // NEVER wired to the store (MCP-lane fence — per-call sids would spray
   // orphan maps). Non-fatal: a sweep bug must never stop the MCP server.
-  if (config.reversible.enabled) {
-    try {
-      const { runTtlSweep } = await import('../state/janitor.js')
-      await runTtlSweep({ ttlHours: config.reversible.ttl_hours })
-    } catch {
-      // non-fatal (D-07)
-    }
+  //
+  // UNCONDITIONAL (09 review WR-02): orphan cleanup of PAST sessions must
+  // survive the operator disabling [reversible] — only map CREATION is
+  // gated on the flag. Disabled-default cost: two ENOENT readdirs.
+  try {
+    const { runTtlSweep } = await import('../state/janitor.js')
+    await runTtlSweep({ ttlHours: config.reversible.ttl_hours })
+  } catch {
+    // non-fatal (D-07)
   }
 
   const sessionState = await initSessionState({
