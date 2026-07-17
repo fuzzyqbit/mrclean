@@ -46889,6 +46889,11 @@ try {
 });
 
 // src/placeholder/manager.ts
+function parseV2TokenIndex(placeholder) {
+  const match = /:(\d{3}):[a-f0-9]{8}>$/.exec(placeholder);
+  const nnn = match?.[1];
+  return nnn === void 0 ? 0 : Number.parseInt(nnn, 10);
+}
 var PlaceholderManager;
 var init_manager = __esm({
   "src/placeholder/manager.ts"() {
@@ -46901,6 +46906,16 @@ var init_manager = __esm({
       // placeholder → hash
       counter = 0;
       overflowed = false;
+      /**
+       * Phase 9 (09-04) reversible-mode state. `reversible` stays null until
+       * hydrateReversible() is called — a DEFAULT-constructed manager never takes
+       * the v2 branch, keeping the v1 allocation path byte-identical (D-10).
+       */
+      reversible = null;
+      /** v2 lookup cache keyed by HMAC content address (NOT sha256 — see allocateReversible). */
+      v2ByHmac = /* @__PURE__ */ new Map();
+      /** NEW allocations since hydrate/last drain — awaiting the 09-05 persist step. */
+      pending = [];
       constructor(opts) {
         this.sessionId = opts?.sessionId ?? "unset";
       }
@@ -46916,6 +46931,9 @@ var init_manager = __esm({
        * @returns     - The PlaceholderEntry for this value.
        */
       allocate(value, type) {
+        if (this.reversible !== null) {
+          return this.allocateReversible(value, type, this.reversible);
+        }
         const hash2 = sha256hex(value);
         const cached2 = this.byHash.get(hash2);
         if (cached2 !== void 0) {
@@ -46960,7 +46978,7 @@ var init_manager = __esm({
       getByPlaceholder(placeholder) {
         const hash2 = this.byPlaceholder.get(placeholder);
         if (hash2 === void 0) return void 0;
-        return this.byHash.get(hash2);
+        return this.byHash.get(hash2) ?? this.v2ByHmac.get(hash2);
       }
       /**
        * Return the current counter value (number of allocations made).
@@ -46968,6 +46986,91 @@ var init_manager = __esm({
        */
       size() {
         return this.counter;
+      }
+      // ---------------------------------------------------------------------------
+      // Phase 9 (09-04) — reversible v2 token layer (hydration-gated)
+      // ---------------------------------------------------------------------------
+      /**
+       * Install (or refresh) reversible-mode v2 state from the decrypted session
+       * map. Called by the state facade (09-05) BEFORE detection — never on the
+       * one-way default path, so default construction stays v1 (D-10).
+       *
+       * Semantics:
+       * - counter jumps to at least `counterFloor` (monotonic under in-process
+       *   degrade: an already-higher local counter is never rewound);
+       * - the v2 HMAC lookup cache is REPLACED wholesale, built as a NEW Map from
+       *   `h.entriesByHmac` (the hydration input is never mutated);
+       * - seeded placeholders are registered for getByPlaceholder reverse lookup;
+       * - any stale pending allocations are cleared (defensive — the facade drains
+       *   after every event, so leftovers mean a crashed reconcile).
+       */
+      hydrateReversible(h) {
+        this.reversible = h;
+        this.counter = Math.max(this.counter, h.counterFloor);
+        const seeded = /* @__PURE__ */ new Map();
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        for (const [hmac, known] of h.entriesByHmac) {
+          const entry = {
+            type: known.type,
+            index: parseV2TokenIndex(known.placeholder),
+            firstSeenTs: now,
+            placeholder: known.placeholder,
+            hash: hmac
+          };
+          seeded.set(hmac, entry);
+          this.byPlaceholder.set(known.placeholder, hmac);
+        }
+        this.v2ByHmac = seeded;
+        this.pending = [];
+      }
+      /**
+       * Return all NEW allocations made since hydrate/last drain and clear the
+       * buffer. The 09-05 facade drains exactly once per event to reconcile and
+       * persist under the store lock. Safe on a default (v1) manager: always [].
+       */
+      drainPendingAllocations() {
+        const drained = this.pending;
+        this.pending = [];
+        return drained;
+      }
+      /**
+       * v2 allocation branch — reachable ONLY when hydrated (reversible mode).
+       *
+       * Content addressing: entries are keyed by h.hmacOf(value) (HMAC-SHA256 with
+       * the per-session map salt) — the v1 byHash map is neither consulted nor
+       * populated on this path, and `PlaceholderEntry.hash` carries the HMAC hex
+       * (not sha256) on v2 entries. Same original under ANY TYPE resolves to the
+       * identical placeholder (D-10 content addressing).
+       */
+      allocateReversible(value, type, h) {
+        const hmac = h.hmacOf(value);
+        const cached2 = this.v2ByHmac.get(hmac);
+        if (cached2 !== void 0) {
+          return cached2;
+        }
+        this.counter++;
+        if (this.counter > 999 && !this.overflowed) {
+          process.stderr.write(
+            JSON.stringify({
+              warn: "mrclean placeholder overflow",
+              counter: this.counter,
+              sessionId: this.sessionId
+            }) + "\n"
+          );
+          this.overflowed = true;
+        }
+        const placeholder = h.formatToken(type, this.counter);
+        const entry = {
+          type,
+          index: this.counter,
+          firstSeenTs: (/* @__PURE__ */ new Date()).toISOString(),
+          placeholder,
+          hash: hmac
+        };
+        this.v2ByHmac.set(hmac, entry);
+        this.byPlaceholder.set(placeholder, hmac);
+        this.pending.push({ value, type, provisionalPlaceholder: placeholder });
+        return entry;
       }
     };
   }
