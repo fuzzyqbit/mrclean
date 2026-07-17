@@ -7,6 +7,8 @@
  * Exports:
  *   ConfigReadError     — structured error with path + reason
  *   readConfigLayer     — parse one TOML layer; {} on missing/empty file; throws on malformed
+ *   readRawReversibleKeys — raw [reversible] key scan, pre-validation (doctor REVMODE-12)
+ *   SUPPORTED_REVERSIBLE_KEYS — the frozen supported [reversible] key set
  *   mergeConfigs        — field-by-field precedence merge over ordered layers
  *   loadEffectiveConfig — high-level entry point: resolves all three paths, returns MrcleanConfig
  *   LoadConfigOpts      — options interface for loadEffectiveConfig
@@ -328,8 +330,9 @@ function validatePiiConfig(raw: unknown, filePath: string): MrcleanPiiConfigLaye
  * T-09-01-01: fails closed on any ttl_hours that is not an integer >= 1 — a
  * hostile/typo'd config cannot set the TTL to 0/negative/fractional to force
  * instant orphan deletion or broken retention math (D-09).
- * Unknown keys inside [reversible] are silently dropped (matches parseToml
- * tolerance; FAIL-loud on unsupported keys is Phase 10 / REVMODE-12).
+ * Unknown keys inside [reversible] are silently dropped here (matches parseToml
+ * tolerance); doctor FAILs loud on them via readRawReversibleKeys, which scans
+ * the raw table BEFORE this validator drops anything (REVMODE-12, plan 10-04).
  *
  * Phase 8-07 / CR-01: returns a TRUE partial — conditional spreads keep absent
  * keys ABSENT (a [reversible] table carrying only unknown/future keys parses to
@@ -496,6 +499,54 @@ export async function readConfigLayer(filePath: string): Promise<MrcleanConfigLa
   if (content.trim() === '') return {}
 
   return parseToml(content, filePath)
+}
+
+/**
+ * The complete supported key set for the `[reversible]` table.
+ *
+ * Doctor's FAIL-loud scan (REVMODE-12, plan 10-04) treats any raw key outside
+ * this set — in either config layer — as an unsupported-configuration FAIL.
+ */
+export const SUPPORTED_REVERSIBLE_KEYS: readonly string[] = Object.freeze([
+  'enabled',
+  'ttl_hours',
+])
+
+/**
+ * Read the RAW key list of the `[reversible]` table in `filePath` — BEFORE
+ * validateReversibleConfig drops unknown keys. The tolerant validator makes
+ * loadEffectiveConfig structurally blind to unknown keys (10-RESEARCH
+ * Pitfall 4), so doctor's REVMODE-12 unknown-key scan must read raw layers.
+ *
+ * Semantics mirror readConfigLayer:
+ *   - Missing file (ENOENT) → []
+ *   - Empty / whitespace-only file → []
+ *   - No [reversible] table, or a non-record [reversible] value → []
+ *   - Malformed TOML → throws ConfigReadError (checkConfigLoad owns that FAIL)
+ */
+export async function readRawReversibleKeys(filePath: string): Promise<string[]> {
+  let content: string
+
+  try {
+    content = await readFile(filePath, 'utf8')
+  } catch (err) {
+    const nodeErr = err as NodeJS.ErrnoException
+    if (nodeErr.code === 'ENOENT') return []
+    throw new ConfigReadError(filePath, (err as Error).message)
+  }
+
+  if (content.trim() === '') return []
+
+  let parsed: Record<string, unknown>
+  try {
+    parsed = parse(content) as Record<string, unknown>
+  } catch (err) {
+    throw new ConfigReadError(filePath, (err as Error).message)
+  }
+
+  const reversible = parsed['reversible']
+  if (!isRecord(reversible)) return []
+  return Object.keys(reversible)
 }
 
 /**

@@ -14,19 +14,25 @@
  *   4 — canary round-trip failed
  *   6 — NER model present but integrity (SHA-256) check failed
  *
- * Check 8: checkReversibleState — reporting-only in Phase 8; reserves exit 1
- * (config domain) for Phase 10's REVMODE-12 FAIL-loud semantics. It never
- * FAILs in Phase 8, so the LOCKED map above is unchanged.
+ * Check 8: checkReversibleState — FAILs loud (REVMODE-12, plan 10-04) on
+ * unsupported [reversible] keys in either raw config layer, using the exit 1
+ * (config domain) that Phase 8 reserved for exactly this — the LOCKED map
+ * above is unchanged.
  *
  * No check function terminates the process — only runDoctor (index.ts) may do so.
  *
- * Plan 01-05 / 05-02 / 08-03.
+ * Plan 01-05 / 05-02 / 08-03 / 10-04.
  */
 
 import { access, constants } from 'node:fs/promises'
 import { readJsonOrEmpty } from '../install/atomic-json.js'
 import { isMrcleanEntry } from '../install/markers.js'
-import { loadEffectiveConfig, ConfigReadError } from '../config/index.js'
+import {
+  loadEffectiveConfig,
+  ConfigReadError,
+  readRawReversibleKeys,
+  SUPPORTED_REVERSIBLE_KEYS,
+} from '../config/index.js'
 import { runHookCanary, runMcpCanary } from './canary.js'
 
 // ---------------------------------------------------------------------------
@@ -560,22 +566,65 @@ const REVERSIBLE_DETAIL_ENABLED =
 const REVERSIBLE_DETAIL_CONFIG_ERROR = 'config unreadable — see config check'
 
 /**
- * Report the [reversible] master-switch state (REVMODE-12 first clause).
+ * Format one layer's raw [reversible] keys into `<file>: <key>` offender
+ * pairs — keys outside SUPPORTED_REVERSIBLE_KEYS only.
+ */
+function formatReversibleOffenders(filePath: string, rawKeys: string[]): string[] {
+  return rawKeys
+    .filter((key) => !SUPPORTED_REVERSIBLE_KEYS.includes(key))
+    .map((key) => `${filePath}: ${key}`)
+}
+
+/**
+ * Report the [reversible] state and FAIL loud on unsupported keys (REVMODE-12).
  *
- * REPORTING-ONLY in Phase 8 (RESEARCH Open Question 3, planner decision):
- * this check never returns FAIL — the LOCKED exit-code map (1, 2, 3, 4, 6)
- * is not extended. exitCodeOnFail: 1 is RESERVED (config domain) for
- * Phase 10's FAIL-loud-on-unsupported-config semantics.
+ * FAIL-loud (Phase 10 / plan 10-04): any raw [reversible] key outside
+ * SUPPORTED_REVERSIBLE_KEYS in EITHER config layer returns FAIL with the
+ * reserved exitCodeOnFail 1 (config domain — the LOCKED exit-code map is
+ * unchanged), naming every offending file + key, user layer first. The scan
+ * reads RAW layers via readRawReversibleKeys, NEVER loadEffectiveConfig —
+ * the tolerant validator drops unknown keys, so the loader is structurally
+ * blind to them (10-RESEARCH Pitfall 4). Paths ARE allowed in FAIL details
+ * (checkConfigLoad precedent); the T-08-08 constant-detail constraint covers
+ * the PASS/SKIP copy.
  *
  * Status mapping:
+ *   FAIL — unknown key(s) in either raw [reversible] table:
+ *          'unsupported [reversible] key(s): <file>: <key>[; <file>: <key>...]'
  *   PASS — reversible disabled (default; absent [reversible] table)
  *   PASS — reversible enabled (encrypted session state adapter active — 09-08)
  *   SKIP — config unreadable (ConfigReadError or any loader error);
  *          checkConfigLoad owns the FAIL for that root cause — never
  *          double-FAIL one root cause (T-08-10)
+ *
+ * NOT in the FAIL set (A1 pin): win32 + enabled stays a documented inherited
+ * known-gap — no FAIL, no new detail copy.
  */
 export async function checkReversibleState(homeDir: string, cwd: string): Promise<CheckResult> {
+  const { join } = await import('node:path')
+
+  // Same layer-path derivation as checkConfigLoad.
+  const userConfigPath = join(homeDir, '.mrclean', 'config.toml')
+  const projectConfigPath = join(cwd, '.mrclean', 'config.toml')
+
   try {
+    // Raw-layer unknown-key scan FIRST — user layer listed before project.
+    const offenders = [
+      ...formatReversibleOffenders(userConfigPath, await readRawReversibleKeys(userConfigPath)),
+      ...formatReversibleOffenders(
+        projectConfigPath,
+        await readRawReversibleKeys(projectConfigPath),
+      ),
+    ]
+    if (offenders.length > 0) {
+      return {
+        name: 'reversible',
+        status: 'FAIL',
+        detail: `unsupported [reversible] key(s): ${offenders.join('; ')}`,
+        exitCodeOnFail: 1,
+      }
+    }
+
     const config = await loadEffectiveConfig({ homeDir, cwd })
     return {
       name: 'reversible',
