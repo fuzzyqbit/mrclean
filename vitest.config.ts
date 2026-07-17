@@ -80,6 +80,11 @@ export default defineConfig({
             // project (full NER-on pipeline + tsup-built artifact). A file cannot
             // belong to both projects, so exclude it from the unit glob.
             'tests/audit/pii-canary-leak.test.ts',
+            // Plan 09-08: the SC5 stress gate spawns 16 real processes against
+            // the tsup-built dist/state-stress-worker.js — integration project
+            // only (needs the globalSetup build + sequential run). A file cannot
+            // belong to both projects, so exclude it from the unit glob.
+            'tests/state/stress.test.ts',
             'tests/perf/**',
             // Live-session UAT tests spawn a real `claude` CLI (authed, token
             // cost) — they belong to the opt-in uat project only.
@@ -113,6 +118,10 @@ export default defineConfig({
             // the run reports zero files). The stderr-spy unit test rides the unit
             // glob and is NOT listed here.
             'tests/audit/pii-canary-leak.test.ts',
+            // Plan 09-08: explicit allow-list entry so --project=integration matches
+            // the SC5 16-process stress gate (non-vacuity — without this entry the
+            // run reports zero files). Spawns dist/state-stress-worker.js x16.
+            'tests/state/stress.test.ts',
             'tests/perf/**/*.test.ts',
           ],
         },

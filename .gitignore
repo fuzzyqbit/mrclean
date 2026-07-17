@@ -7,6 +7,7 @@ coverage/
 # keep the tree lean.
 dist/*.map
 dist/detect-layer1.*
+dist/state-stress-worker.*
 *.log
 *.swp
 .DS_Store

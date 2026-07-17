@@ -60,8 +60,11 @@ export const POST_LOCK_DEADLINE_MS = 100
  *   internal clamp).
  * - millisecond-scale retries — the `retry` package defaults are
  *   seconds-scale (minTimeout 1000 ms), which would bust every hook deadline
- *   on the FIRST retry (Pitfall 3). This recipe gives up after ~46-190 ms
- *   (randomized), so the deadline race below is the effective bound.
+ *   on the FIRST retry (Pitfall 3). One ladder pass gives up (ELOCKED) after
+ *   ~46-190 ms randomized; withMapLock RE-ARMS the ladder on ELOCKED while
+ *   wall-clock budget remains (09-08 stress fix), so the deadline is the
+ *   effective bound — a low-end randomized ladder can no longer degrade a
+ *   contender that still had budget left.
  */
 export const LOCK_OPTS = {
   realpath: false,
@@ -73,6 +76,79 @@ export const LOCK_OPTS = {
 // Deadline-degrade wrapper (the hand-built ~40 lines)
 // ---------------------------------------------------------------------------
 
+/** One acquire attempt's outcome, with rejections folded into data. */
+type AcquireOutcome =
+  | 'deadline'
+  | { kind: 'acquired'; releaseLock: () => Promise<void> }
+  | { kind: 'failed'; code: string | undefined }
+
+/**
+ * Acquire the lock, re-arming proper-lockfile's retry ladder on ELOCKED
+ * until the wall-clock deadline expires.
+ *
+ * Why the loop exists (09-08 stress fix, found by the SC5 16-process gate):
+ * one ladder pass gives up with ELOCKED after ~46-190 ms RANDOMIZED. Under a
+ * 16-way boot storm a low-end pass can reject while most of the deadline
+ * budget remains — treating that first ELOCKED as terminal degraded workers
+ * that would have acquired comfortably inside the deadline (5/400 degrades
+ * measured). Only ELOCKED re-arms: non-transient classes (ENOENT missing
+ * parent, EACCES) keep their immediate-degrade semantics, and each re-arm is
+ * separated by the ladder's own internal sleeps — never a hot loop.
+ */
+async function acquireWithDeadline(
+  mapPath: string,
+  deadlineMs: number,
+): Promise<(() => Promise<void>) | 'degraded'> {
+  const deadlineAt = Date.now() + deadlineMs
+  let timer: NodeJS.Timeout | undefined
+  const deadline = new Promise<'deadline'>((resolve) => {
+    timer = setTimeout(() => resolve('deadline'), deadlineMs)
+  })
+
+  try {
+    for (;;) {
+      const lockPromise = lockfile.lock(mapPath, LOCK_OPTS)
+      const winner: AcquireOutcome = await Promise.race([
+        lockPromise.then(
+          (releaseLock) => ({ kind: 'acquired' as const, releaseLock }),
+          (err: unknown) => ({
+            kind: 'failed' as const,
+            code: (err as NodeJS.ErrnoException | null)?.code,
+          }),
+        ),
+        deadline,
+      ])
+      if (winner === 'deadline') {
+        // The deadline won while the acquire was still retrying. If the lock
+        // lands later anyway, release it immediately; swallow a late ELOCKED
+        // so it never surfaces as an unhandled rejection.
+        void lockPromise.then(
+          (releaseLock) => releaseLock().catch(() => {}),
+          () => {},
+        )
+        return 'degraded'
+      }
+      if (winner.kind === 'acquired') {
+        return winner.releaseLock
+      }
+      if (winner.code !== 'ELOCKED' || Date.now() >= deadlineAt) {
+        // Non-transient acquire failure (missing parent dir ENOENT,
+        // permission failure) or budget exhausted. Degrade — the hook never
+        // blocks on the lock and never throws from acquisition (Pitfall 3).
+        return 'degraded'
+      }
+      // ELOCKED with budget remaining: re-arm the ladder and race again.
+    }
+  } catch {
+    // Belt-and-braces for a synchronous throw out of lockfile.lock itself.
+    return 'degraded'
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer)
+    }
+  }
+}
+
 /**
  * Run `fn` while holding the exclusive lock on `mapPath`, giving up after
  * `deadlineMs` with the sentinel 'degraded'.
@@ -82,7 +158,10 @@ export const LOCK_OPTS = {
  *   released in finally (release failures swallowed).
  * - deadline expiry  → 'degraded'; if the pending acquire lands afterwards
  *   it is released immediately so no stale lock outlives the call.
- * - acquire error    → 'degraded' (ELOCKED, ENOENT, EACCES — any class).
+ * - ELOCKED before the deadline → the retry ladder is re-armed (see
+ *   acquireWithDeadline) so the DEADLINE, not the randomized ladder, is the
+ *   effective bound.
+ * - non-transient acquire error → 'degraded' (ENOENT, EACCES — immediate).
  * - `fn` throw       → lock released, error PROPAGATES to the caller (the
  *   facade turns it into its own degrade + single warn).
  */
@@ -91,37 +170,9 @@ export async function withMapLock<T>(
   deadlineMs: number,
   fn: () => Promise<T>,
 ): Promise<T | 'degraded'> {
-  let release: (() => Promise<void>) | undefined
-  let timer: NodeJS.Timeout | undefined
-
-  try {
-    const lockPromise = lockfile.lock(mapPath, LOCK_OPTS)
-    const winner = await Promise.race([
-      lockPromise.then((releaseLock) => ({ releaseLock })),
-      new Promise<'deadline'>((resolve) => {
-        timer = setTimeout(() => resolve('deadline'), deadlineMs)
-      }),
-    ])
-    if (winner === 'deadline') {
-      // The deadline won while the acquire was still retrying. If the lock
-      // lands later anyway, release it immediately; swallow a late ELOCKED
-      // so it never surfaces as an unhandled rejection.
-      void lockPromise.then(
-        (releaseLock) => releaseLock().catch(() => {}),
-        () => {},
-      )
-      return 'degraded'
-    }
-    release = winner.releaseLock
-  } catch {
-    // Acquire failed outright (retry exhaustion ELOCKED, missing parent dir
-    // ENOENT, permission failure). Degrade — the hook never blocks on the
-    // lock and never throws from acquisition (Pitfall 3).
+  const release = await acquireWithDeadline(mapPath, deadlineMs)
+  if (release === 'degraded') {
     return 'degraded'
-  } finally {
-    if (timer !== undefined) {
-      clearTimeout(timer)
-    }
   }
 
   try {

@@ -10,6 +10,11 @@ export default defineConfig({
     // It is NOT shipped to npm consumers — excluded via package.json#files enumeration.
     // See vendor/SKIPPED_GITLEAKS_RULES.md acceptance criterion grep gate.
     'detect-layer1': 'src/detect/layer1-regex/index.ts',
+    // TEST-ONLY entry: state-stress-worker is the SC5 16-process stress fixture
+    // spawned by tests/state/stress.test.ts (Plan 09-08). It is NOT shipped to
+    // npm consumers — package.json#files is an explicit enumeration that already
+    // excludes new dist artifacts; do NOT "fix" files[] to include it.
+    'state-stress-worker': 'tests/state/fixtures/stress-worker.ts',
   },
   format: ['esm'],
   target: 'node20',
@@ -17,6 +22,15 @@ export default defineConfig({
   clean: true,
   splitting: false,
   sourcemap: true,
+  // CJS-global shims for the ESM bundle (Plan 09-08, found by the SC5 stress
+  // gate): bundled CJS deps reference __filename/__dirname as free variables —
+  // write-file-atomic's getTmpname() does — and esbuild only auto-shims those
+  // for cjs OUTPUT format. Without this, every reversible persist through the
+  // dist bundle threw `ReferenceError: __filename is not defined` inside the
+  // locked transaction and degraded (source runs under vitest/tsx never hit
+  // it, which is why unit suites stayed green). tsup injects the shim only
+  // into modules that use the globals.
+  shims: true,
   // Bundle ALL npm dependencies into the output (node builtins stay external
   // automatically), EXCEPT the Layer 6b ML stack. Required for Claude Code plugin
   // distribution: plugins are git-cloned/fetched with NO `npm install`, so dist/cli.js and
