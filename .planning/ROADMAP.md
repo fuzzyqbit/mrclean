@@ -103,8 +103,8 @@ Plans:
 - [x] 09-02-PLAN.md — Session-map schema + structural secret floor + HMAC addressing + v2 formatter contracts (TDD; wave 1)
 
 **Wave 2** *(blocked on Wave 1)*
-- [ ] 09-03-PLAN.md — Encrypted map store: GCM envelope (authTagLength:16), key custody, total-error read, wfa fsync:false write (TDD; wave 2)
-- [ ] 09-04-PLAN.md — v2 token layer on PlaceholderManager: hydrate seam + drainable pending; v1 byte-identical (TDD; wave 2)
+- [x] 09-03-PLAN.md — Encrypted map store: GCM envelope (authTagLength:16), key custody, total-error read, wfa fsync:false write (TDD; wave 2)
+- [x] 09-04-PLAN.md — v2 token layer on PlaceholderManager: hydrate seam + drainable pending; v1 byte-identical (TDD; wave 2)
 
 **Wave 3** *(blocked on Wave 2)*
 - [ ] 09-05-PLAN.md — Lock recipe + deadline-degrade wrapper + locked allocate-and-persist transaction with reconcile/renames (TDD; wave 3)
