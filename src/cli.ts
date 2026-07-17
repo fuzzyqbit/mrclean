@@ -117,6 +117,22 @@ program
     await runDoctor({ verbose: opts.verbose, bench: opts.bench })
   })
 
+// restore subcommand (REVMODE-01) — operator-only, local
+//
+// The dynamic import is the ONLY sanctioned import site of src/restore/
+// (fence-locked in 10-07): the hook cold path never loads restore code, and
+// restore never becomes reachable from hook or MCP paths.
+program
+  .command('restore [file]')
+  .description(
+    'Restore policy-permitted placeholders from redacted text (stdin or file) — operator-only, local',
+  )
+  .option('--session <uuid>', 'Restrict restore to one session map')
+  .action(async (file: string | undefined, opts: { session?: string }) => {
+    const { runRestore } = await import('./restore/cli.js')
+    await runRestore({ file, session: opts.session })
+  })
+
 // Entrypoint guard: only parse argv when this file is the main module.
 // This prevents Commander from consuming process.argv during test imports.
 const isMain = import.meta.url === `file://${process.argv[1]}`
