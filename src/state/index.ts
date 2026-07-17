@@ -285,18 +285,34 @@ export async function persistAllocations(opts: PersistOpts): Promise<PersistResu
 // Rename application helpers (post-persist text correction)
 // ---------------------------------------------------------------------------
 
+/** Escape a literal string for embedding in a RegExp alternation. */
+const REGEXP_SPECIALS_RE = /[.*+?^${}()|[\]\\]/g
+
 /**
- * Apply placeholder renames to a substituted text: every occurrence of each
- * `from` token is replaced with its `to` token. Exact literal split/join —
- * tokens are unique bracketed strings, so renames are overlap-free and no
- * regex escaping is involved.
+ * Apply placeholder renames to a substituted text in ONE simultaneous pass:
+ * every occurrence of each `from` token is replaced with its `to` token, and
+ * a replacement output can NEVER be re-matched by a later rename.
+ *
+ * Simultaneity is load-bearing (CR-01): reconcilePending emits renames in
+ * pending order with strictly increasing counters, so whenever the store
+ * counter advanced between hydrate and persist AND the event allocated two
+ * or more values, rename i's `to` EQUALS rename i+1's `from` (both carry the
+ * store nonce). Sequential split/join application cascades such a chain
+ * (:006:→:007:→:008:), collapsing distinct originals onto one on-wire token
+ * (PH-03 break) and mis-addressing every Phase 10 restore of the earlier
+ * value. The single alternation pass replaces each ORIGINAL occurrence
+ * exactly once, so chains are inert. Tokens are literal bracketed strings —
+ * escaped before entering the pattern.
  */
 export function applyRenamesToText(text: string, renames: PlaceholderRename[]): string {
-  let result = text
-  for (const rename of renames) {
-    result = result.split(rename.from).join(rename.to)
+  if (renames.length === 0) {
+    return text
   }
-  return result
+  const byFrom = new Map<string, string>(renames.map((rename) => [rename.from, rename.to]))
+  const pattern = [...byFrom.keys()]
+    .map((from) => from.replace(REGEXP_SPECIALS_RE, '\\$&'))
+    .join('|')
+  return text.replace(new RegExp(pattern, 'g'), (match) => byFrom.get(match) ?? match)
 }
 
 /** Recursion guard for hostile/pathological payload nesting. */
