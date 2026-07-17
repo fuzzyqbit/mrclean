@@ -325,12 +325,16 @@ function validatePiiConfig(raw: unknown, filePath: string): MrcleanPiiConfigLaye
  * Mirrors the validatePii* shape. Throws ConfigReadError on type mismatch.
  *
  * T-08-01: fails closed on any non-boolean `enabled` — never silently coerces.
+ * T-09-01-01: fails closed on any ttl_hours that is not an integer >= 1 — a
+ * hostile/typo'd config cannot set the TTL to 0/negative/fractional to force
+ * instant orphan deletion or broken retention math (D-09).
  * Unknown keys inside [reversible] are silently dropped (matches parseToml
  * tolerance; FAIL-loud on unsupported keys is Phase 10 / REVMODE-12).
  *
- * Phase 8-07 / CR-01: returns a TRUE partial — a [reversible] table that omits
- * `enabled` (e.g. one carrying only future Phase-9 keys) parses to {} so it can
- * never clear a lower-layer opt-in. Default-filling is mergeConfigs' job.
+ * Phase 8-07 / CR-01: returns a TRUE partial — conditional spreads keep absent
+ * keys ABSENT (a [reversible] table carrying only unknown/future keys parses to
+ * {}) so it can never clear a lower-layer opt-in. Default-filling is
+ * mergeConfigs' job.
  */
 function validateReversibleConfig(raw: unknown, filePath: string): MrcleanReversibleConfigLayer {
   if (!isRecord(raw)) {
@@ -339,7 +343,16 @@ function validateReversibleConfig(raw: unknown, filePath: string): MrcleanRevers
   if (raw['enabled'] !== undefined && typeof raw['enabled'] !== 'boolean') {
     throw new ConfigReadError(filePath, '[reversible].enabled must be a boolean')
   }
-  return 'enabled' in raw ? { enabled: raw['enabled'] as boolean } : {}
+  if (raw['ttl_hours'] !== undefined) {
+    const v = raw['ttl_hours']
+    if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) {
+      throw new ConfigReadError(filePath, '[reversible].ttl_hours must be an integer >= 1')
+    }
+  }
+  return {
+    ...('enabled' in raw ? { enabled: raw['enabled'] as boolean } : {}),
+    ...('ttl_hours' in raw ? { ttl_hours: raw['ttl_hours'] as number } : {}),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -502,10 +515,11 @@ export async function readConfigLayer(filePath: string): Promise<MrcleanConfigLa
  *     keeps the ACCUMULATED value (never re-filled from the bundled default);
  *     a PRESENT field wins, including explicit false. Entity arrays themselves
  *     replace last-wins, NEVER concat. See ARCHITECTURE-v2-pii.md §"Config Surface".
- *   - reversible (Phase 8-01, CR-01 fix in 08-07): LAST-WINS on the `enabled`
- *     field only when a layer actually sets it — a partial [reversible] table
- *     (unknown/future keys only) leaves the accumulated value untouched;
- *     default { enabled: false } when no layer sets it.
+ *   - reversible (Phase 8-01, CR-01 fix in 08-07, ttl_hours in 09-01): per-field
+ *     LAST-WINS-WHEN-SET — each of `enabled` / `ttl_hours` independently keeps
+ *     the ACCUMULATED value unless the layer actually sets it; a partial
+ *     [reversible] table (unknown/future keys only) leaves both untouched;
+ *     default { enabled: false, ttl_hours: 24 } when no layer sets them.
  */
 export function mergeConfigs(...layers: ReadonlyArray<MrcleanConfigLayer>): MrcleanConfig {
   let dryRun: boolean = DEFAULT_CONFIG.dry_run
@@ -535,19 +549,28 @@ export function mergeConfigs(...layers: ReadonlyArray<MrcleanConfigLayer>): Mrcl
     },
   }
 
-  // reversible (Phase 8-01): copy into a new object — never alias the frozen default.
-  let reversible: MrcleanReversibleConfig = { enabled: DEFAULT_CONFIG.reversible.enabled }
+  // reversible (Phase 8-01, ttl_hours in 09-01): copy into a new object — never
+  // alias the frozen default.
+  let reversible: MrcleanReversibleConfig = {
+    enabled: DEFAULT_CONFIG.reversible.enabled,
+    ttl_hours: DEFAULT_CONFIG.reversible.ttl_hours,
+  }
 
   for (const layer of layers) {
     if (layer.dry_run !== undefined) dryRun = layer.dry_run
     if (layer.entropy !== undefined) entropy = layer.entropy
     if (layer.secrets_files !== undefined) secretsFiles = layer.secrets_files
     if (layer.rules !== undefined) rules = layer.rules
-    // reversible (Phase 8-01, CR-01 fix in 08-07): LAST-WINS only when the layer
-    // actually SETS enabled — a partial [reversible] table (unknown/future keys
-    // only) must not touch the accumulated value. New object, never a layer alias.
-    if (layer.reversible?.enabled !== undefined) {
-      reversible = { enabled: layer.reversible.enabled }
+    // reversible (Phase 8-01, CR-01 fix in 08-07, per-field in 09-01): each field
+    // independently LAST-WINS only when the layer actually SETS it (?? triggers on
+    // undefined only, so explicit false / any integer >= 1 wins) — a partial
+    // [reversible] table (unknown/future keys only) must not touch the accumulated
+    // values. New object every time, never a layer alias.
+    if (layer.reversible !== undefined) {
+      reversible = {
+        enabled: layer.reversible.enabled ?? reversible.enabled,
+        ttl_hours: layer.reversible.ttl_hours ?? reversible.ttl_hours,
+      }
     }
     if (layer.allowlist !== undefined) {
       allowlist = mergeAllowlists(allowlist, layer.allowlist)

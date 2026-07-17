@@ -12,8 +12,9 @@
  *   pii.regex.actions: ssn/credit_card → block (checksum-validated); email/phone → warn; ip → audit
  *   pii.ner.actions: PERSON/ORG → warn; LOC → audit  (NER is advisory, never a hard gate)
  *
- * Reversible defaults (Phase 8-01, REVMODE-02 groundwork):
+ * Reversible defaults (Phase 8-01, REVMODE-02 groundwork; ttl_hours Phase 9-01, D-09):
  *   reversible.enabled = false  ← master switch OFF; absent-[reversible] == shipped one-way guarantee
+ *   reversible.ttl_hours = 24   ← orphan-sweep TTL in hours; integer >= 1
  */
 
 import type { MrcleanConfig } from '../shared/types.js'
@@ -69,5 +70,6 @@ export const DEFAULT_CONFIG: MrcleanConfig = Object.freeze({
   }) as unknown as import('../shared/types.js').MrcleanPiiConfig,
   reversible: Object.freeze({
     enabled: false, // master switch OFF; absent-[reversible] == shipped one-way guarantee
+    ttl_hours: 24, // orphan-sweep TTL in hours; integer >= 1 — the ONLY new [reversible] key in Phase 9 (D-09)
   }) as unknown as import('../shared/types.js').MrcleanReversibleConfig,
 }) as unknown as MrcleanConfig

@@ -208,4 +208,97 @@ describe('readConfigLayer', () => {
     expect(pii?.regex).toBeUndefined()
     expect(pii?.ner).toEqual({ confidence: 0.9 })
   })
+
+  // Test L (Phase 9-01, D-09): ttl_hours = 0 fails closed — a hostile/typo'd config
+  // cannot force instant orphan deletion (T-09-01-01). Reason names the exact bound.
+  it('throws ConfigReadError when [reversible].ttl_hours is 0', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nttl_hours = 0\n')
+
+    // Act + Assert
+    await expect(readConfigLayer(configPath)).rejects.toBeInstanceOf(ConfigReadError)
+
+    try {
+      await readConfigLayer(configPath)
+      expect.unreachable('readConfigLayer must reject on [reversible].ttl_hours = 0')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigReadError)
+      const configErr = err as ConfigReadError
+      expect(configErr.reason).toBe('[reversible].ttl_hours must be an integer >= 1')
+      expect(configErr.path).toBe(configPath)
+    }
+  })
+
+  // Test M (Phase 9-01, D-09): wrong-typed ttl_hours (string) fails closed with the
+  // same structured reason — never silently coerces "24" to 24.
+  it('throws ConfigReadError when [reversible].ttl_hours is a string', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nttl_hours = "24"\n')
+
+    // Act + Assert
+    await expect(readConfigLayer(configPath)).rejects.toBeInstanceOf(ConfigReadError)
+
+    try {
+      await readConfigLayer(configPath)
+      expect.unreachable('readConfigLayer must reject on string [reversible].ttl_hours')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigReadError)
+      const configErr = err as ConfigReadError
+      expect(configErr.reason).toBe('[reversible].ttl_hours must be an integer >= 1')
+      expect(configErr.path).toBe(configPath)
+    }
+  })
+
+  // Test N (Phase 9-01, D-09): non-integer ttl_hours fails closed — TTL math is
+  // whole-hours only; 1.5 is rejected, not truncated.
+  it('throws ConfigReadError when [reversible].ttl_hours is a non-integer number', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nttl_hours = 1.5\n')
+
+    // Act + Assert
+    await expect(readConfigLayer(configPath)).rejects.toBeInstanceOf(ConfigReadError)
+
+    try {
+      await readConfigLayer(configPath)
+      expect.unreachable('readConfigLayer must reject on non-integer [reversible].ttl_hours')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigReadError)
+      const configErr = err as ConfigReadError
+      expect(configErr.reason).toBe('[reversible].ttl_hours must be an integer >= 1')
+      expect(configErr.path).toBe(configPath)
+    }
+  })
+
+  // Test O (Phase 9-01, D-09): a ttl-only [reversible] table parses to a TRUE partial —
+  // `enabled` is ABSENT (not undefined-assigned), so it can never clear a lower-layer
+  // opt-in. toStrictEqual is load-bearing: it fails on { ttl_hours: 48, enabled: undefined }.
+  it('returns reversible { ttl_hours: 48 } with enabled key absent for a ttl-only table', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nttl_hours = 48\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toStrictEqual({ ttl_hours: 48 })
+  })
+
+  // Test P (Phase 9-01, D-09 — Test C/I mirror): the ttl-aware validator keeps the
+  // unknown-key tolerance — a [reversible] table with only future keys (which D-09
+  // explicitly fences OUT of this phase) still parses to {}.
+  it('returns reversible {} when [reversible] carries only unknown future keys (ttl-aware validator)', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\ncipher = "aes-256-gcm"\nstore_path = "/tmp/x"\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toStrictEqual({})
+  })
 })
