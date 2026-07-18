@@ -91,3 +91,52 @@ jobs:
             done
           fi
           echo "Defense-in-depth PII canary-leak grep passed."
+
+      - name: Wire-safety gates — REVMODE-11 (SC2/SC3 unit + SC1a/SC4 integration)
+        # Plan 11-06 (SC3/SC4 elevation): every wire-safety suite is NAMED here so a
+        # routing regression cannot silently drop a gate from CI. The exact-count
+        # "Test Files N passed" grep is the anti-vacuity guard: `npx vitest run
+        # <file> --project=X` exits 0 with ZERO files collected when the file is
+        # not in project X's include list (demonstrated in-repo, 10-07) — a
+        # mis-routed file changes the collected count and fails the step even
+        # though vitest exits 0.
+        #
+        # `set -o pipefail` as the FIRST line is load-bearing and applies to both
+        # pipelines below: GitHub Actions runs plain `run:` steps with `bash -e {0}`
+        # — NO pipefail unless the step sets `shell: bash` — so without it a
+        # non-zero vitest exit whose output still contains an intact
+        # "Test Files N passed" line (e.g. a teardown or unhandled-rejection
+        # failure) would pass the guard silently.
+        #
+        # The integration pipeline runs after the npm ci + npm run build steps
+        # above; the integration project's globalSetup owns the tsup rebuild, so
+        # dist/ is guaranteed fresh for dist-parity + stress.
+        run: |
+          set -o pipefail
+          npx vitest run --project=unit tests/audit/restore-canary-leak.test.ts tests/state/chaos.test.ts tests/state/fs-interception.test.ts | tee /dev/stderr | grep -Eq "Test Files\s+3 passed"
+          npx vitest run --project=integration tests/hook/dist-parity.test.ts tests/state/stress.test.ts | tee /dev/stderr | grep -Eq "Test Files\s+2 passed"
+
+      - name: Defense-in-depth grep — reversible canary corpus
+        # Plan 11-06: belt-and-suspenders second pass mirroring the secret + PII
+        # greps above, over the pinned 10-08 reversible canary corpus (word,
+        # email, non-EXAMPLE AWS key). The wire-safety suites assert absence via
+        # assertNoCanaryLeak and byte-scans; this step catches any future
+        # test-bug where those assertions are silenced or skipped. Values are
+        # synthetic markers pinned for exactly this purpose (T-11-06-03) —
+        # printed only on FAILURE.
+        run: |
+          set -e
+          REVERSIBLE_CANARIES=(
+            "zz-canary-project-path-7g2"
+            "kim.canary@zz.invalid"
+            "AKIAIOSFODNN7EXAMPLX"
+          )
+          if [ -d .mrclean ]; then
+            for val in "${REVERSIBLE_CANARIES[@]}"; do
+              if grep -F "$val" .mrclean/audit*.jsonl 2>/dev/null; then
+                echo "::error::Reversible canary leak: '$val' found in audit log"
+                exit 1
+              fi
+            done
+          fi
+          echo "Defense-in-depth reversible canary-leak grep passed."
