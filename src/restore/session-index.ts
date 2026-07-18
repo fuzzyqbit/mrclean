@@ -101,6 +101,13 @@ async function listCandidateSids(sessionsDir: string): Promise<string[]> {
  * order), even though callers validate too (defense in depth): an invalid
  * filter returns an empty index having touched zero paths.
  *
+ * The filter comparison is case-insensitive (WR-02): UUID hex is
+ * case-insensitive per RFC 4122 and SESSION_ID_RE carries the `i` flag, so
+ * an uppercase operator-pasted sid must narrow to the lowercase on-disk
+ * session (randomUUID()/hook-payload names) instead of silently matching
+ * nothing. Normalization happens ONLY in the comparison — the sid handed to
+ * readSessionMapFile keeps its on-disk casing.
+ *
  * Corrupt/undecryptable maps are skipped silently and never counted in
  * `sessions` (they are janitor candidacy, not restore input).
  */
@@ -113,8 +120,11 @@ export async function buildRestoreIndex(
   }
   const { sessionsDir } = statePaths(baseDir)
   const discovered = await listCandidateSids(sessionsDir)
+  const normalizedFilter = sessionFilter?.toLowerCase()
   const candidates =
-    sessionFilter === undefined ? discovered : discovered.filter((sid) => sid === sessionFilter)
+    normalizedFilter === undefined
+      ? discovered
+      : discovered.filter((sid) => sid.toLowerCase() === normalizedFilter)
 
   const placeholders = new Map<string, string>()
   const secretPlaceholders = new Set<string>()

@@ -220,6 +220,27 @@ describe('buildRestoreIndex (read-side policy gate over the encrypted store)', (
     expect(result.placeholders.has(formatV2Token('WORD', 1, map2.nonce8))).toBe(false)
   })
 
+  it('matches an UPPERCASE sessionFilter against the lowercase on-disk session (RFC 4122 case-insensitive hex — WR-02)', async () => {
+    // Arrange — fixed lowercase sid with hex letters GUARANTEED (a random
+    // UUID could in principle be all digits, making toUpperCase a no-op).
+    const baseDir = await freshBaseDir()
+    const sid = 'aabbccdd-1122-4344-8daf-fedcba987654'
+    const map = buildFixtureMap(sid, [{ type: 'WORD', counter: 1, original: WORD_ORIGINAL_A }])
+    await persistFixtureMap(baseDir, map)
+    const upper = sid.toUpperCase()
+    expect(upper).not.toBe(sid) // non-vacuity: the filter really differs in case
+    expect(isValidSessionId(upper)).toBe(true) // the CLI hard gate accepts it too
+
+    // Act
+    const result = await buildRestoreIndex(baseDir, upper)
+
+    // Assert — the operator's uppercase paste narrows to the session instead
+    // of silently restoring nothing (the pre-fix behavior: sessions === 0).
+    expect(result.sessions).toBe(1)
+    expect(result.placeholders.size).toBe(1)
+    expect(result.placeholders.get(formatV2Token('WORD', 1, map.nonce8))).toBe(WORD_ORIGINAL_A)
+  })
+
   it('returns an empty index for a path-traversal sessionFilter even when valid maps exist', async () => {
     // Arrange — valid decryptable maps ARE on disk; the filter alone is hostile
     const baseDir = await freshBaseDir()
