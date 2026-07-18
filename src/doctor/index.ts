@@ -120,8 +120,26 @@ export async function computeDoctorReport(opts: {
       claudeJsonPath,
       cwd,
     )
-    results.push(await checkHookCanary(nodePath, hookBinPath || process.execPath))
-    results.push(await checkMcpCanary(nodePath, mcpBinPath || process.execPath))
+    if (hookBinPath === '') {
+      results.push({
+        name: 'hook-canary',
+        status: 'SKIP',
+        detail: 'skipped: no hook binary path registered',
+        exitCodeOnFail: 4,
+      })
+    } else {
+      results.push(await checkHookCanary(nodePath, hookBinPath))
+    }
+    if (mcpBinPath === '') {
+      results.push({
+        name: 'mcp-canary',
+        status: 'SKIP',
+        detail: 'skipped: no MCP binary path registered',
+        exitCodeOnFail: 4,
+      })
+    } else {
+      results.push(await checkMcpCanary(nodePath, mcpBinPath))
+    }
   } else {
     results.push({
       name: 'hook-canary',
