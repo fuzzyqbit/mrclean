@@ -157,8 +157,23 @@ Plans:
   3. Chaos tests gate CI: with a corrupt, missing, or chmod'd map, the canary is still redacted and no tool call is blocked
   4. An 8–16-process concurrency stress test gates the build: no lost or corrupted map entries, no duplicate placeholders for distinct originals, identical placeholders for identical originals
   5. THREAT_MODEL.md's reversible-mode section is finalized against the shipped implementation, and the copy-drift CI gate covers the "encrypted at rest" and honest-framing claims
-**Plans**: TBD
-**Note**: Every gate extends an existing shipped harness (UAT-2b headless canary, leak-grep, copy-drift, perf CI) — standard patterns, skip research-phase. Phase 10 re-homed the stale STATE.md todo "per-tool empirical verification of structured `tool_response` shapes" here (pre-reshape concern; belongs to the live canary gate, not the operator CLI).
+**Plans**: 7 plans
+
+Plans:
+**Wave 1** *(5 parallel plans, zero file overlap)*
+- [ ] 11-01-PLAN.md — SC1a dist-spawn parity gate + vitest.config dual-listing (sanctioned new tests/hook file) (wave 1)
+- [ ] 11-02-PLAN.md — SC2 fs-write interception (builtin patch + syncBuiltinESMExports, three channel probes) (wave 1)
+- [ ] 11-03-PLAN.md — IN-02/AR-10-05 cross-session collision demote-to-unmatched (TDD; wave 1)
+- [ ] 11-04-PLAN.md — IN-01 restore-CLI outer-catch honesty: zero counts + guarded fallback (TDD; wave 1)
+- [ ] 11-05-PLAN.md — SC1b live wire-safety UAT harness + MCP echo fixture + tool_response survey + HOOK-CONTRACT section (wave 1)
+
+**Wave 2** *(blocked on 11-01, 11-02)*
+- [ ] 11-06-PLAN.md — SC3/SC4 CI elevation: named count-guarded steps + reversible corpus greps + dispatch/gsd triggers + ubuntu pre-run + reversible-overhead perf row (wave 2)
+
+**Wave 3** *(blocked on 11-03, 11-05, 11-06)*
+- [ ] 11-07-PLAN.md — SC5 THREAT_MODEL shipped-fact finalization + paired copy-drift anchors + encrypted-at-rest honesty bans + phase regression gate (wave 3)
+
+**Note**: Every gate extends an existing shipped harness (UAT-2b headless canary, leak-grep, copy-drift, perf CI) — standard patterns, skip research-phase. Phase 10 re-homed the stale STATE.md todo "per-tool empirical verification of structured `tool_response` shapes" here (pre-reshape concern; belongs to the live canary gate, not the operator CLI). Planner pins (2026-07-17, adopting 11-RESEARCH open-question recommendations): OQ1 → workflow_dispatch + `gsd/**` push triggers on test.yml/canary-leak.yml with a one-time milestone-branch pre-run retiring the ubuntu stress-deadline risk (WORKER_DEADLINE_MS is the only knob, only on observed evidence — zero-degrade assertion untouched, T-09-08-06); OQ2 → no tee wrapper on the live leg (dist-parity is the stdout proof, the live leg is the wire proof); OQ3 → copy-drift anchors are 'verified against the shipped implementation' + 'not a defense against a same-user local attacker', with 'transcript ratchet' kept; OQ4 → reversible-overhead perf row ADOPTED as the cut-first task (11-06-T3). Additional planner pins: live-leg canaries are minted RUN-UNIQUE (the pinned unit corpus appears in this repo's planning docs, which prior GSD sessions read into `~/.claude/projects` transcripts — a whole-dir grep for pinned values would false-fail; run-unique minting restores the global-uniqueness premise; the pinned corpus stays authoritative for all deterministic gates and CI greps); the SC1b live leg is operator-run at verify-work (all plans autonomous — the executor never sets MRCLEAN_UAT=1); SC5 cites deterministic gates as shipped facts and does not wait on the live run (the copy-drift UUID gate keeps HOOK-CONTRACT/artifact consistent when the operator re-stamps); phase frozen-tree base = `8f370b9`, with `tests/hook/dist-parity.test.ts` as the ONLY sanctioned tests/hook addition.
 
 ## Progress
 
@@ -174,9 +189,9 @@ Plans:
 | 8. Contract Verification & Reversible Plumbing | v3.0 | 11/12 | Gap closure (round 3) | - |
 | 9. Session State Adapter | v3.0 | 0/8 | Planned | - |
 | 10. Operator Restore | v3.0 | 8/8 | Complete    | 2026-07-18 |
-| 11. Wire-Safety Verification & Hardening | v3.0 | 0/TBD | Not started | - |
+| 11. Wire-Safety Verification & Hardening | v3.0 | 0/7 | Planned | - |
 
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
 
 ---
-*Last updated: 2026-07-17 — Phase 10 planned (8 plans, 3 waves; RESEARCH assumptions A1–A5 pinned in the phase note). Next: `/gsd:execute-phase 10`.*
+*Last updated: 2026-07-17 — Phase 11 planned (7 plans, 3 waves; 11-RESEARCH open questions OQ1–OQ4 pinned in the phase note, live-leg run-unique canary pin recorded). Next: `/gsd:execute-phase 11`.*
