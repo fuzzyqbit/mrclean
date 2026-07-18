@@ -43,6 +43,9 @@ const SCANNED_SOURCES: ReadonlyArray<{ rel: string; isSource: boolean }> = [
   { rel: 'src/doctor/report.ts', isSource: true },
   { rel: 'src/mcp/tools/check.ts', isSource: true },
   { rel: 'src/mcp/tools/redact.ts', isSource: true },
+  // Doctor detail strings are user-facing encryption copy ("encrypted session
+  // state adapter active") — under the gate since 11-07 (SC5).
+  { rel: 'src/doctor/checks.ts', isSource: true },
 ]
 
 /** A single banned-phrase hit. */
@@ -104,6 +107,110 @@ describe('copy-drift gate (D-08): banned CLAIM phrases', () => {
     const offenders = scanForBannedPhrases(PII_BEST_EFFORT_DISCLAIMER, false)
     expect(offenders).toEqual([])
   })
+})
+
+/**
+ * Encrypted-at-rest honesty rows — Plan 11-07 Task 2 (REVMODE-11, SC5,
+ * T-11-07-01/03).
+ *
+ * Three encryption-overclaim SHAPES are banned (additive BANNED_COPY_PHRASES
+ * entries in src/shared/strings.ts). Per new regex, the file's standard three
+ * rows: full SCANNED_SOURCES scan clean, positive control (a synthetic
+ * overclaim IS flagged), and an honest-copy self-check (the same-user
+ * qualification and the doctor's encrypted-state detail are NOT flagged).
+ * Pitfall 5 discipline: ban the claim shape, never the words honest copy
+ * needs. Rule for future trips on LOCKED copy: NARROW THE REGEX — never edit
+ * LOCKED constants, never weaken a row to vacuity (the positive control keeps
+ * a narrowed regex honest).
+ */
+
+/** The honest key-custody qualification (THREAT_MODEL §4 shape) every ban must pass. */
+const HONEST_ENCRYPTION_QUALIFICATION =
+  'encrypted at rest; not a defense against a same-user local attacker'
+
+/** Doctor's user-facing encrypted-state detail (LOCKED constant in src/doctor/checks.ts). */
+const DOCTOR_ENCRYPTED_DETAIL =
+  'reversible mode: enabled — encrypted session state adapter active'
+
+/** The three 11-07 encryption-overclaim bans, resolved by regex-source fragment. */
+const ENCRYPTION_OVERCLAIM_BANS = [
+  {
+    shape: 'absolute-safety claim (encrypt… cannot be read/recovered/decrypted)',
+    sourceFragment: 'cannot be',
+    syntheticOverclaim: 'The map is encrypted so its contents cannot be read by anyone.',
+  },
+  {
+    shape: 'exclusive-access claim (only you/the operator can read/decrypt)',
+    sourceFragment: 'only (?:you|the operator)',
+    syntheticOverclaim: 'Only you can decrypt the session map.',
+  },
+  {
+    shape: 'unconditional-safety claim (safe even if/when/from)',
+    sourceFragment: 'safe even',
+    syntheticOverclaim: 'With encryption enabled your data is safe even if the machine is stolen.',
+  },
+] as const
+
+/** Resolve an 11-07 ban from BANNED_COPY_PHRASES by source fragment (throws — non-vacuous). */
+function findBannedPhrase(sourceFragment: string): RegExp {
+  const rx = BANNED_COPY_PHRASES.find((r) => r.source.includes(sourceFragment))
+  if (!rx) {
+    throw new Error(`BANNED_COPY_PHRASES has no entry whose source contains "${sourceFragment}"`)
+  }
+  return rx
+}
+
+/** Scan every SCANNED_SOURCES file with a SINGLE regex (same comment-stripping rules). */
+function scanSourcesForSinglePhrase(rx: RegExp): Array<{ source: string } & Offender> {
+  const offenders: Array<{ source: string } & Offender> = []
+  for (const { rel, isSource } of SCANNED_SOURCES) {
+    const content = readFileSync(path.join(repoRoot, rel), 'utf8')
+    const lines = content.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!
+      if (isSource && isCommentLine(line)) continue
+      if (rx.test(line)) {
+        offenders.push({ source: rel, line: i + 1, phrase: rx.source, text: line.trim() })
+      }
+    }
+  }
+  return offenders
+}
+
+describe('copy-drift gate extension (11-07): encrypted-at-rest overclaim shapes', () => {
+  it.each(ENCRYPTION_OVERCLAIM_BANS)(
+    'scan row: no scanned copy source trips the $shape ban',
+    ({ sourceFragment }) => {
+      const rx = findBannedPhrase(sourceFragment)
+      const offenders = scanSourcesForSinglePhrase(rx)
+      expect(
+        offenders,
+        `Encrypted-at-rest overclaim found:\n${offenders
+          .map((o) => `  ${o.source}:${o.line} [${o.phrase}] ${o.text}`)
+          .join('\n')}`,
+      ).toEqual([])
+    },
+  )
+
+  it.each(ENCRYPTION_OVERCLAIM_BANS)(
+    'positive control: a synthetic $shape IS flagged',
+    ({ sourceFragment, syntheticOverclaim }) => {
+      const rx = findBannedPhrase(sourceFragment)
+      // Proves the new ban actually fires — guards against a vacuous all-clean pass.
+      expect(rx.test(syntheticOverclaim)).toBe(true)
+    },
+  )
+
+  it.each(ENCRYPTION_OVERCLAIM_BANS)(
+    'honest-copy self-check: the qualification and doctor detail pass the $shape ban',
+    ({ sourceFragment }) => {
+      const rx = findBannedPhrase(sourceFragment)
+      // The honest key-custody qualification must never be collateral damage…
+      expect(rx.test(HONEST_ENCRYPTION_QUALIFICATION)).toBe(false)
+      // …nor the doctor's LOCKED encrypted-state detail (now a scanned source).
+      expect(rx.test(DOCTOR_ENCRYPTED_DETAIL)).toBe(false)
+    },
+  )
 })
 
 describe('disclaimer-presence gate (D-05)', () => {
