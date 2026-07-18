@@ -36,6 +36,12 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
+      # npm bundled with node 20.18.0 (the engines floor pin) has a known optional-deps
+      # resolution bug (npm/cli#4828) that drops rolldown's platform-specific native
+      # binding; 20.x/22.x ship a patched npm and are unaffected. Force latest npm on
+      # all legs so `npm ci` resolves optionalDependencies correctly everywhere.
+      - run: npm install -g npm@latest
+
       - run: npm ci
 
       - run: npm run build
