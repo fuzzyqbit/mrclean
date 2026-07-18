@@ -105,20 +105,37 @@ jobs:
         # mis-routed file changes the collected count and fails the step even
         # though vitest exits 0.
         #
-        # `set -o pipefail` as the FIRST line is load-bearing and applies to both
-        # pipelines below: GitHub Actions runs plain `run:` steps with `bash -e {0}`
-        # — NO pipefail unless the step sets `shell: bash` — so without it a
-        # non-zero vitest exit whose output still contains an intact
-        # "Test Files N passed" line (e.g. a teardown or unhandled-rejection
-        # failure) would pass the guard silently.
+        # Capture-then-grep (11-REVIEW WR-01): vitest output is captured to a
+        # temp file, echoed to the CI log, and ONLY THEN grepped. The previous
+        # `… | tee /dev/stderr | grep -Eq` form let grep -q exit at first match
+        # (POSIX-mandated) while vitest/tee were still writing the trailing
+        # summary lines — the resulting EPIPE/SIGPIPE (exit 141) under pipefail
+        # turned fully-green runs into intermittent false-reds. With no live
+        # pipe between vitest and the guard, that race is structurally gone.
+        # The explicit `[ "$status" -eq 0 ]` check preserves the property
+        # pipefail provided here: a non-zero vitest exit whose output still
+        # contains an intact "Test Files N passed" line (e.g. a teardown or
+        # unhandled-rejection failure) fails the step BEFORE the count guard
+        # can pass it. pipefail itself is retained defensively for any future
+        # pipeline added to this step.
         #
         # The integration pipeline runs after the npm ci + npm run build steps
         # above; the integration project's globalSetup owns the tsup rebuild, so
         # dist/ is guaranteed fresh for dist-parity + stress.
         run: |
           set -o pipefail
-          npx vitest run --project=unit tests/audit/restore-canary-leak.test.ts tests/state/chaos.test.ts tests/state/fs-interception.test.ts | tee /dev/stderr | grep -Eq "Test Files\s+3 passed"
-          npx vitest run --project=integration tests/hook/dist-parity.test.ts tests/state/stress.test.ts | tee /dev/stderr | grep -Eq "Test Files\s+2 passed"
+          run_and_guard() {
+            local project="$1" expected="$2"
+            shift 2
+            local out status=0
+            out="$(mktemp)"
+            npx vitest run --project="$project" "$@" >"$out" 2>&1 || status=$?
+            cat "$out"
+            [ "$status" -eq 0 ] || exit "$status"
+            grep -Eq "Test Files[[:space:]]+${expected} passed" "$out"
+          }
+          run_and_guard unit 3 tests/audit/restore-canary-leak.test.ts tests/state/chaos.test.ts tests/state/fs-interception.test.ts
+          run_and_guard integration 2 tests/hook/dist-parity.test.ts tests/state/stress.test.ts
 
       - name: Defense-in-depth grep — reversible canary corpus
         # Plan 11-06: belt-and-suspenders second pass mirroring the secret + PII
