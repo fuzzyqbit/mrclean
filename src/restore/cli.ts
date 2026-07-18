@@ -16,8 +16,10 @@
  *
  * Error domains (REVMODE-08, planner pin A5):
  * - HARD input errors exit 2: malformed --session (validated BEFORE any
- *   path derivation, sid never echoed — T-10-05-01) and unreadable input
- *   file (the echoed path is the operator's own argument). The gates set
+ *   path derivation, sid never echoed — T-10-05-01), unreadable input
+ *   file (the echoed path is the operator's own argument), and an errored
+ *   stdin stream (constant line, never stream-error text — 11-REVIEW
+ *   WR-04). The gates set
  *   `process.exitCode = 2` and RETURN — never `process.exit()` (WR-03):
  *   stderr writes are async when piped on POSIX, and process.exit() does
  *   not wait for pending stream flushes, so exiting immediately after
@@ -75,6 +77,7 @@ export interface RunRestoreOpts {
 const WARN_NO_MAPS = '[mrclean] restore: no readable session map — placeholders left unchanged\n'
 const WARN_AUDIT_FAILED = '[mrclean] restore: audit write failed — restored output unaffected\n'
 const ERR_BAD_SESSION = '[mrclean] restore: invalid --session id (expected UUID)\n'
+const ERR_STDIN_READ = '[mrclean] restore: cannot read stdin\n'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -158,7 +161,20 @@ export async function runRestore(opts: RunRestoreOpts): Promise<void> {
       return
     }
   } else {
-    input = await readAll(stdin)
+    // (2b) HARD gate (11-REVIEW WR-04): an errored stdin stream (closed fd,
+    // EIO on hangup, broken pipe upstream) is a hard input error exactly
+    // like the unreadable-file branch above — same constant-line + exitCode
+    // + return flush discipline, never stream-error text. Without this
+    // catch the readAll rejection escaped runRestore into src/cli.ts's
+    // top-level `await program.parseAsync(...)` as an unhandled-rejection
+    // crash: raw stack on stderr, exit 1 — neither contracted domain.
+    try {
+      input = await readAll(stdin)
+    } catch {
+      process.stderr.write(ERR_STDIN_READ)
+      process.exitCode = 2
+      return
+    }
   }
 
   // (3)-(7) total posture (state/index.ts persistAllocations precedent): a

@@ -14,6 +14,8 @@
  *   stdout empty, baseDir listings untouched (validated BEFORE any path
  *   derivation — T-10-05-01)
  * - unreadable input file ⇒ exit 2, ERR line carries the operator's own path
+ * - errored stdin stream ⇒ exit 2, constant ERR line, never stream-error
+ *   text or a raw stack (11-REVIEW WR-04)
  * - audit: exactly one action:'restore' JSONL line per run; hashes are the
  *   distinct SORTED redactedHash values of restored originals; raw originals
  *   NEVER appear in the file (hash-at-the-boundary — T-10-05-03)
@@ -50,6 +52,7 @@ import {
 
 const WARN_AUDIT_FAILED = '[mrclean] restore: audit write failed — restored output unaffected\n'
 const ERR_BAD_SESSION = '[mrclean] restore: invalid --session id (expected UUID)\n'
+const ERR_STDIN_READ = '[mrclean] restore: cannot read stdin\n'
 
 /** The always-last stderr line: counts summary. */
 function summaryLine(
@@ -309,6 +312,30 @@ describe('runRestore — hard input errors exit 2 (planner pin A5 boundary)', ()
     expect(run.exitCode).toBe(2)
     expect(run.stderr).toBe(`[mrclean] restore: cannot read input file: ${missingPath}\n`)
     expect(run.stdout).toBe('')
+  })
+
+  it('errored stdin stream: exit 2, constant ERR line, no stream-error text, stdout empty', async () => {
+    const baseDir = await makeTmpDir('base')
+    const cwd = await makeCwd()
+    await seedSession(baseDir, WORD_ORIGINAL)
+    const before = await snapshotListings(baseDir)
+    // First read raises — readAll's async iterator rejects (closed-fd / EIO
+    // on hangup / broken-pipe shapes; 11-REVIEW WR-04). Without the gate the
+    // rejection escaped runRestore and crashed the commander top-level await
+    // with a raw stack and exit 1 — neither contracted error domain.
+    const failingStdin = new Readable({
+      read() {
+        this.destroy(new Error('EIO: i/o error, read'))
+      },
+    })
+
+    const run = await captureRun({ baseDir, cwd, stdin: failingStdin })
+
+    expect(run.exitCode).toBe(2)
+    expect(run.stderr).toBe(ERR_STDIN_READ) // byte-locked constant line
+    expect(run.stderr).not.toContain('EIO') // never stream-error text
+    expect(run.stdout).toBe('')
+    expect(await snapshotListings(baseDir)).toEqual(before)
   })
 })
 
