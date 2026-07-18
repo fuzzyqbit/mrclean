@@ -56,6 +56,7 @@ Context note (outside the reviewed file list, no finding filed): repo-wide `npm 
 
 ### CR-01: Entrypoint guard makes the CLI (including `mrclean restore`) silently inert via symlinked bins, spaced paths, and on Windows
 
+**Status:** fixed — commit `4e09374`. Guard extracted to `src/shared/entrypoint.ts` (`isMainEntry`: direct pathToFileURL comparison, then realpath fallback — also correct under `--preserve-symlinks-main`) and applied to BOTH `src/cli.ts` and `src/mcp.ts`. Regression: `tests/cli/entrypoint-guard.test.ts` drives the extracted guard with the exact (import.meta.url, argv[1]) pairs Node produces (premise re-verified empirically on this Node: entry URL realpaths `/tmp` symlink prefix AND the link itself) — symlinked-bin, spaced-path (%20), wrong-module, undefined-argv, and missing-path rows, with non-vacuity asserts that the OLD naive comparison fails each repaired pair. A spawn-through-symlink row against the BUILT `dist/cli.js` was deliberately NOT added: dist/ is orchestrator-owned and rebuilt centrally post-merge, so a dist-spawning unit row would run red against the stale pre-fix bundle until the rebuild; that harness belongs to the integration project after dist is rebuilt (verifier: `ln -s <repo>/dist/cli.js /tmp/x && node /tmp/x --version` should print the version once rebuilt).
 **File:** `src/cli.ts:138`
 **Issue:** The main-module guard compares URLs by naive string interpolation:
 
@@ -105,6 +106,7 @@ Apply the same fix to `src/mcp.ts`. Add a regression test that spawns `dist/cli.
 
 ### WR-01: Tampered project-local `audit.jsonl` can drive restore totals to `Infinity`/negative — `mrclean_status` then violates its never-throw invariant
 
+**Status:** fixed — commit `32b4079`. `finiteOrZero` (Number-coercion) replaced by strict `counterOrZero` (`typeof value === 'number' && Number.isSafeInteger(value) && value >= 0`), accumulator clamped at `Number.MAX_SAFE_INTEGER` — totals are now always non-negative safe integers, so zod v4 `z.number()` in `statusOutputSchema` can never reject them. Tamper matrix added to `tests/audit/restore-log.test.ts`: `1e308`×2 (Infinity feeder), negatives, `true`, `[7]`, `'5'`, fractional `1.5`, and a MAX_SAFE_INTEGER×2 clamp row.
 **File:** `src/audit/restore-log.ts:164-165, 189-192` (surfaced via `src/mcp/tools/status.ts:112-119`)
 **Issue:** `finiteOrZero` guards each *line* (`Number.isFinite`), but not the *accumulator*, and `Number()` coercion accepts values the docstring claims are "counted as 0". Demonstrated during review with a 3-line crafted `audit.jsonl`:
 
@@ -127,6 +129,7 @@ Extend `tests/audit/restore-log.test.ts` with the `1e308`×2, negative, boolean,
 
 ### WR-02: Uppercase `--session` UUID passes validation but silently restores nothing
 
+**Status:** fixed — commit `a162909`. Filter comparison normalized once at the `buildRestoreIndex` boundary (`sid.toLowerCase() === sessionFilter.toLowerCase()`); the sid handed to `readSessionMapFile` keeps its on-disk casing, and the shared `SESSION_ID_RE` is untouched for hook-side use. Regression row in `tests/restore/session-index.test.ts` uses a FIXED lowercase sid (hex letters guaranteed — a random UUID could theoretically be all digits) uppercased as the filter: `sessions: 1` and the WORD pair indexed.
 **File:** `src/restore/session-index.ts:117` (with `src/state/session-map.ts:334-335` and `src/restore/cli.ts:135`)
 **Issue:** `SESSION_ID_RE` carries the `i` flag, so `isValidSessionId('ABC…-UPPERCASE-UUID')` is true and the CLI hard gate does not exit 2. But `buildRestoreIndex` narrows with a case-sensitive comparison against sids derived from on-disk filenames (lowercase, from `randomUUID()`/hook payloads):
 
@@ -146,6 +149,7 @@ Add a test row: seeded session + uppercased `--session` → `sessions: 1`.
 
 ### WR-03: `process.exit(2)` immediately after `process.stderr.write` can drop the diagnostic on piped stderr
 
+**Status:** fixed — commit `a23a99a`. Both hard gates now set `process.exitCode = 2` and `return`, letting the event loop drain and flush before Node exits with code 2. All four process-seam harnesses (tests/cli/restore, tests/restore/degrade, tests/restore/mixed-canary, tests/audit/restore-canary-leak) updated per the review's suggestion: they assert `process.exitCode` directly (captured then reset so a gate can never leak a nonzero code into the vitest worker) and keep a throw-on-`process.exit` stub as a regression guard.
 **File:** `src/restore/cli.ts:136-137, 147-148`
 **Issue:** Per Node's process-I/O documentation, writes to `process.stderr` are asynchronous when stderr is a pipe on POSIX, and `process.exit()` does not wait for pending stream writes. When the operator pipes stderr (e.g. `2>&1 | tee`, or captured by a wrapper script), the `ERR_BAD_SESSION` / `cannot read input file` line can be truncated or lost entirely — exit code 2 arrives with no explanation. The message is the only operator-facing diagnostic for the two hard gates.
 
@@ -163,23 +167,27 @@ if (session !== undefined && !isValidSessionId(session)) {
 
 ### IN-01: `runRestore` outer catch can report stale non-zero counts against pass-through output, and its fallback write can rethrow
 
+**Status:** deferred — Info findings are outside this fix pass's scope (Critical + Warning only).
 **File:** `src/restore/cli.ts:156-214`
 **Issue:** `counts` is assigned at step (5), before the stdout write at step (6). If `process.stdout.write(result.text)` throws (e.g. synchronous throw on a destroyed stream after downstream EPIPE), the catch emits the original `input` — but the always-last summary line still reports the pre-computed `restored=N`, contradicting the actual output. Additionally, the fallback `process.stdout.write(input)` inside the catch targets the same broken stream and can rethrow, escaping `runRestore` as an unhandled rejection despite the "cosmetic failure can never produce a nonzero exit" contract.
 **Fix:** in the catch, reset `counts = ZERO_COUNTS` before falling through to the summary, and wrap the fallback write in its own try/catch.
 
 ### IN-02: Cross-session placeholder collision is silent last-write-wins, not "structurally absent"
 
+**Status:** deferred — Info findings are outside this fix pass's scope (Critical + Warning only).
 **File:** `src/restore/session-index.ts:140`
 **Issue:** `placeholders.set(entry.placeholder, entry.original)` overwrites on identical tokens from different sessions (same TYPE + NNN + nonce8). With a 4-byte nonce this is birthday-bounded (~2⁻³² per session pair, not zero), so the union-scope comment's "cross-session collisions structurally absent" overstates the guarantee; a collision would silently restore one session's token to the other session's value (a wrong-value restore, the same class the OVF exclusion exists to prevent). The engine's secret-first check already makes restorable-vs-secret conflicts fail safe.
 **Fix:** on a duplicate key with a *different* original, delete the entry from `placeholders` (demote to unmatched) instead of overwriting — mirrors the OVF ambiguity treatment. One-line comment fix at minimum.
 
 ### IN-03: Restore audit hashes are dictionary-confirmable (accepted shipped discipline — for the record)
 
+**Status:** deferred — for-the-record finding; the review itself states no action required (accepted shipped discipline).
 **File:** `src/restore/cli.ts:187`
 **Issue:** `redactedHash` is an unsalted first-16-hex SHA-256. Anyone holding `<cwd>/.mrclean/audit.jsonl` (a committable project file) can confirm guessed restorable-class values (emails, names, word-list terms) against the `hashes` array. This matches the shipped hook audit discipline — the same values were already hashed by the same function at detection time — so no new value class is exposed; the marginal change is that restore replicates hashes into whichever project cwd the operator runs in. Contrast with `hmacAddress`, which is deliberately salted for exactly this dictionary-confirmation reason. No action required; documenting so the tradeoff stays a decision rather than an accident.
 
 ### IN-04: `readRawReversibleKeys` duplicates `readConfigLayer`'s read/parse scaffolding
 
+**Status:** deferred — Info findings are outside this fix pass's scope (Critical + Warning only).
 **File:** `src/config/index.ts:527-550`
 **Issue:** The ENOENT-→-empty, empty-file-→-empty, and parse-→-ConfigReadError scaffolding is copy-pasted from `readConfigLayer` (~20 lines). The two paths can drift (e.g. whitespace/BOM handling, error message shape) and doctor's raw scan would then disagree with the loader about the same file.
 **Fix:** extract a shared internal helper, e.g. `async function readTomlTable(filePath): Promise<Record<string, unknown> | null>` returning `null` for absent/empty, throwing `ConfigReadError` on malformed, and have both public functions consume it.
@@ -189,3 +197,4 @@ if (session !== undefined && !isValidSessionId(session)) {
 _Reviewed: 2026-07-17T23:53:59Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+_Fix pass: 2026-07-18T00:13:07Z — CR-01 `4e09374`, WR-01 `32b4079`, WR-02 `a162909`, WR-03 `a23a99a` fixed; IN-01..IN-04 deferred (out of fix scope). Fixer: Claude (gsd-code-fixer)_
