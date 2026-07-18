@@ -130,12 +130,22 @@ export async function writeRestoreAuditRecord(
  * Sum restored/unmatched counters over all `action: 'restore'` lines in
  * `<cwd>/.mrclean/audit.jsonl`.
  *
- * Total-error reader (T-10-03-03) — the audit file is untrusted after write:
+ * Total-error reader (T-10-03-03) — the audit file is untrusted after write
+ * (`<cwd>/.mrclean/audit.jsonl` is a project-tree file; a hostile cloned repo
+ * can ship it):
  *   - missing file (ENOENT)   => zeros
  *   - unreadable file         => zeros
  *   - malformed JSON line     => skipped, remaining lines still summed
- *   - non-numeric counter     => counted as 0 for that line (Number coercion guard)
- * Never throws — tampered audit lines cannot crash the status surface.
+ *   - counter not a non-negative safe integer (string, boolean, array,
+ *     negative, NaN, ±Infinity, 1e308, fractional) => counted as 0 for that
+ *     line (strict typeof + Number.isSafeInteger guard — WR-01: `Number()`
+ *     coercion accepted `true`/`[7]`/`'5'` and negatives)
+ *   - accumulator clamps at Number.MAX_SAFE_INTEGER (WR-01: per-line-finite
+ *     values like 1e308 could overflow the SUM to Infinity, which zod v4
+ *     `z.number()` rejects — the mrclean_status tool would return a tool
+ *     error instead of degrading)
+ * Never throws AND always resolves to non-negative safe integers — tampered
+ * audit lines cannot crash the status surface or its output-schema validation.
  */
 export async function aggregateRestoreCounters(
   cwd: string,
@@ -161,8 +171,14 @@ export async function aggregateRestoreCounters(
     }
     if (!isRestoreLine(parsed)) continue
 
-    restoredTotal += finiteOrZero(parsed['restored'])
-    unmatchedTotal += finiteOrZero(parsed['unmatched'])
+    restoredTotal = Math.min(
+      restoredTotal + counterOrZero(parsed['restored']),
+      Number.MAX_SAFE_INTEGER,
+    )
+    unmatchedTotal = Math.min(
+      unmatchedTotal + counterOrZero(parsed['unmatched']),
+      Number.MAX_SAFE_INTEGER,
+    )
   }
 
   return { restored_total: restoredTotal, unmatched_total: unmatchedTotal }
@@ -185,10 +201,15 @@ function isRestoreLine(parsed: unknown): parsed is Record<string, unknown> {
   )
 }
 
-/** Number-coerce a counter field; anything non-finite contributes 0. */
-function finiteOrZero(value: unknown): number {
-  const n = Number(value)
-  return Number.isFinite(n) ? n : 0
+/**
+ * Strict counter guard (WR-01): a tampered counter contributes ONLY when it
+ * is a non-negative safe integer. No `Number()` coercion — `Number(true)`,
+ * `Number([7])`, and `Number('5')` all coerce to numbers, contrary to the
+ * "tampered counter => 0" contract; negatives and per-line-finite overflow
+ * feeders (1e308) are equally rejected.
+ */
+function counterOrZero(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
 }
 
 function isEnoent(err: unknown): boolean {

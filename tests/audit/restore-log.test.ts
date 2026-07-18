@@ -235,6 +235,58 @@ describe('restore-log', () => {
         unmatched_total: 1,
       })
     })
+
+    // -----------------------------------------------------------------------
+    // WR-01 tamper matrix: `Number()`-coercible and overflow-feeding values
+    // must all count as 0; totals must stay non-negative SAFE integers so
+    // zod v4 `z.number()` in statusOutputSchema can never reject them
+    // (never-throw posture of mrclean_status — REVMODE-12).
+    // -----------------------------------------------------------------------
+
+    it('two 1e308 lines cannot drive the total to Infinity (per-line-finite overflow feeder => 0)', async () => {
+      await appendFile(auditPath, makeRestoreLine(1e308, 0) + '\n', 'utf8')
+      await appendFile(auditPath, makeRestoreLine(1e308, 0) + '\n', 'utf8')
+      await appendFile(auditPath, makeRestoreLine(2, 1) + '\n', 'utf8')
+
+      const totals = await aggregateRestoreCounters(cwd)
+      expect(totals).toEqual({ restored_total: 2, unmatched_total: 1 })
+      expect(Number.isSafeInteger(totals.restored_total)).toBe(true)
+    })
+
+    it('negative counters count as 0 — totals can never go negative', async () => {
+      await appendFile(auditPath, makeRestoreLine(-500, -500) + '\n', 'utf8')
+      await appendFile(auditPath, makeRestoreLine(1, 1) + '\n', 'utf8')
+
+      await expect(aggregateRestoreCounters(cwd)).resolves.toEqual({
+        restored_total: 1,
+        unmatched_total: 1,
+      })
+    })
+
+    it.each([
+      ['boolean true (Number(true) === 1)', true],
+      ['array [7] (Number([7]) === 7)', [7]],
+      ["numeric string '5' (Number('5') === 5)", '5'],
+      ['fractional 1.5 (not an integer count)', 1.5],
+    ])('Number()-coercible tamper value %s counts as 0', async (_label, tampered) => {
+      await appendFile(auditPath, makeRestoreLine(tampered, tampered) + '\n', 'utf8')
+      await appendFile(auditPath, makeRestoreLine(3, 2) + '\n', 'utf8')
+
+      await expect(aggregateRestoreCounters(cwd)).resolves.toEqual({
+        restored_total: 3,
+        unmatched_total: 2,
+      })
+    })
+
+    it('accumulator clamps at Number.MAX_SAFE_INTEGER for legitimately-shaped max-value lines', async () => {
+      await appendFile(auditPath, makeRestoreLine(Number.MAX_SAFE_INTEGER, 0) + '\n', 'utf8')
+      await appendFile(auditPath, makeRestoreLine(Number.MAX_SAFE_INTEGER, 0) + '\n', 'utf8')
+
+      const totals = await aggregateRestoreCounters(cwd)
+      expect(totals.restored_total).toBe(Number.MAX_SAFE_INTEGER)
+      expect(Number.isSafeInteger(totals.restored_total)).toBe(true)
+      expect(totals.unmatched_total).toBe(0)
+    })
   })
 
   // -------------------------------------------------------------------------
