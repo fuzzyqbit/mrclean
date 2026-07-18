@@ -38,7 +38,7 @@ Full detail + coverage tables: [`milestones/v2.0-ROADMAP.md`](milestones/v2.0-RO
 - [ ] **Phase 8: Contract Verification & Reversible Plumbing** — hook-contract unknowns settled empirically in live headless sessions; `[reversible]` config table + SessionEnd/SessionStart plumbing landed with zero behavior change; THREAT_MODEL.md reversible-mode section drafted
 - [ ] **Phase 9: Session State Adapter** — encrypted cross-process session map with content-addressed allocation, session-tagged v2 tokens, structural secret floor, and reason-aware janitor + TTL orphan sweep
 - [x] **Phase 10: Operator Restore** — `mrclean restore` CLI with policy-filtered exact-map restore, fail-one-way degradation, hash-only restore audit, honest doctor/status (completed 2026-07-17)
-- [ ] **Phase 11: Wire-Safety Verification & Hardening** — CI proves no wire re-exposure: live canary round-trip, fs-write interception, chaos + concurrency stress gates, THREAT_MODEL finalization + copy-drift
+- [x] **Phase 11: Wire-Safety Verification & Hardening** — CI proves no wire re-exposure: live canary round-trip, fs-write interception, chaos + concurrency stress gates, THREAT_MODEL finalization + copy-drift (completed 2026-07-18)
 
 ## Phase Details (v3.0)
 
@@ -171,7 +171,7 @@ Plans:
 - [x] 11-06-PLAN.md — SC3/SC4 CI elevation: named count-guarded steps + reversible corpus greps + dispatch/gsd triggers + ubuntu pre-run + reversible-overhead perf row (wave 2)
 
 **Wave 3** *(blocked on 11-03, 11-05, 11-06)*
-- [ ] 11-07-PLAN.md — SC5 THREAT_MODEL shipped-fact finalization + paired copy-drift anchors + encrypted-at-rest honesty bans + phase regression gate (wave 3)
+- [x] 11-07-PLAN.md — SC5 THREAT_MODEL shipped-fact finalization + paired copy-drift anchors + encrypted-at-rest honesty bans + phase regression gate (wave 3)
 
 **Note**: Every gate extends an existing shipped harness (UAT-2b headless canary, leak-grep, copy-drift, perf CI) — standard patterns, skip research-phase. Phase 10 re-homed the stale STATE.md todo "per-tool empirical verification of structured `tool_response` shapes" here (pre-reshape concern; belongs to the live canary gate, not the operator CLI). Planner pins (2026-07-17, adopting 11-RESEARCH open-question recommendations): OQ1 → workflow_dispatch + `gsd/**` push triggers on test.yml/canary-leak.yml with a one-time milestone-branch pre-run retiring the ubuntu stress-deadline risk (WORKER_DEADLINE_MS is the only knob, only on observed evidence — zero-degrade assertion untouched, T-09-08-06); OQ2 → no tee wrapper on the live leg (dist-parity is the stdout proof, the live leg is the wire proof); OQ3 → copy-drift anchors are 'verified against the shipped implementation' + 'not a defense against a same-user local attacker', with 'transcript ratchet' kept; OQ4 → reversible-overhead perf row ADOPTED as the cut-first task (11-06-T3). Additional planner pins: live-leg canaries are minted RUN-UNIQUE (the pinned unit corpus appears in this repo's planning docs, which prior GSD sessions read into `~/.claude/projects` transcripts — a whole-dir grep for pinned values would false-fail; run-unique minting restores the global-uniqueness premise; the pinned corpus stays authoritative for all deterministic gates and CI greps); the SC1b live leg is operator-run at verify-work (all plans autonomous — the executor never sets MRCLEAN_UAT=1); SC5 cites deterministic gates as shipped facts and does not wait on the live run (the copy-drift UUID gate keeps HOOK-CONTRACT/artifact consistent when the operator re-stamps); phase frozen-tree base = `8f370b9`, with `tests/hook/dist-parity.test.ts` as the ONLY sanctioned tests/hook addition.
 
@@ -189,7 +189,7 @@ Plans:
 | 8. Contract Verification & Reversible Plumbing | v3.0 | 11/12 | Gap closure (round 3) | - |
 | 9. Session State Adapter | v3.0 | 0/8 | Planned | - |
 | 10. Operator Restore | v3.0 | 8/8 | Complete    | 2026-07-18 |
-| 11. Wire-Safety Verification & Hardening | v3.0 | 6/7 | In Progress|  |
+| 11. Wire-Safety Verification & Hardening | v3.0 | 7/7 | Complete   | 2026-07-18 |
 
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
 
