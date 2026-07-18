@@ -439,10 +439,14 @@ describe.skipIf(!UAT_ENABLED)('@uat wire safety (REVMODE-11 SC1b)', () => {
   }
 
   /**
-   * Record-don't-assert: the ONLY hard assertion on a survey leg is harness
-   * integrity (the observer wrote entries). The verdict goes to the findings
-   * artifact; excerpt fields are sanitized so run-unique canaries never land
-   * in the COMMITTED artifact (T-11-05-01).
+   * Record-don't-assert: the ONLY hard assertions on a survey leg are harness
+   * integrity — the observer wrote entries, AND wrote one for the REQUESTED
+   * tool (11-REVIEW WR-03: a fallback to entries[0] could stamp a different
+   * tool's typeof/shape under this tool's name in the committed artifact that
+   * docs/HOOK-CONTRACT.md re-stamps from — a missing per-tool entry must be a
+   * LOUD recorded miss, never a silent substitution). The verdict goes to the
+   * findings artifact; excerpt fields are sanitized so run-unique canaries
+   * never land in the COMMITTED artifact (T-11-05-01).
    */
   function recordSurveyVerdict(toolName: string, logPath: string): void {
     const entries = readShapeEntries(logPath)
@@ -450,7 +454,11 @@ describe.skipIf(!UAT_ENABLED)('@uat wire safety (REVMODE-11 SC1b)', () => {
       entries.length,
       `harness integrity: postresp-log-hook wrote no entries to ${logPath}`,
     ).toBeGreaterThan(0)
-    const entry = entries.find((e) => e.tool_name === toolName) ?? entries[0]
+    const entry = entries.find((e) => e.tool_name === toolName)
+    expect(
+      entry,
+      `harness integrity: no ${toolName} entry in ${logPath} — observed tool_names: ${[...new Set(entries.map((e) => e.tool_name ?? 'unknown'))].join(', ')} (11-REVIEW WR-03: never record another tool's shape under this name)`,
+    ).toBeDefined()
     if (entry === undefined) return
     surveyVerdicts[toolName] = {
       verdict: `typeof tool_response = ${entry.t ?? 'unknown'}; ${summarizeShape(entry)}`,
