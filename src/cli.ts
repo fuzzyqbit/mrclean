@@ -11,11 +11,12 @@
  * IMPORTANT: commander is pinned to ^13.x (CLAUDE.md LOCK).
  * The .command().option().action().parseAsync() surface is identical in 13 and 14.
  *
- * The entrypoint guard (import.meta.url check) prevents parseAsync from running
- * when this module is imported in tests.
+ * The entrypoint guard (isMainEntry, shared/entrypoint.ts) prevents parseAsync
+ * from running when this module is imported in tests.
  */
 
 import { Command } from 'commander'
+import { isMainEntry } from './shared/entrypoint.js'
 import { VERSION } from './shared/version.js'
 
 const program = new Command()
@@ -135,8 +136,11 @@ program
 
 // Entrypoint guard: only parse argv when this file is the main module.
 // This prevents Commander from consuming process.argv during test imports.
-const isMain = import.meta.url === `file://${process.argv[1]}`
-if (isMain) {
+// URL-canonical comparison (realpath + pathToFileURL — CR-01): the former
+// naive `file://${argv[1]}` interpolation made the whole CLI silently inert
+// through symlinked bins (the npm/npx wiring shape), spaced paths, and on
+// Windows.
+if (isMainEntry(import.meta.url, process.argv[1])) {
   await program.parseAsync(process.argv)
 }
 
