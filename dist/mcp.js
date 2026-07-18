@@ -49079,8 +49079,14 @@ async function aggregateRestoreCounters(cwd) {
       continue;
     }
     if (!isRestoreLine(parsed)) continue;
-    restoredTotal += finiteOrZero(parsed["restored"]);
-    unmatchedTotal += finiteOrZero(parsed["unmatched"]);
+    restoredTotal = Math.min(
+      restoredTotal + counterOrZero(parsed["restored"]),
+      Number.MAX_SAFE_INTEGER
+    );
+    unmatchedTotal = Math.min(
+      unmatchedTotal + counterOrZero(parsed["unmatched"]),
+      Number.MAX_SAFE_INTEGER
+    );
   }
   return { restored_total: restoredTotal, unmatched_total: unmatchedTotal };
 }
@@ -49090,9 +49096,8 @@ function auditLogPath(cwd) {
 function isRestoreLine(parsed) {
   return typeof parsed === "object" && parsed !== null && parsed["action"] === "restore";
 }
-function finiteOrZero(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
+function counterOrZero(value) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
 }
 var init_restore_log = __esm({
   "src/audit/restore-log.ts"() {
@@ -49266,8 +49271,27 @@ var init_server3 = __esm({
 
 // src/mcp.ts
 init_esm_shims();
-var isMain = import.meta.url === `file://${process.argv[1]}`;
-if (isMain) {
+
+// src/shared/entrypoint.ts
+init_esm_shims();
+import { realpathSync } from "fs";
+import { pathToFileURL } from "url";
+function isMainEntry(importMetaUrl, argv1) {
+  if (argv1 === void 0) {
+    return false;
+  }
+  try {
+    if (importMetaUrl === pathToFileURL(argv1).href) {
+      return true;
+    }
+    return importMetaUrl === pathToFileURL(realpathSync(argv1)).href;
+  } catch {
+    return false;
+  }
+}
+
+// src/mcp.ts
+if (isMainEntry(import.meta.url, process.argv[1])) {
   const { runMcpServer: runMcpServer2 } = await Promise.resolve().then(() => (init_server3(), server_exports));
   await runMcpServer2();
 }

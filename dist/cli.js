@@ -40574,7 +40574,8 @@ async function buildRestoreIndex(baseDir, sessionFilter) {
   }
   const { sessionsDir } = statePaths(baseDir);
   const discovered = await listCandidateSids(sessionsDir);
-  const candidates = sessionFilter === void 0 ? discovered : discovered.filter((sid) => sid === sessionFilter);
+  const normalizedFilter = sessionFilter?.toLowerCase();
+  const candidates = normalizedFilter === void 0 ? discovered : discovered.filter((sid) => sid.toLowerCase() === normalizedFilter);
   const placeholders = /* @__PURE__ */ new Map();
   const secretPlaceholders = /* @__PURE__ */ new Set();
   let sessions = 0;
@@ -40644,7 +40645,8 @@ async function runRestore(opts) {
   } = opts;
   if (session !== void 0 && !isValidSessionId(session)) {
     process.stderr.write(ERR_BAD_SESSION);
-    process.exit(2);
+    process.exitCode = 2;
+    return;
   }
   let input;
   if (file !== void 0) {
@@ -40653,7 +40655,8 @@ async function runRestore(opts) {
     } catch {
       process.stderr.write(`[mrclean] restore: cannot read input file: ${file}
 `);
-      process.exit(2);
+      process.exitCode = 2;
+      return;
     }
   } else {
     input = await readAll(stdin);
@@ -40737,6 +40740,24 @@ var {
   Help
 } = import_index.default;
 
+// src/shared/entrypoint.ts
+init_esm_shims();
+import { realpathSync } from "fs";
+import { pathToFileURL } from "url";
+function isMainEntry(importMetaUrl, argv1) {
+  if (argv1 === void 0) {
+    return false;
+  }
+  try {
+    if (importMetaUrl === pathToFileURL(argv1).href) {
+      return true;
+    }
+    return importMetaUrl === pathToFileURL(realpathSync(argv1)).href;
+  } catch {
+    return false;
+  }
+}
+
 // src/cli.ts
 init_version();
 var program2 = new Command();
@@ -40794,8 +40815,7 @@ program2.command("restore [file]").description(
   const { runRestore: runRestore2 } = await Promise.resolve().then(() => (init_cli(), cli_exports));
   await runRestore2({ file, session: opts.session });
 });
-var isMain = import.meta.url === `file://${process.argv[1]}`;
-if (isMain) {
+if (isMainEntry(import.meta.url, process.argv[1])) {
   await program2.parseAsync(process.argv);
 }
 export {
