@@ -3390,7 +3390,7 @@ var init_package = __esm({
       ],
       type: "module",
       engines: {
-        node: ">=20.18.0"
+        node: ">=20.19.0"
       },
       bin: {
         mrclean: "./dist/cli.js",

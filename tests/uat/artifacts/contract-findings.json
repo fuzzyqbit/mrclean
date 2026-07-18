@@ -281,7 +281,7 @@
           "signals": {
             "typeof_tool_response": "object",
             "shape_summary": "object with top-level keys [type, file]",
-            "raw_excerpt_sanitized": "{\"type\":\"text\",\"file\":{\"filePath\":\"/var/folders/g9/_hcbr44x5bbg980rhc__4kl00000gn/T/mrclean-wire-qXOT3Q/project/notes.txt\",\"content\":\"survey-ok: plain fixture notes for the Read/Grep shape legs\\n\",\"numLines\":2,\"startLine\":1,\"totalLines\":2}}",
+            "raw_excerpt_sanitized": "{\"type\":\"text\",\"file\":{\"filePath\":\"/var/folders/g9/_hcbr44x5bbg980rhc__4kl00000gn/T/mrclean-wire-qaDPKV/project/notes.txt\",\"content\":\"survey-ok: plain fixture notes for the Read/Grep shape legs\\n\",\"numLines\":2,\"startLine\":1,\"totalLines\":2}}",
             "entries_observed": 1,
             "observed_tool_names": [
               "Read"
@@ -320,6 +320,29 @@
         }
       },
       "generated_by": "tests/uat/wire-safety.test.ts (MRCLEAN_UAT=1 opt-in, record-dont-assert)"
+    },
+    "wire_safety": {
+      "question": "SC1b: do canary originals ever reach the wire, and does a local restore re-enter it after --resume?",
+      "method": "live wire-safety legs: fixture MCP echo (env-fed run-unique canaries) + real HOME-prefixed mrclean hook; non-vacuity chain (v2 probe -> sandbox map -> restore restored>=1) before absence greps (stream / transcript / whole ~/.claude/projects tree); claude -p --resume <sid1> re-entry proof",
+      "claude_version": "2.1.212 (Claude Code)",
+      "date": "2026-07-18",
+      "verdict": "PASS: zero canary originals on the wire across run 1 and the post-restore resume; reversible substitution + operator-local restore round trip proven non-vacuously",
+      "signals": {
+        "resume_method": "claude -p --resume <sid1>",
+        "restore_summary": {
+          "restored": 1,
+          "unmatched": 0,
+          "secretSkipped": 1,
+          "sessions": 1
+        },
+        "word_canary_shape": "zz-wire-canary-<runToken8> (run-unique mint)",
+        "secret_canary_shape": "AKIA + 16 x [A-Z2-7] (dual-engine bait), non-EXAMPLE tail (run-unique mint)",
+        "run1_session_id": "754464aa-8f03-4c2c-94c7-1fbe992063cc",
+        "run2_session_id": "754464aa-8f03-4c2c-94c7-1fbe992063cc"
+      },
+      "evidence_paths": [
+        "/Users/me/.claude/projects/-private-var-folders-g9--hcbr44x5bbg980rhc--4kl00000gn-T-mrclean-wire-qaDPKV-project/754464aa-8f03-4c2c-94c7-1fbe992063cc.jsonl"
+      ]
     }
   }
 }
