@@ -17,7 +17,10 @@
  *      canary-absence greps.
  *   3. ABSENCE (hard-asserted, mrclean-owned invariant): canary originals
  *      absent from run-1 stream-json, the run-1 transcript, and EVERY file
- *      under ~/.claude/projects/**\/*.jsonl (whole-tree grep).
+ *      under ~/.claude/projects/**\/*.jsonl, scoped to wire-mirrored
+ *      type:user/assistant message records (tool_result/tool_use content) —
+ *      not raw whole-file bytes; see sc1b-resume-canary-leak.md for why a
+ *      raw grep false-positives on third-party hook_success attachments.
  *   4. Run 2 (--resume, with the E3 --continue fallback): after the LOCAL
  *      restore, the resumed wire still carries zero canary originals —
  *      restore is store-byte-inert (10-08), so it can never re-enter.
@@ -32,8 +35,8 @@
  * appear in this repo's planning docs, which prior GSD sessions have read
  * into transcripts under ~/.claude/projects — a whole-dir grep for those
  * strings would false-fail. This leg therefore MINTS run-unique canaries,
- * restoring the global-uniqueness premise the whole-tree grep needs. The
- * pinned corpus remains authoritative for all deterministic gates.
+ * restoring the global-uniqueness premise the scoped wire-mirrored grep
+ * needs. The pinned corpus remains authoritative for all deterministic gates.
  *
  * RECORD-DON'T-ASSERT boundary (Pitfall 5 — local CLI 2.1.212 vs the
  * 2.1.209 E1–E5 stamps): upstream contract claims (A2: MCP string-form
@@ -157,6 +160,100 @@ const V2_TAIL_PROBE = /<MRCLEAN:[A-Z0-9_]+:(?:\d{3}|OVF):[a-f0-9]{8}>/
 const V2_TOKEN_RE_G = /<MRCLEAN:[A-Z0-9_]+:(?:\d{3}|OVF):[a-f0-9]{8}>/g
 
 // ---------------------------------------------------------------------------
+// Wire-mirrored surface helpers (hoisted to module scope — shared by the
+// live suite below AND the token-free regression/non-vacuity fixture tests
+// in the deterministic guards block that follows)
+// ---------------------------------------------------------------------------
+
+interface ContentBlock {
+  type?: string
+  content?: unknown
+  text?: string
+  input?: unknown
+  name?: string
+}
+
+function blocksOf(message: { content?: unknown } | undefined): ContentBlock[] {
+  const content = message?.content
+  return Array.isArray(content) ? (content as ContentBlock[]) : []
+}
+
+interface TranscriptToolData {
+  found: boolean
+  toolResults: string
+  toolUseInputs: string
+}
+
+/** tool_result contents + tool_use inputs from a transcript jsonl. */
+function extractTranscriptToolData(transcriptPath: string | null): TranscriptToolData {
+  if (transcriptPath === null) return { found: false, toolResults: '', toolUseInputs: '' }
+  const results: string[] = []
+  const inputs: string[] = []
+  for (const line of readFileSync(transcriptPath, 'utf8').split('\n')) {
+    if (line.trim() === '') continue
+    let obj: unknown
+    try {
+      obj = JSON.parse(line)
+    } catch {
+      continue
+    }
+    const message = (obj as { message?: { content?: unknown } }).message
+    for (const block of blocksOf(message)) {
+      if (block.type === 'tool_result') results.push(JSON.stringify(block.content ?? ''))
+      if (block.type === 'tool_use') inputs.push(JSON.stringify(block.input ?? ''))
+    }
+  }
+  return { found: true, toolResults: results.join('\n'), toolUseInputs: inputs.join('\n') }
+}
+
+/**
+ * Scoped grep: EVERY *.jsonl under ~/.claude/projects (or projectsDirOverride
+ * when supplied, for fixture testing), but the canary check only looks
+ * inside each file's wire-mirrored surface — the tool_result/tool_use
+ * content blocks of type:"user"/"assistant" message records extracted by
+ * extractTranscriptToolData — NOT raw whole-file bytes. A raw whole-file
+ * grep false-positives on non-wire hook_success attachments: Claude Code
+ * archives every hook's raw stdout into the transcript regardless of which
+ * hook produced it, so an ambient third-party hook's own bookkeeping can
+ * carry a canary without it ever having reached the wire (diagnosed in
+ * .planning/debug/sc1b-resume-canary-leak.md). Strictly stronger than
+ * per-transcript greps ONLY because the canaries are minted run-unique
+ * (planner pin — see file header).
+ */
+function grepProjectsTreeForCanaries(label: string, projectsDirOverride?: string): void {
+  const projectsDir = projectsDirOverride ?? path.join(homedir(), '.claude', 'projects')
+  let names: string[] = []
+  try {
+    names = readdirSync(projectsDir, { recursive: true, encoding: 'utf8' })
+  } catch (error) {
+    throw new Error(`harness integrity: cannot walk ${projectsDir} (${String(error)})`)
+  }
+  const jsonlFiles = names.filter((n) => n.endsWith('.jsonl'))
+  expect(
+    jsonlFiles.length,
+    'harness integrity: zero transcript jsonl files under ~/.claude/projects',
+  ).toBeGreaterThan(0)
+  const hits: string[] = []
+  for (const rel of jsonlFiles) {
+    const full = path.join(projectsDir, rel)
+    let raw = ''
+    try {
+      raw = readFileSync(full, 'utf8')
+    } catch {
+      continue
+    }
+    // RED (pre-fix): raw whole-file byte grep — trips on non-wire
+    // hook_success attachments (sc1b false positive).
+    if (raw.includes(WORD_LIVE)) hits.push(`${full} [WORD_LIVE]`)
+    if (raw.includes(SECRET_LIVE)) hits.push(`${full} [SECRET_LIVE]`)
+  }
+  expect(
+    hits,
+    `${label}: canary originals found in wire-mirrored records under ~/.claude/projects`,
+  ).toEqual([])
+}
+
+// ---------------------------------------------------------------------------
 // Deterministic guards — run in EVERY mode (no tokens, no claude, no network)
 // ---------------------------------------------------------------------------
 
@@ -179,6 +276,49 @@ describe('wire-safety deterministic guards (token-free)', () => {
     // Positive control: the regex DOES match mrclean's own tool names.
     expect(MRCLEAN_TOOL_RE.test('mcp__mrclean__mrclean_check')).toBe(true)
     expect(MRCLEAN_TOOL_RE.test('mcp__plugin_mrclean_mrclean__mrclean_redact')).toBe(true)
+  })
+
+  test('regression-fixture: a non-wire hook_success attachment carrying a raw canary does NOT trip the absence assertion (sc1b false positive)', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'mrclean-grep-scope-'))
+    try {
+      const projectDir = path.join(dir, 'fake-project')
+      mkdirSync(projectDir, { recursive: true })
+      const record = {
+        type: 'attachment',
+        attachment: {
+          type: 'hook_success',
+          hookName: 'session-activity-tracker',
+          command: '/Users/operator/.claude/plugins/ecc/hooks/session-activity-tracker.js',
+          stdout: JSON.stringify({ path: WORD_LIVE, key: SECRET_LIVE }),
+        },
+      }
+      writeFileSync(path.join(projectDir, 'fixture.jsonl'), `${JSON.stringify(record)}\n`)
+      expect(() => {
+        grepProjectsTreeForCanaries('regression-fixture', dir)
+      }).not.toThrow()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('positive-control: a genuine wire-mirrored tool_result record carrying a canary DOES trip the absence assertion (non-vacuity)', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'mrclean-grep-scope-'))
+    try {
+      const projectDir = path.join(dir, 'fake-project')
+      mkdirSync(projectDir, { recursive: true })
+      const record = {
+        type: 'user',
+        message: {
+          content: [{ type: 'tool_result', content: `leaked: ${WORD_LIVE}` }],
+        },
+      }
+      writeFileSync(path.join(projectDir, 'fixture.jsonl'), `${JSON.stringify(record)}\n`)
+      expect(() => {
+        grepProjectsTreeForCanaries('positive-control', dir)
+      }).toThrow()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
 
@@ -280,19 +420,6 @@ describe.skipIf(!UAT_ENABLED)('@uat wire safety (REVMODE-11 SC1b)', () => {
     }
   }
 
-  interface ContentBlock {
-    type?: string
-    content?: unknown
-    text?: string
-    input?: unknown
-    name?: string
-  }
-
-  function blocksOf(message: { content?: unknown } | undefined): ContentBlock[] {
-    const content = message?.content
-    return Array.isArray(content) ? (content as ContentBlock[]) : []
-  }
-
   /** Serialized tool_result contents from stream-json user events (model-facing signal). */
   function extractToolResultText(run: ClaudeRun): string {
     const chunks: string[] = []
@@ -325,34 +452,6 @@ describe.skipIf(!UAT_ENABLED)('@uat wire safety (REVMODE-11 SC1b)', () => {
     return null
   }
 
-  interface TranscriptToolData {
-    found: boolean
-    toolResults: string
-    toolUseInputs: string
-  }
-
-  /** tool_result contents + tool_use inputs from a transcript jsonl. */
-  function extractTranscriptToolData(transcriptPath: string | null): TranscriptToolData {
-    if (transcriptPath === null) return { found: false, toolResults: '', toolUseInputs: '' }
-    const results: string[] = []
-    const inputs: string[] = []
-    for (const line of readFileSync(transcriptPath, 'utf8').split('\n')) {
-      if (line.trim() === '') continue
-      let obj: unknown
-      try {
-        obj = JSON.parse(line)
-      } catch {
-        continue
-      }
-      const message = (obj as { message?: { content?: unknown } }).message
-      for (const block of blocksOf(message)) {
-        if (block.type === 'tool_result') results.push(JSON.stringify(block.content ?? ''))
-        if (block.type === 'tool_use') inputs.push(JSON.stringify(block.input ?? ''))
-      }
-    }
-    return { found: true, toolResults: results.join('\n'), toolUseInputs: inputs.join('\n') }
-  }
-
   /** Replace canary values before anything is recorded to the COMMITTED artifact. */
   function sanitizeForArtifact(textValue: string): string {
     return textValue.split(WORD_LIVE).join('<CANARY_WORD>').split(SECRET_LIVE).join('<CANARY_SECRET>')
@@ -362,39 +461,6 @@ describe.skipIf(!UAT_ENABLED)('@uat wire safety (REVMODE-11 SC1b)', () => {
   function expectNoCanaries(textValue: string, label: string): void {
     expect(textValue.includes(WORD_LIVE), `${label}: WORD_LIVE canary original found on the wire`).toBe(false)
     expect(textValue.includes(SECRET_LIVE), `${label}: SECRET_LIVE canary original found on the wire`).toBe(false)
-  }
-
-  /**
-   * Whole-tree grep: EVERY *.jsonl under ~/.claude/projects. Safe and
-   * strictly stronger than per-transcript greps ONLY because the canaries
-   * are minted run-unique (planner pin — see file header).
-   */
-  function grepProjectsTreeForCanaries(label: string): void {
-    const projectsDir = path.join(homedir(), '.claude', 'projects')
-    let names: string[] = []
-    try {
-      names = readdirSync(projectsDir, { recursive: true, encoding: 'utf8' })
-    } catch (error) {
-      throw new Error(`harness integrity: cannot walk ${projectsDir} (${String(error)})`)
-    }
-    const jsonlFiles = names.filter((n) => n.endsWith('.jsonl'))
-    expect(
-      jsonlFiles.length,
-      'harness integrity: zero transcript jsonl files under ~/.claude/projects',
-    ).toBeGreaterThan(0)
-    const hits: string[] = []
-    for (const rel of jsonlFiles) {
-      const full = path.join(projectsDir, rel)
-      let raw = ''
-      try {
-        raw = readFileSync(full, 'utf8')
-      } catch {
-        continue
-      }
-      if (raw.includes(WORD_LIVE)) hits.push(`${full} [WORD_LIVE]`)
-      if (raw.includes(SECRET_LIVE)) hits.push(`${full} [SECRET_LIVE]`)
-    }
-    expect(hits, `${label}: canary originals found under ~/.claude/projects`).toEqual([])
   }
 
   // Survey side-file parsing (readLogEntries shape, duplicated by value —
