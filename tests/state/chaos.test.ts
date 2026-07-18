@@ -33,10 +33,10 @@
  * re-derived: magic(8) | version(1) | IV(12) | tag(16) | ct(N).
  */
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
-import { chmod, mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises'
+import { chmod, copyFile, mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 
 import { handlePostToolUse } from '../../src/hook/handlers/post-tool-use.js'
 import {
@@ -143,6 +143,34 @@ function stripNonceTails(output: PostToolUseOutput | null): unknown {
   return JSON.parse(JSON.stringify(output).replace(V2_TAIL_RE, '$1>'))
 }
 
+/**
+ * 11-REVIEW WR-02: env-gated audit-sink export for the CI defense-in-depth
+ * grep (canary-leak.yml "reversible canary corpus" step). The sandboxes this
+ * suite mints live under os.tmpdir() and are removed in afterEach — CI can
+ * never scan them in place. When MRCLEAN_TEST_AUDIT_EXPORT_DIR is set (the
+ * wire-safety CI step sets it) each sandbox audit.jsonl is copied there
+ * BEFORE removal; the CI step greps the copies and FAILS when the exported
+ * set is empty, so a silenced in-test assertion (or broken export wiring)
+ * surfaces loud. Best-effort: a copy failure never fails the suite — the CI
+ * count gate is the loud end. Unset env (every local run) ⇒ exact no-op.
+ * Duplicated by value across the wire-safety suites (never cross-imported).
+ */
+async function exportAuditSink(dir: string, label: string): Promise<void> {
+  const exportDir = process.env['MRCLEAN_TEST_AUDIT_EXPORT_DIR']
+  if (exportDir === undefined || exportDir === '') return
+  try {
+    await mkdir(exportDir, { recursive: true })
+    await copyFile(
+      join(dir, '.mrclean', 'audit.jsonl'),
+      join(exportDir, `${label}-${basename(dir)}-audit.jsonl`),
+    )
+  } catch {
+    // ENOENT = a sandbox without an audit sink (expected for home dirs —
+    // audit rides the cwd sandboxes); any real copy failure surfaces via
+    // the CI step's empty-set gate.
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
@@ -162,9 +190,9 @@ describe.skipIf(IS_WIN32)('chaos one-way parity (handler level, real state modul
   afterEach(async () => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
-    await Promise.all(
-      cleanupDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })),
-    )
+    const dirs = cleanupDirs.splice(0)
+    await Promise.all(dirs.map((dir) => exportAuditSink(dir, 'chaos')))
+    await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })))
   })
 
   /** Create a HOME with (or without) a user config enabling [reversible]. */

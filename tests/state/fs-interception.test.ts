@@ -40,10 +40,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import { syncBuiltinESMExports } from 'node:module'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { Readable } from 'node:stream'
 
 import {
@@ -291,6 +291,33 @@ async function captureRestoreRun(opts: {
   return { stdout, stderr, exitCode }
 }
 
+/**
+ * 11-REVIEW WR-02: env-gated audit-sink export for the CI defense-in-depth
+ * grep (canary-leak.yml "reversible canary corpus" step). The sandboxes this
+ * suite mints live under os.tmpdir() and are removed in afterEach — CI can
+ * never scan them in place. When MRCLEAN_TEST_AUDIT_EXPORT_DIR is set (the
+ * wire-safety CI step sets it) the cwd sandbox audit.jsonl is copied there
+ * BEFORE removal; the CI step greps the copies and FAILS when the exported
+ * set is empty, so a silenced in-test assertion (or broken export wiring)
+ * surfaces loud. Best-effort: a copy failure never fails the suite — the CI
+ * count gate is the loud end. Unset env (every local run) ⇒ exact no-op.
+ * Duplicated by value across the wire-safety suites (never cross-imported).
+ */
+async function exportAuditSink(dir: string, label: string): Promise<void> {
+  const exportDir = process.env['MRCLEAN_TEST_AUDIT_EXPORT_DIR']
+  if (exportDir === undefined || exportDir === '') return
+  try {
+    await mkdir(exportDir, { recursive: true })
+    await copyFile(
+      join(dir, '.mrclean', 'audit.jsonl'),
+      join(exportDir, `${label}-${basename(dir)}-audit.jsonl`),
+    )
+  } catch {
+    // ENOENT = a sandbox whose test wrote no audit line (expected); any real
+    // copy failure surfaces via the CI step's empty-set gate.
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
@@ -316,6 +343,9 @@ describe.skipIf(IS_WIN32)('SC2 fs-write interception (REVMODE-11 — transient-w
     // builtins even when the body throws before installing its finally.
     restorePatch()
     captured = []
+    // 11-REVIEW WR-02: export AFTER restorePatch() — the copy must ride the
+    // ORIGINAL fs APIs, never the patched ones.
+    await exportAuditSink(cwdDir, 'fs-intercept')
     await rm(baseDir, { recursive: true, force: true })
     await rm(cwdDir, { recursive: true, force: true })
   })
