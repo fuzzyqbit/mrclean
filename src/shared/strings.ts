@@ -48,4 +48,17 @@ export const BANNED_COPY_PHRASES: readonly RegExp[] = [
   // "guarantees all" / "guarantees that every" — the positive claim shape ONLY.
   // NOT a bare /guarantee/ (the disclaimer's "not a guarantee" must pass).
   /\bguarantees? (that )?(all|every) /i,
+  // Encrypted-at-rest absolute-safety claim (11-07): "encrypted … cannot be
+  // read/recovered/decrypted". Bans the impossibility shape only — the honest
+  // qualification ("encrypted at rest; not a defense against a same-user local
+  // attacker") carries no "cannot be" clause and passes.
+  /\bencrypt\w*[^.]*\bcannot be (?:read|recovered|decrypted)\b/i,
+  // Exclusive-access claim (11-07): "only you/the operator can read/decrypt".
+  // A same-user local attacker can too — honest copy states that limit instead
+  // of an exclusivity claim, so it passes.
+  /\bonly (?:you|the operator) can (?:read|decrypt)\b/i,
+  // Unconditional-safety claim (11-07): "safe even if/when/from …". File-based
+  // key custody is conditional; honest copy names the boundary (same-user local
+  // attacker) rather than claiming unconditional safety, so it passes.
+  /\bsafe even (?:if|when|from)\b/i,
 ]
