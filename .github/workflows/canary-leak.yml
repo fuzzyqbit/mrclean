@@ -135,7 +135,7 @@ jobs:
             shift 2
             local out status=0
             out="$(mktemp)"
-            npx vitest run --project="$project" "$@" >"$out" 2>&1 || status=$?
+            npx vitest run --no-color --project="$project" "$@" >"$out" 2>&1 || status=$?
             cat "$out"
             [ "$status" -eq 0 ] || exit "$status"
             grep -Eq "Test Files[[:space:]]+${expected} passed" "$out"
