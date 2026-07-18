@@ -169,6 +169,63 @@ session — SC3's live observable satisfied.
 
 ---
 
+## Per-tool tool_response shapes (PostToolUse input)
+
+**Question (re-homed Phase 10 STATE.md todo):** does the shipped handler's
+Step 3 coercion (`typeof tool_response === 'string' ? tool_response :
+JSON.stringify(tool_response)` — `src/hook/handlers/post-tool-use.ts`) scan
+structured `tool_response` INPUT shapes adequately per tool? Upstream docs
+show only a Bash string example; the per-tool input shape is undocumented.
+This is the INPUT-side complement of E1's OUTPUT-side shape validation.
+
+**Verdict: pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212).**
+Verdicts here are **recorded, never asserted** (Pattern 2 discipline — the
+harness reports upstream drift as findings instead of red CI). The 2.1.209
+stamps on the E-sections above remain in force until that run re-stamps them.
+
+### Per-tool matrix
+
+| Tool | `typeof tool_response` | Structure observed | Stringify-coercion adequacy |
+|------|------------------------|--------------------|-----------------------------|
+| Bash | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) |
+| Read | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) |
+| Grep | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) |
+| MCP (mcp__wire-canary__echo_project_notes) | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) | pending first MRCLEAN_UAT=1 wire-safety run (CLI 2.1.212) |
+
+### Evidence
+
+Filled by the `tests/uat/wire-safety.test.ts` survey legs: the
+`tool_response_shapes` record in
+[`tests/uat/artifacts/contract-findings.json`](../tests/uat/artifacts/contract-findings.json),
+captured by the parallel observer hook
+`tests/uat/fixtures/postresp-log-hook.sh` (appends
+`{tool_name, typeof tool_response, truncated raw JSON}` per PostToolUse
+event; hooks on one event run in parallel, so the observer records the raw
+pre-substitution payload even alongside mrclean's real hook). Run via the
+[Re-verification procedure](#re-verification-procedure); when the live run
+re-stamps this matrix, update the doc and the artifact TOGETHER — the
+session-UUID traceability gate (tests/copy-drift.test.ts) build-enforces
+that any session UUID quoted here traces to the artifact. This section
+deliberately quotes none until then.
+
+### Downstream implications
+
+- **The E1 asymmetry stays the interpretation lens** for whatever the survey
+  records: string `updatedToolOutput` is honored for MCP tools and REJECTED
+  for built-in Bash
+  ([#68951](https://github.com/anthropics/claude-code/issues/68951) /
+  [#77587](https://github.com/anthropics/claude-code/issues/77587) — both
+  OPEN as of 2026-07-17). The INPUT-side shapes recorded here say whether
+  Step 3's `JSON.stringify` sees the full structured payload; the
+  OUTPUT-side validation in §E1 says whether a rewritten result is accepted
+  back per tool.
+- **Detection-coverage consequence:** if a tool's `tool_response` arrives as
+  a structured object whose stringified form omits or transforms scanned
+  text, detection coverage for that tool is affected — that would be a
+  recorded finding to carry into THREAT_MODEL.md, never a silent assumption.
+
+---
+
 ## Closed follow-ups
 
 Both former open items were settled empirically by the 08-08 harness legs, run
