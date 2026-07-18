@@ -95,3 +95,16 @@ None - no external service configuration required.
 ---
 *Phase: 11-wire-safety-verification-hardening*
 *Completed: 2026-07-18*
+
+## Self-Check: PASSED
+
+- FOUND: `.github/workflows/canary-leak.yml`
+- FOUND: `tests/doctor/end-to-end.test.ts`
+- FOUND: `src/doctor/index.ts`
+- FOUND: commit `feea179` (Task 1)
+- FOUND: commit `45a46b6` (Task 2)
+- FOUND: commit `12f8429` (this SUMMARY)
+- `grep -c -- "--no-color" .github/workflows/canary-leak.yml` → `1`
+- `grep -c "MRCLEAN_TEST_FAKE_CLAUDE_VERSION" tests/doctor/end-to-end.test.ts` → `11` (≥ required 4)
+- `grep -n "process.execPath" src/doctor/index.ts | grep -c "hookBinPath\|mcpBinPath"` → `0`
+- Working tree clean, no dist/ artifacts committed.
