@@ -75,7 +75,7 @@ import path from 'node:path'
 
 import { buildHookCommand } from '../../src/install/settings.js'
 import type { ToolVerdict } from './findings-builder.js'
-import { runClaude, assertSessionRan, type ClaudeRun } from './harness.js'
+import { runClaude, assertSessionRan, bareModeArgs, type ClaudeRun } from './harness.js'
 
 const UAT_ENABLED = process.env.MRCLEAN_UAT === '1'
 
@@ -316,6 +316,23 @@ describe('wire-safety deterministic guards (token-free)', () => {
       }).toThrow()
     } finally {
       rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('bareModeArgs: gated on ANTHROPIC_API_KEY presence (OAuth-safe)', () => {
+    const original = process.env['ANTHROPIC_API_KEY']
+    try {
+      delete process.env['ANTHROPIC_API_KEY']
+      expect(bareModeArgs()).toEqual([])
+
+      process.env['ANTHROPIC_API_KEY'] = 'test-key-value'
+      expect(bareModeArgs()).toEqual(['--bare'])
+    } finally {
+      if (original === undefined) {
+        delete process.env['ANTHROPIC_API_KEY']
+      } else {
+        process.env['ANTHROPIC_API_KEY'] = original
+      }
     }
   })
 })
@@ -723,6 +740,7 @@ describe.skipIf(!UAT_ENABLED)('@uat wire safety (REVMODE-11 SC1b)', () => {
         env: { ENABLE_TOOL_SEARCH: 'false' },
         maxTurns: 6,
         timeoutMs: 220_000,
+        isolatePlugins: true,
       },
     )
     assertSessionRan(run)
@@ -876,6 +894,7 @@ describe.skipIf(!UAT_ENABLED)('@uat wire safety (REVMODE-11 SC1b)', () => {
       env: { ENABLE_TOOL_SEARCH: 'false' },
       maxTurns: 6,
       timeoutMs: 220_000,
+      isolatePlugins: true,
     })
     if (run2.resultEvent === undefined) {
       // E3 fallback (A3): --resume can misbehave in print mode. The survey
@@ -889,6 +908,7 @@ describe.skipIf(!UAT_ENABLED)('@uat wire safety (REVMODE-11 SC1b)', () => {
         env: { ENABLE_TOOL_SEARCH: 'false' },
         maxTurns: 6,
         timeoutMs: 220_000,
+        isolatePlugins: true,
       })
     }
     assertSessionRan(run2)

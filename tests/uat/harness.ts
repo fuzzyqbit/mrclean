@@ -59,6 +59,42 @@ export interface RunClaudeOptions {
    * tool call lands (observed on CC 2.1.209 in the E1/MCP experiment).
    */
   timeoutMs?: number
+  /**
+   * Opt-in, best-effort isolation from ambient globally-installed user-scope
+   * plugin hooks via bareModeArgs() (see that function's doc for the
+   * OAuth-safety gate). When true but ANTHROPIC_API_KEY is unset, isolation
+   * is silently skipped (logged via console.warn) rather than breaking auth.
+   */
+  isolatePlugins?: boolean
+}
+
+/**
+ * Returns `['--bare']` when `ANTHROPIC_API_KEY` is set to a non-empty value,
+ * `[]` otherwise.
+ *
+ * WHY `--bare` isolates ambient plugins: per the Claude Code CLI docs
+ * (code.claude.com/docs/en/headless#start-faster-with-bare-mode), `--bare`
+ * skips auto-discovery of hooks, skills, plugins, MCP servers, auto memory,
+ * and CLAUDE.md — "only flags you pass explicitly take effect". The UAT
+ * harness already passes `--settings`/`--mcp-config` explicitly, so those
+ * still load normally under `--bare`; only ambient, globally-installed
+ * user-scope plugin hooks (e.g. under `~/.claude/plugins`) that the harness
+ * never registers or controls are what gets excluded. This is what lets a
+ * sandboxed run avoid an unrelated ambient hook merging its own bookkeeping
+ * into the session transcript (see tests/uat/wire-safety.test.ts /
+ * .planning/debug/sc1b-resume-canary-leak.md).
+ *
+ * WHY gated on `ANTHROPIC_API_KEY`: the same docs state "Bare mode skips
+ * OAuth and keychain reads. Anthropic authentication must come from
+ * ANTHROPIC_API_KEY or an apiKeyHelper." The UAT harness's normal
+ * operator-run sessions authenticate via OAuth, so unconditionally passing
+ * `--bare` would break the common case. Isolation therefore stays best-effort
+ * and opt-in — never applied unless the operator's environment already has
+ * an API key present.
+ */
+export function bareModeArgs(): string[] {
+  const apiKey = process.env['ANTHROPIC_API_KEY']
+  return apiKey !== undefined && apiKey !== '' ? ['--bare'] : []
 }
 
 /**
@@ -88,6 +124,17 @@ export function runClaude(prompt: string, settingsPath: string, options: RunClau
       ? ['--mcp-config', options.mcpConfigPath, '--strict-mcp-config']
       : []
 
+  let isolationArgs: string[] = []
+  if (options.isolatePlugins === true) {
+    isolationArgs = bareModeArgs()
+    if (isolationArgs.length === 0) {
+      console.warn(
+        'mrclean UAT harness: isolatePlugins requested but skipped (no ANTHROPIC_API_KEY) — ' +
+          '--bare would break OAuth auth, so ambient plugin hooks may still merge into this session',
+      )
+    }
+  }
+
   const proc = spawnSync(
     'claude',
     [
@@ -100,6 +147,7 @@ export function runClaude(prompt: string, settingsPath: string, options: RunClau
       '--settings',
       settingsPath,
       ...mcpArgs,
+      ...isolationArgs,
       '--output-format',
       'stream-json',
       '--verbose',
