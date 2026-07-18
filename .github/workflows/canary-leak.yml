@@ -2,9 +2,13 @@ name: Canary Leak Gate
 
 on:
   push:
-    branches: [main]
+    # gsd/** lets milestone branches fire the wire-safety gates on ubuntu
+    # BEFORE the merge PR (Plan 11-06, A4 retirement). PR gating stays main-only.
+    branches: [main, 'gsd/**']
   pull_request:
     branches: [main]
+  # Durable post-merge affordance: re-run the gate on demand from any branch.
+  workflow_dispatch:
 
 # Cancel in-progress runs for the same branch. This workflow has no write
 # permissions and uses no secrets — it is a read-only security gate.
