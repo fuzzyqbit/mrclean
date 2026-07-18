@@ -55,8 +55,18 @@ import { V2_TOKEN_RE, hmacAddress } from '../../src/state/session-map.js'
 
 const WORKER = join(process.cwd(), 'dist', 'state-stress-worker.js')
 const WORKER_COUNT = 16
-/** Harness deadline — measured-margin value (see header; prod stays 50/100). */
-const WORKER_DEADLINE_MS = 500
+/**
+ * Harness deadline — measured-margin value (see header; prod stays 50/100).
+ * Raised from 500ms after the first real ubuntu-latest CI run (T-09-08-06,
+ * 2026-07-18): 1/400 pure-deadline degrades under GitHub Actions' shared
+ * 2-vCPU runner + V8 coverage instrumentation overhead on the 16-process
+ * boot-storm's slowest first-transaction lock-acquire tail (500ms held
+ * 0/400 across three consecutive local-executor runs, but that machine has
+ * no coverage instrumentation and dedicated cores). 1500ms gives 3x margin
+ * over the local-executor-sufficient value while staying well inside the
+ * test's 60s outer timeout. The zero-degrade assertion itself is untouched.
+ */
+const WORKER_DEADLINE_MS = 1500
 /** Boot settle before the barrier drops, so all 16 procs contend at once. */
 const SETTLE_MS = 200
 const EXPECTED_ENTRIES = SHARED_ORIGINALS.length + WORKER_COUNT * UNIQUE_PER_WORKER // 100
