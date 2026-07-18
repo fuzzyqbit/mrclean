@@ -118,6 +118,12 @@ describe('computeDoctorReport end-to-end', { timeout: 60000 }, () => {
   // ---------------------------------------------------------------------------
   it('Test 1: install → computeDoctorReport → exitCode 0, all PASS', async () => {
     const { homeDir, cwd, cleanup } = await makeTempEnv()
+    // Hermetic (root cause B): stub the Claude Code version so this test never
+    // depends on a real `claude` binary being on the executing machine's PATH
+    // (ubuntu CI runners have none, which previously escalated an all-green
+    // report from exit 0 to exit 5).
+    const savedFakeVersion = process.env['MRCLEAN_TEST_FAKE_CLAUDE_VERSION']
+    process.env['MRCLEAN_TEST_FAKE_CLAUDE_VERSION'] = '2.1.141 (Claude Code)'
     try {
       await doInstall(homeDir, cwd)
 
@@ -130,10 +136,17 @@ describe('computeDoctorReport end-to-end', { timeout: 60000 }, () => {
       // All non-SKIP should be PASS
       const passChecks = report.results.filter((r) => r.status === 'PASS')
       expect(passChecks.length).toBeGreaterThanOrEqual(5)
-      // Version result should be present
-      expect(['green', 'yellow', 'not-found']).toContain(report.versionResult.status)
+      // Exact, non-vacuous assertion proving the stub (not a real `claude`
+      // binary) drove the result -- a real installed version will differ.
+      expect(report.versionResult.version).toBe('2.1.141')
+      expect(report.versionResult.status).toBe('green')
     } finally {
       await cleanup()
+      if (savedFakeVersion === undefined) {
+        delete process.env['MRCLEAN_TEST_FAKE_CLAUDE_VERSION']
+      } else {
+        process.env['MRCLEAN_TEST_FAKE_CLAUDE_VERSION'] = savedFakeVersion
+      }
     }
   })
 
@@ -174,6 +187,12 @@ describe('computeDoctorReport end-to-end', { timeout: 60000 }, () => {
       expect(report.exitCode).toBe(2)
       const mcpResult = report.results.find((r) => r.name === 'mcp')
       expect(mcpResult?.status).toBe('FAIL')
+      // src/doctor/index.ts fix: an unregistered MCP bin path must never be
+      // silently substituted with process.execPath and spawned as a canary
+      // probe -- it should be an explicit SKIP instead.
+      const mcpCanaryResult = report.results.find((r) => r.name === 'mcp-canary')
+      expect(mcpCanaryResult?.status).toBe('SKIP')
+      expect(mcpCanaryResult?.detail).toContain('no MCP binary path registered')
     } finally {
       await cleanup()
     }
@@ -219,6 +238,11 @@ describe('computeDoctorReport end-to-end', { timeout: 60000 }, () => {
   // ---------------------------------------------------------------------------
   it('Test 5: install → uninstall → computeDoctorReport → exitCode 1 (hooks gone)', async () => {
     const { homeDir, cwd, cleanup } = await makeTempEnv()
+    // Hermetic (root cause B): same stub as Test 1 -- reportBefore's exitCode 0
+    // assertion reaches the version-check escalation branch and must not
+    // depend on a real `claude` binary being on PATH.
+    const savedFakeVersion = process.env['MRCLEAN_TEST_FAKE_CLAUDE_VERSION']
+    process.env['MRCLEAN_TEST_FAKE_CLAUDE_VERSION'] = '2.1.141 (Claude Code)'
     try {
       await doInstall(homeDir, cwd)
 
@@ -235,6 +259,11 @@ describe('computeDoctorReport end-to-end', { timeout: 60000 }, () => {
       expect(hooksResult?.status).toBe('FAIL')
     } finally {
       await cleanup()
+      if (savedFakeVersion === undefined) {
+        delete process.env['MRCLEAN_TEST_FAKE_CLAUDE_VERSION']
+      } else {
+        process.env['MRCLEAN_TEST_FAKE_CLAUDE_VERSION'] = savedFakeVersion
+      }
     }
   })
 
