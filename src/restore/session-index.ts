@@ -95,8 +95,11 @@ async function listCandidateSids(sessionsDir: string): Promise<string[]> {
  * the secret-placeholder set the restore engine short-circuits on.
  *
  * Default scope is the union across ALL live decryptable maps (planner pin
- * A4): nonce8 in every token makes cross-session collisions structurally
- * absent. An optional sessionFilter narrows to one map — it is validated
+ * A4): nonce8 in every token makes cross-session collisions birthday-bounded
+ * (~2^-32 per session pair), not impossible — a placeholder claimed with
+ * DIFFERENT originals by two maps is demoted to unmatched for the whole
+ * build (IN-02/AR-10-05), mirroring the OVF ambiguity treatment. An optional
+ * sessionFilter narrows to one map — it is validated
  * via isValidSessionId BEFORE any path derivation (Pitfall 5 / janitor gate
  * order), even though callers validate too (defense in depth): an invalid
  * filter returns an empty index having touched zero paths.
@@ -128,6 +131,8 @@ export async function buildRestoreIndex(
 
   const placeholders = new Map<string, string>()
   const secretPlaceholders = new Set<string>()
+  /** Sticky cross-session demotions (IN-02/AR-10-05) — spans ALL maps. */
+  const demoted = new Set<string>()
   let sessions = 0
   for (const sid of candidates) {
     const map = await readSessionMapFile(baseDir, sid) // total-error: null on ANY failure
@@ -146,6 +151,20 @@ export async function buildRestoreIndex(
       }
       if (entry.placeholder.includes(OVF_LABEL)) {
         continue // ambiguous shared token — in NEITHER structure (Pitfall 1)
+      }
+      // IN-02/AR-10-05: a placeholder claimed with DIFFERENT originals by
+      // two sessions is demoted to unmatched — mirroring the OVF treatment
+      // above (an ambiguous token restores NOTHING, never last-write-wins).
+      // The Set is sticky across the WHOLE union build: a bare delete would
+      // let a third occurrence re-enter the index.
+      if (demoted.has(entry.placeholder)) {
+        continue
+      }
+      const existing = placeholders.get(entry.placeholder)
+      if (existing !== undefined && existing !== entry.original) {
+        placeholders.delete(entry.placeholder)
+        demoted.add(entry.placeholder)
+        continue
       }
       placeholders.set(entry.placeholder, entry.original)
     }

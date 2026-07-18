@@ -59,6 +59,13 @@ const SECRET_ORIGINAL = 'AKIAIOSFODNN7EXAMPLX'
 /** The hand-poisoned secret original that must appear NOWHERE in any index. */
 const POISONED_ORIGINAL = 'zz-poisoned-secret-original'
 
+/** Fixed cross-session nonce8 forcing identical tokens (IN-02 collision rows). */
+const SHARED_NONCE8 = 'aabbccdd'
+
+/** The two disputed originals behind one collided placeholder (IN-02). */
+const COLLISION_ORIGINAL_ONE = 'collision-original-one'
+const COLLISION_ORIGINAL_TWO = 'collision-original-two'
+
 /** Envelope offsets duplicated from map-store.test.ts — do NOT re-derive. */
 const CT_OFFSET = 37 // magic(8) + version(1) + IV(12) + tag(16)
 
@@ -94,6 +101,51 @@ function buildFixtureMap(sid: string, specs: readonly FixtureEntrySpec[]): Sessi
 async function persistFixtureMap(baseDir: string, map: SessionMapV1): Promise<void> {
   const key = await ensureSessionKey(baseDir, map.sessionId)
   await writeSessionMapFile(baseDir, map.sessionId, map, key)
+}
+
+/** Entry spec carrying an EXPLICIT placeholder string (IN-02 collision rows). */
+interface HandBuiltEntrySpec extends FixtureEntrySpec {
+  placeholder: string
+}
+
+/**
+ * Persist a hand-built map whose entries carry EXPLICIT placeholder strings,
+ * encrypted under the session's REAL key (the 10-02 poisoned-map recipe).
+ *
+ * Forced cross-session identical placeholders REQUIRE this path: the
+ * serializer-built fixtures embed each map's own nonce8 via formatV2Token,
+ * so buildFixtureMap maps can never collide. The JSON is a VALID
+ * SessionMapV1 — only the placeholder strings are chosen by the test.
+ */
+async function persistHandBuiltMap(
+  baseDir: string,
+  sid: string,
+  specs: readonly HandBuiltEntrySpec[],
+): Promise<void> {
+  const base = createEmptySessionMap(sid)
+  const key = await ensureSessionKey(baseDir, sid)
+  const json = JSON.stringify({
+    version: 1,
+    sessionId: sid,
+    nonce8: base.nonce8,
+    hashSalt: base.hashSalt,
+    counter: specs.reduce((max, spec) => Math.max(max, spec.counter), 0),
+    entries: Object.fromEntries(
+      specs.map((spec) => [
+        hmacAddress(base.hashSalt, spec.original),
+        {
+          placeholder: spec.placeholder,
+          type: spec.type,
+          counter: spec.counter,
+          original: spec.original,
+        },
+      ]),
+    ),
+  })
+  const envelope = encryptMapBuffer(Buffer.from(json, 'utf8'), key, sid)
+  const { sessionsDir } = statePaths(baseDir)
+  await mkdir(sessionsDir, { recursive: true, mode: 0o700 })
+  await writeFile(mapPathFor(baseDir, sid), envelope, { mode: 0o600 })
 }
 
 /**
@@ -387,5 +439,123 @@ describe('buildRestoreIndex (read-side policy gate over the encrypted store)', (
     // ... then the Pitfall 7 proof: no tmp litter, no mtime heartbeat refresh.
     expect(await snapshotDir(sessionsDir)).toEqual(sessionsBefore)
     expect(await snapshotDir(keysDir)).toEqual(keysBefore)
+  })
+
+  describe('IN-02: cross-session collision demotes to unmatched (AR-10-05)', () => {
+    /** The one collided token every colliding session carries (valid v2 shape). */
+    const collidedToken = formatV2Token('WORD', 1, SHARED_NONCE8)
+
+    it('demotes a placeholder claimed with DIFFERENT originals by two sessions — neither candidate restorable', async () => {
+      // Arrange — two sessions, SAME placeholder string, DIFFERENT originals
+      // (a birthday-bounded nonce8 collision's on-disk state, forced by hand).
+      const baseDir = await freshBaseDir()
+      await persistHandBuiltMap(baseDir, randomUUID(), [
+        {
+          type: 'WORD',
+          counter: 1,
+          placeholder: collidedToken,
+          original: COLLISION_ORIGINAL_ONE,
+        },
+      ])
+      await persistHandBuiltMap(baseDir, randomUUID(), [
+        {
+          type: 'WORD',
+          counter: 1,
+          placeholder: collidedToken,
+          original: COLLISION_ORIGINAL_TWO,
+        },
+      ])
+
+      // Act
+      const result = await buildRestoreIndex(baseDir)
+
+      // Assert — non-vacuity FIRST: both maps really decrypted
+      expect(result.sessions).toBe(2)
+
+      // The ambiguous token is in NEITHER structure (mirrors the OVF
+      // treatment: an ambiguous token restores NOTHING — never
+      // last-write-wins).
+      expect(result.placeholders.has(collidedToken)).toBe(false)
+      expect(result.secretPlaceholders.has(collidedToken)).toBe(false)
+
+      // A demoted token leaks NO candidate original anywhere in the index.
+      const serialized = JSON.stringify({
+        placeholders: [...result.placeholders.entries()],
+        secretPlaceholders: [...result.secretPlaceholders],
+        sessions: result.sessions,
+      })
+      expect(serialized.includes(COLLISION_ORIGINAL_ONE)).toBe(false)
+      expect(serialized.includes(COLLISION_ORIGINAL_TWO)).toBe(false)
+    })
+
+    it('keeps a demoted placeholder demoted when a third session re-carries the first original (sticky demotion)', async () => {
+      // Arrange — three sessions claim P as O1, O2, O1. A bare delete-only
+      // fix would let a later occurrence re-enter the index (existing ===
+      // undefined after the delete); the sticky Set must hold in EVERY
+      // readdir order, so no map-iteration-order assumption is made here.
+      const baseDir = await freshBaseDir()
+      await persistHandBuiltMap(baseDir, randomUUID(), [
+        {
+          type: 'WORD',
+          counter: 1,
+          placeholder: collidedToken,
+          original: COLLISION_ORIGINAL_ONE,
+        },
+      ])
+      await persistHandBuiltMap(baseDir, randomUUID(), [
+        {
+          type: 'WORD',
+          counter: 1,
+          placeholder: collidedToken,
+          original: COLLISION_ORIGINAL_TWO,
+        },
+      ])
+      await persistHandBuiltMap(baseDir, randomUUID(), [
+        {
+          type: 'WORD',
+          counter: 1,
+          placeholder: collidedToken,
+          original: COLLISION_ORIGINAL_ONE,
+        },
+      ])
+
+      // Act
+      const result = await buildRestoreIndex(baseDir)
+
+      // Assert — non-vacuity FIRST: all three maps really decrypted
+      expect(result.sessions).toBe(3)
+      expect(result.placeholders.has(collidedToken)).toBe(false)
+      expect(result.secretPlaceholders.has(collidedToken)).toBe(false)
+      expect([...result.placeholders.values()]).not.toContain(COLLISION_ORIGINAL_ONE)
+      expect([...result.placeholders.values()]).not.toContain(COLLISION_ORIGINAL_TWO)
+    })
+
+    it('restores normally when two sessions agree on the SAME original (benign duplicate, not a collision)', async () => {
+      // Arrange — idempotent re-set: same placeholder, same original
+      const baseDir = await freshBaseDir()
+      await persistHandBuiltMap(baseDir, randomUUID(), [
+        {
+          type: 'WORD',
+          counter: 1,
+          placeholder: collidedToken,
+          original: COLLISION_ORIGINAL_ONE,
+        },
+      ])
+      await persistHandBuiltMap(baseDir, randomUUID(), [
+        {
+          type: 'WORD',
+          counter: 1,
+          placeholder: collidedToken,
+          original: COLLISION_ORIGINAL_ONE,
+        },
+      ])
+
+      // Act
+      const result = await buildRestoreIndex(baseDir)
+
+      // Assert — non-vacuity first, then the agreed pair restores normally
+      expect(result.sessions).toBe(2)
+      expect(result.placeholders.get(collidedToken)).toBe(COLLISION_ORIGINAL_ONE)
+    })
   })
 })
