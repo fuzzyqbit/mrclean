@@ -866,11 +866,18 @@ describe.skipIf(!UAT_ENABLED)('@uat wire safety (REVMODE-11 SC1b)', () => {
     // Stream-json: the full model-facing event stream of run 1.
     expectNoCanaries(firstRun.rawStdout, 'run-1 stream-json')
 
-    // The run-1 transcript: raw bytes + the extracted tool surfaces.
+    // The run-1 transcript: wire-mirrored tool surfaces only — NOT raw
+    // whole-file bytes. A raw byte scan of this same file also catches
+    // ambient, non-mrclean hooks' local-only hook_success bookkeeping
+    // (e.g. a globally-installed third-party plugin echoing its own raw
+    // pre-redaction stdin into its own attachment record), which is not a
+    // wire leak — see .planning/debug/sc1b-resume-canary-leak.md and the
+    // identical scoping fix already applied to grepProjectsTreeForCanaries
+    // (11-08). The whole-tree grep below re-covers this exact file on the
+    // correctly-scoped surface.
     const tp = transcriptPath1
     expect(tp, 'harness integrity: run-1 transcript not found under ~/.claude/projects').not.toBeNull()
     if (tp !== null) {
-      expectNoCanaries(readFileSync(tp, 'utf8'), 'run-1 transcript (raw)')
       const t1 = extractTranscriptToolData(tp)
       expectNoCanaries(`${t1.toolResults}\n${t1.toolUseInputs}`, 'run-1 transcript (tool surfaces)')
     }
