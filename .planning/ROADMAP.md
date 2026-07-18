@@ -152,7 +152,7 @@ Plans:
 **Depends on**: Phase 10 (verifies the fully integrated reversible surface)
 **Requirements**: REVMODE-11
 **Success Criteria** (what must be TRUE):
-  1. A live headless canary gate (UAT-2b precedent) proves hook stdout is unchanged by reversible mode and no restored canary value appears in the next outbound request body or in `~/.claude/projects/**/*.jsonl`
+  1. A live headless canary gate (UAT-2b precedent) proves hook stdout is unchanged by reversible mode and no restored canary value appears in the next outbound request body (the actual wire, fully controlled by mrclean's hook); the gate separately checks `~/.claude/projects/**/*.jsonl`, a strictly broader local transcript tree that also archives non-wire hook-bookkeeping attachments from every hook bound to an event, not just mrclean's — so that check scopes to wire-mirrored message records instead of treating the whole tree as wire-equivalent
   2. An fs-write interception test proves no plaintext canary appears in any written buffer, including atomic-write temp files
   3. Chaos tests gate CI: with a corrupt, missing, or chmod'd map, the canary is still redacted and no tool call is blocked
   4. An 8–16-process concurrency stress test gates the build: no lost or corrupted map entries, no duplicate placeholders for distinct originals, identical placeholders for identical originals

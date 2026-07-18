@@ -208,6 +208,21 @@ session-UUID traceability gate (tests/copy-drift.test.ts) build-enforces
 that any session UUID quoted here traces to the artifact. This section
 deliberately quotes none until then.
 
+This same parallel-hook-fan-out mechanism is not limited to the test's own
+fixture observer: any hook bound to the event — including
+ambient, globally-installed user-scope plugin hooks the harness never registers or controls
+(e.g. under `~/.claude/plugins`, scope `user`) — receives the
+identical raw pre-substitution payload and may echo it into its own
+`hook_success` attachment, which Claude Code archives into the session's
+`~/.claude/projects/**/*.jsonl` transcript regardless of which hook produced
+it. A whole-tree grep for canary absence therefore cannot distinguish a
+genuine wire leak from an unrelated hook's local-only stdout bookkeeping —
+`tests/uat/wire-safety.test.ts`'s `grepProjectsTreeForCanaries` accordingly
+scopes its assertion to wire-mirrored `type:"user"`/`"assistant"` message
+records (the `tool_result`/`tool_use` content blocks that are the actual
+model-facing surface) rather than raw whole-file byte content (see the
+`sc1b-resume-canary-leak` debug finding).
+
 ### Downstream implications
 
 - **The E1 asymmetry stays the interpretation lens** for whatever the survey
