@@ -40578,6 +40578,7 @@ async function buildRestoreIndex(baseDir, sessionFilter) {
   const candidates = normalizedFilter === void 0 ? discovered : discovered.filter((sid) => sid.toLowerCase() === normalizedFilter);
   const placeholders = /* @__PURE__ */ new Map();
   const secretPlaceholders = /* @__PURE__ */ new Set();
+  const demoted = /* @__PURE__ */ new Set();
   let sessions = 0;
   for (const sid of candidates) {
     const map = await readSessionMapFile(baseDir, sid);
@@ -40594,6 +40595,15 @@ async function buildRestoreIndex(baseDir, sessionFilter) {
         continue;
       }
       if (entry.placeholder.includes(OVF_LABEL2)) {
+        continue;
+      }
+      if (demoted.has(entry.placeholder)) {
+        continue;
+      }
+      const existing = placeholders.get(entry.placeholder);
+      if (existing !== void 0 && existing !== entry.original) {
+        placeholders.delete(entry.placeholder);
+        demoted.add(entry.placeholder);
         continue;
       }
       placeholders.set(entry.placeholder, entry.original);
@@ -40693,8 +40703,12 @@ async function runRestore(opts) {
       process.stderr.write(WARN_AUDIT_FAILED);
     }
   } catch {
+    counts = ZERO_COUNTS;
     if (!stdoutWritten) {
-      process.stdout.write(input);
+      try {
+        process.stdout.write(input);
+      } catch {
+      }
     }
     if (!warnedNoMaps) {
       process.stderr.write(WARN_NO_MAPS);
