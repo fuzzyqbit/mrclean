@@ -110,13 +110,16 @@ interface CapturedRun {
 /**
  * Drive the REAL CLI action with process seams captured (ignore.test.ts
  * harness precedent). process.exit is stubbed to THROW so an unexpected
- * hard-gate exit fails the test loudly instead of killing the worker;
- * the happy path under test never exits.
+ * exit fails the test loudly instead of killing the worker; the WR-03 hard
+ * gates set process.exitCode instead, which is saved/restored here so a
+ * hard-gate regression can never leak a nonzero code into the vitest
+ * worker's own exit status. The happy path under test never exits.
  */
 async function runRestoreCaptured(opts: RunRestoreOpts): Promise<CapturedRun> {
   const originalStdoutWrite = process.stdout.write.bind(process.stdout)
   const originalStderrWrite = process.stderr.write.bind(process.stderr)
   const originalExit = process.exit
+  const originalExitCode = process.exitCode
   let stdout = ''
   let stderr = ''
 
@@ -138,6 +141,7 @@ async function runRestoreCaptured(opts: RunRestoreOpts): Promise<CapturedRun> {
     process.stdout.write = originalStdoutWrite
     process.stderr.write = originalStderrWrite
     process.exit = originalExit
+    process.exitCode = originalExitCode
   }
   return { stdout, stderr }
 }

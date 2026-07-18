@@ -17,7 +17,12 @@
  * Error domains (REVMODE-08, planner pin A5):
  * - HARD input errors exit 2: malformed --session (validated BEFORE any
  *   path derivation, sid never echoed — T-10-05-01) and unreadable input
- *   file (the echoed path is the operator's own argument).
+ *   file (the echoed path is the operator's own argument). The gates set
+ *   `process.exitCode = 2` and RETURN — never `process.exit()` (WR-03):
+ *   stderr writes are async when piped on POSIX, and process.exit() does
+ *   not wait for pending stream flushes, so exiting immediately after
+ *   stderr.write could drop the only operator-facing diagnostic. Letting
+ *   the event loop drain flushes the line; Node then exits with code 2.
  * - EVERY cosmetic failure degrades one-way: stdout === input for affected
  *   tokens, one constant warning, exit 0 — pipe-friendly, never blocking.
  * - Restore and redact share NO kill switch: this module reads config for
@@ -132,20 +137,25 @@ export async function runRestore(opts: RunRestoreOpts): Promise<void> {
   // (1) HARD gate: hostile-shaped --session is validated BEFORE any path
   // derivation and NEVER echoed (T-10-05-01; state/index.ts non-echo
   // precedent). Outside the degrade try/catch on purpose — exit 2 is real.
+  // exitCode + return (never process.exit — WR-03): the diagnostic must
+  // survive a piped stderr; exit() would race the pending async write.
   if (session !== undefined && !isValidSessionId(session)) {
     process.stderr.write(ERR_BAD_SESSION)
-    process.exit(2)
+    process.exitCode = 2
+    return
   }
 
-  // (2) HARD gate: unreadable input file exits 2. The echoed path is the
-  // operator's OWN argument — never a derived map path.
+  // (2) HARD gate: unreadable input file exits 2 (same exitCode + return
+  // flush discipline as gate 1). The echoed path is the operator's OWN
+  // argument — never a derived map path.
   let input: string
   if (file !== undefined) {
     try {
       input = await readFile(file, 'utf8')
     } catch {
       process.stderr.write(`[mrclean] restore: cannot read input file: ${file}\n`)
-      process.exit(2)
+      process.exitCode = 2
+      return
     }
   } else {
     input = await readAll(stdin)

@@ -195,15 +195,19 @@ async function captureRun(opts: {
   const { runRestore } = await import('../../src/restore/cli.js')
 
   const originalExit = process.exit
+  const originalExitCode = process.exitCode
   const originalStdoutWrite = process.stdout.write.bind(process.stdout)
   const originalStderrWrite = process.stderr.write.bind(process.stderr)
-  let exitCode: number | undefined
   let stdout = ''
   let stderr = ''
 
+  // WR-03 shape: hard gates set process.exitCode and RETURN (flush-safe);
+  // process.exit is stubbed to THROW as a regression guard. Any throw
+  // repropagates — degrade paths must NEVER throw.
   process.exit = ((code?: number) => {
-    exitCode = code ?? 0
-    throw new Error(`process.exit(${code})`)
+    throw new Error(
+      `unexpected process.exit(${code ?? 0}) — hard gates must set process.exitCode and return (WR-03)`,
+    )
   }) as typeof process.exit
   process.stdout.write = ((chunk: unknown) => {
     stdout += String(chunk)
@@ -213,14 +217,16 @@ async function captureRun(opts: {
     stderr += String(chunk)
     return true
   }) as typeof process.stderr.write
+  process.exitCode = undefined
 
+  let exitCode: number | undefined
   try {
     await runRestore(opts)
-  } catch (err) {
-    if (exitCode === undefined) {
-      throw err // a real escape — degrade paths must NEVER throw
-    }
   } finally {
+    // Capture BEFORE restoring so a hard-gate exitCode never leaks into the
+    // vitest worker's own exit status.
+    exitCode = typeof process.exitCode === 'number' ? process.exitCode : undefined
+    process.exitCode = originalExitCode
     process.exit = originalExit
     process.stdout.write = originalStdoutWrite
     process.stderr.write = originalStderrWrite

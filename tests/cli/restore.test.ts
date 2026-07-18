@@ -167,24 +167,28 @@ interface CapturedRun {
 }
 
 /**
- * Call runRestore with process.exit / stdout.write / stderr.write mirror
- * mocks installed. A mocked exit throws to stop execution (production
- * process.exit never returns); non-exit throws REPROPAGATE — degrade paths
- * must never throw, so an unexpected escape is a genuine failure.
+ * Call runRestore with stdout.write / stderr.write mirror mocks installed
+ * and process.exitCode captured (WR-03: the hard gates set exitCode and
+ * RETURN so pending stderr pipe writes can flush — they never call
+ * process.exit). process.exit is stubbed to THROW as a regression guard: a
+ * reintroduced exit() call would drop piped diagnostics in production and
+ * kill the vitest worker here. Every throw REPROPAGATES — degrade paths
+ * must never throw, so an escape is a genuine failure.
  */
 async function captureRun(opts: RunRestoreOptsShape): Promise<CapturedRun> {
   const { runRestore } = await import('../../src/restore/cli.js')
 
   const originalExit = process.exit
+  const originalExitCode = process.exitCode
   const originalStdoutWrite = process.stdout.write.bind(process.stdout)
   const originalStderrWrite = process.stderr.write.bind(process.stderr)
-  let exitCode: number | undefined
   let stdout = ''
   let stderr = ''
 
   process.exit = ((code?: number) => {
-    exitCode = code ?? 0
-    throw new Error(`process.exit(${code})`)
+    throw new Error(
+      `unexpected process.exit(${code ?? 0}) — hard gates must set process.exitCode and return (WR-03)`,
+    )
   }) as typeof process.exit
   process.stdout.write = ((chunk: unknown) => {
     stdout += String(chunk)
@@ -194,14 +198,16 @@ async function captureRun(opts: RunRestoreOptsShape): Promise<CapturedRun> {
     stderr += String(chunk)
     return true
   }) as typeof process.stderr.write
+  process.exitCode = undefined
 
+  let exitCode: number | undefined
   try {
     await runRestore(opts)
-  } catch (err) {
-    if (exitCode === undefined) {
-      throw err // not our exit mock — a real escape, fail the test
-    }
   } finally {
+    // Capture BEFORE restoring so the harness never leaks a hard-gate
+    // exitCode into the vitest worker's own exit status.
+    exitCode = typeof process.exitCode === 'number' ? process.exitCode : undefined
+    process.exitCode = originalExitCode
     process.exit = originalExit
     process.stdout.write = originalStdoutWrite
     process.stderr.write = originalStderrWrite
