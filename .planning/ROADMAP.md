@@ -168,7 +168,7 @@ Plans:
 - [x] 11-05-PLAN.md — SC1b live wire-safety UAT harness + MCP echo fixture + tool_response survey + HOOK-CONTRACT section (wave 1)
 
 **Wave 2** *(blocked on 11-01, 11-02)*
-- [ ] 11-06-PLAN.md — SC3/SC4 CI elevation: named count-guarded steps + reversible corpus greps + dispatch/gsd triggers + ubuntu pre-run + reversible-overhead perf row (wave 2)
+- [x] 11-06-PLAN.md — SC3/SC4 CI elevation: named count-guarded steps + reversible corpus greps + dispatch/gsd triggers + ubuntu pre-run + reversible-overhead perf row (wave 2)
 
 **Wave 3** *(blocked on 11-03, 11-05, 11-06)*
 - [ ] 11-07-PLAN.md — SC5 THREAT_MODEL shipped-fact finalization + paired copy-drift anchors + encrypted-at-rest honesty bans + phase regression gate (wave 3)
@@ -189,7 +189,7 @@ Plans:
 | 8. Contract Verification & Reversible Plumbing | v3.0 | 11/12 | Gap closure (round 3) | - |
 | 9. Session State Adapter | v3.0 | 0/8 | Planned | - |
 | 10. Operator Restore | v3.0 | 8/8 | Complete    | 2026-07-18 |
-| 11. Wire-Safety Verification & Hardening | v3.0 | 5/7 | In Progress|  |
+| 11. Wire-Safety Verification & Hardening | v3.0 | 6/7 | In Progress|  |
 
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
 
