@@ -254,6 +254,72 @@
         },
         "evidence_paths": []
       }
+    },
+    "tool_response_shapes": {
+      "question": "Per-tool PostToolUse tool_response INPUT shapes: does the handler Step 3 JSON.stringify coercion scan structured shapes adequately per tool? (re-homed Phase 10 STATE.md todo)",
+      "method": "live headless -p sessions; tests/uat/fixtures/postresp-log-hook.sh parallel observer appends {tool_name, typeof tool_response, truncated raw JSON} per PostToolUse event; record-dont-assert",
+      "claude_version": "2.1.212 (Claude Code)",
+      "date": "2026-07-18",
+      "verdict": "Bash: typeof tool_response = object; object with top-level keys [stdout, stderr, interrupted, isImage, noOutputExpected]; Read: typeof tool_response = object; object with top-level keys [type, file]; Grep: typeof tool_response = object; object with top-level keys [mode, filenames, numFiles, totalFiles]; mcp__wire-canary__echo_project_notes: typeof tool_response = object; array (length 1)",
+      "tools": {
+        "Bash": {
+          "verdict": "typeof tool_response = object; object with top-level keys [stdout, stderr, interrupted, isImage, noOutputExpected]",
+          "signals": {
+            "typeof_tool_response": "object",
+            "shape_summary": "object with top-level keys [stdout, stderr, interrupted, isImage, noOutputExpected]",
+            "raw_excerpt_sanitized": "{\"stdout\":\"survey-ok\",\"stderr\":\"\",\"interrupted\":false,\"isImage\":false,\"noOutputExpected\":false}",
+            "entries_observed": 1,
+            "observed_tool_names": [
+              "Bash"
+            ],
+            "cc_version": "2.1.212 (Claude Code)"
+          },
+          "evidence_paths": []
+        },
+        "Read": {
+          "verdict": "typeof tool_response = object; object with top-level keys [type, file]",
+          "signals": {
+            "typeof_tool_response": "object",
+            "shape_summary": "object with top-level keys [type, file]",
+            "raw_excerpt_sanitized": "{\"type\":\"text\",\"file\":{\"filePath\":\"/var/folders/g9/_hcbr44x5bbg980rhc__4kl00000gn/T/mrclean-wire-qXOT3Q/project/notes.txt\",\"content\":\"survey-ok: plain fixture notes for the Read/Grep shape legs\\n\",\"numLines\":2,\"startLine\":1,\"totalLines\":2}}",
+            "entries_observed": 1,
+            "observed_tool_names": [
+              "Read"
+            ],
+            "cc_version": "2.1.212 (Claude Code)"
+          },
+          "evidence_paths": []
+        },
+        "Grep": {
+          "verdict": "typeof tool_response = object; object with top-level keys [mode, filenames, numFiles, totalFiles]",
+          "signals": {
+            "typeof_tool_response": "object",
+            "shape_summary": "object with top-level keys [mode, filenames, numFiles, totalFiles]",
+            "raw_excerpt_sanitized": "{\"mode\":\"files_with_matches\",\"filenames\":[\"notes.txt\"],\"numFiles\":1,\"totalFiles\":1}",
+            "entries_observed": 1,
+            "observed_tool_names": [
+              "Grep"
+            ],
+            "cc_version": "2.1.212 (Claude Code)"
+          },
+          "evidence_paths": []
+        },
+        "mcp__wire-canary__echo_project_notes": {
+          "verdict": "typeof tool_response = object; array (length 1)",
+          "signals": {
+            "typeof_tool_response": "object",
+            "shape_summary": "array (length 1)",
+            "raw_excerpt_sanitized": "[{\"type\":\"text\",\"text\":\"project notes: path <CANARY_WORD> key <CANARY_SECRET>\"}]",
+            "entries_observed": 1,
+            "observed_tool_names": [
+              "mcp__wire-canary__echo_project_notes"
+            ],
+            "cc_version": "2.1.212 (Claude Code)"
+          },
+          "evidence_paths": []
+        }
+      },
+      "generated_by": "tests/uat/wire-safety.test.ts (MRCLEAN_UAT=1 opt-in, record-dont-assert)"
     }
   }
 }
