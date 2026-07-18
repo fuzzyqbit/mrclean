@@ -5,9 +5,9 @@
  * buffer written to an atomic-write temp file and renamed-then-deleted
  * before the scan would evade it. This suite closes that transient-write
  * dimension: EVERY buffer handed to an fs write API during a real two-event
- * reversible flow is captured in-process at the write call, and none may
- * carry a planted canary original or the '"entries"' plaintext map-JSON
- * marker.
+ * reversible flow PLUS a real restore run is captured in-process at the
+ * write call, and none may carry a planted canary original or the
+ * '"entries"' plaintext map-JSON marker.
  *
  * Seam (11-RESEARCH Pattern 3 — probe-verified live 2026-07-17 on Node
  * v22.22.0 against the repo's actual write-file-atomic): property-patch the
@@ -26,6 +26,9 @@
  *   2. some promises.writeFile capture is EXACTLY 32 bytes
  *      on the `<sid>.key.<uint32>` tmp path                → publishKeyOnce
  *      (key channel, src/state/map-store.ts ~line 210)
+ *   3. some promises.appendFile capture targets
+ *      audit.jsonl, hash-only bytes                        → restore audit
+ *      record (src/audit/restore-log.ts ~line 116)
  *
  * Hygiene (T-11-02-02): originals restored + syncBuiltinESMExports re-run
  * in the test body's `finally` AND in an idempotent afterEach — a mid-flow
@@ -41,13 +44,15 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { Readable } from 'node:stream'
 
 import {
   persistAllocations,
   readSessionMapForHydration,
 } from '../../src/state/index.js'
 import { POST_LOCK_DEADLINE_MS } from '../../src/state/lock.js'
-import { keyPathFor } from '../../src/state/map-store.js'
+import { keyPathFor, readSessionMapFile } from '../../src/state/map-store.js'
+import { hmacAddress } from '../../src/state/session-map.js'
 import { PlaceholderManager } from '../../src/placeholder/manager.js'
 
 // ---------------------------------------------------------------------------
@@ -236,18 +241,73 @@ async function runReversibleEvent(
   return { counterFloor: hydration!.counterFloor, knownEntries: hydration!.entriesByHmac.size }
 }
 
+/**
+ * Drive runRestore with process.exit/stdout/stderr mirror mocks installed
+ * (tests/cli/restore.test.ts capture harness, duplicated by value — never
+ * cross-imported). A mocked exit throws to stop execution; non-exit throws
+ * repropagate (degrade paths must never throw). Restore stays a DYNAMIC
+ * import — the cold-path fence bans static restore imports from hook-side
+ * suites, and this file must not create a counterexample pattern.
+ */
+async function captureRestoreRun(opts: {
+  baseDir: string
+  cwd: string
+  stdin: NodeJS.ReadableStream
+}): Promise<{ stdout: string; stderr: string; exitCode: number | undefined }> {
+  const { runRestore } = await import('../../src/restore/cli.js')
+
+  const originalExit = process.exit
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout)
+  const originalStderrWrite = process.stderr.write.bind(process.stderr)
+  let exitCode: number | undefined
+  let stdout = ''
+  let stderr = ''
+
+  process.exit = ((code?: number) => {
+    exitCode = code ?? 0
+    throw new Error(`process.exit(${code})`)
+  }) as typeof process.exit
+  process.stdout.write = ((chunk: unknown) => {
+    stdout += String(chunk)
+    return true
+  }) as typeof process.stdout.write
+  process.stderr.write = ((chunk: unknown) => {
+    stderr += String(chunk)
+    return true
+  }) as typeof process.stderr.write
+
+  try {
+    await runRestore(opts)
+  } catch (err) {
+    if (exitCode === undefined) {
+      throw err // a real escape — restore degrade paths must NEVER throw
+    }
+  } finally {
+    process.exit = originalExit
+    process.stdout.write = originalStdoutWrite
+    process.stderr.write = originalStderrWrite
+  }
+
+  return { stdout, stderr, exitCode }
+}
+
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
 
 describe.skipIf(IS_WIN32)('SC2 fs-write interception (REVMODE-11 — transient-write dimension)', () => {
   let baseDir: string
+  let cwdDir: string
   let sid: string
 
   beforeEach(async () => {
     baseDir = join(tmpdir(), `mrclean-fs-intercept-${randomUUID()}`)
+    cwdDir = join(tmpdir(), `mrclean-fs-intercept-cwd-${randomUUID()}`)
     sid = randomUUID()
     await mkdir(baseDir, { recursive: true })
+    // .mrclean/ must pre-exist for the restore audit append to land (the
+    // audit writer never mkdirs — `mrclean install` owns that in prod).
+    await mkdir(join(cwdDir, '.mrclean'), { recursive: true })
   })
 
   afterEach(async () => {
@@ -257,11 +317,15 @@ describe.skipIf(IS_WIN32)('SC2 fs-write interception (REVMODE-11 — transient-w
     restorePatch()
     captured = []
     await rm(baseDir, { recursive: true, force: true })
+    await rm(cwdDir, { recursive: true, force: true })
   })
 
-  it('two-event reversible flow: no plaintext canary reaches ANY write API; map + key channels proven intercepted', async () => {
+  it('two-event reversible flow + restore run: no plaintext canary reaches ANY write API; all three channels proven intercepted', async () => {
     // Arrange + Act — patch FIRST (a write before install is a miss), then
-    // the real two-event flow (WORD then AWS_KEY, pinned 10-08 corpus).
+    // the real two-event flow (WORD then AWS_KEY, pinned 10-08 corpus),
+    // then a REAL restore run — all under the same installed patch.
+    let run: { stdout: string; stderr: string; exitCode: number | undefined } | undefined
+    let secretToken = ''
     installPatch()
     try {
       const first = await runReversibleEvent(baseDir, sid, WORD_CANARY, 'WORD')
@@ -272,12 +336,48 @@ describe.skipIf(IS_WIN32)('SC2 fs-write interception (REVMODE-11 — transient-w
       expect(first.knownEntries).toBe(0)
       expect(second.counterFloor).toBe(1)
       expect(second.knownEntries).toBe(1)
+
+      // Read the PERSISTED placeholders back through the store (inspection
+      // recipe — never hand-format tokens; the store is the truth source).
+      const map = await readSessionMapFile(baseDir, sid)
+      expect(map).not.toBeNull()
+      const wordToken = map!.entries[hmacAddress(map!.hashSalt, WORD_CANARY)]!.placeholder
+      secretToken = map!.entries[hmacAddress(map!.hashSalt, SECRET_CANARY)]!.placeholder
+
+      // Restore leg — still under the patch, so the audit append is on the
+      // captured surface. cwd = tmp project dir (audit sink).
+      const doc = `doc ${wordToken} and ${secretToken} end`
+      run = await captureRestoreRun({ baseDir, cwd: cwdDir, stdin: Readable.from([doc]) })
     } finally {
       restorePatch()
     }
 
-    // Non-vacuity floor — two events must hand buffers to the patched APIs
-    // at least 3 times (1 key-tmp publish + 2 wfa envelope temp writes).
+    // ------------------------------------------------------------------
+    // NON-VACUITY BEFORE ABSENCE (10-08 ordering discipline): prove the
+    // flow REALLY engaged before any canary-absent assertion may count.
+    // ------------------------------------------------------------------
+
+    // (1) The restore REALLY engaged: WORD original restored onto stdout,
+    // stderr summary reports restored >= 1. Restore stdout flows through
+    // the mirror-mocked process.stdout.write — NOT an fs API — so this
+    // operator-local plaintext output is by design and must not (and does
+    // not) appear anywhere in the fs captures swept below.
+    expect(run).toBeDefined()
+    const restoreRun = run!
+    expect(restoreRun.exitCode).toBeUndefined()
+    expect(restoreRun.stdout).toContain(WORD_CANARY)
+    const summaryMatch = restoreRun.stderr.match(/restored=(\d+)/)
+    expect(summaryMatch).not.toBeNull()
+    expect(Number(summaryMatch![1])).toBeGreaterThanOrEqual(1)
+
+    // (2) The secret placeholder byte-survives on stdout (secret-class is
+    // never restored) and the secret original is absent from it.
+    expect(restoreRun.stdout).toContain(secretToken)
+    expect(restoreRun.stdout.includes(SECRET_CANARY)).toBe(false)
+
+    // Non-vacuity floor — two events + restore must hand buffers to the
+    // patched APIs at least 3 times (key-tmp publish + 2 wfa envelope
+    // temp writes + the audit append).
     expect(captured.length).toBeGreaterThanOrEqual(3)
 
     // Channel probe 1 (map channel) — some fd-based fs.write capture starts
@@ -307,10 +407,23 @@ describe.skipIf(IS_WIN32)('SC2 fs-write interception (REVMODE-11 — transient-w
       expect(/^\d+$/.test(capture.target.slice(keyTmpPrefix.length))).toBe(true)
     }
 
-    // ABSENCE — the load-bearing sweep: NO buffer handed to ANY write API
-    // carries a canary original or the plaintext map-JSON marker. Temp
-    // files included — this is the dimension the post-hoc inspection
-    // byte-scan cannot see.
+    // (3) Channel probe 3 (audit channel) — the restore audit record landed
+    // through the patched promises.appendFile onto audit.jsonl, and that
+    // specific capture carries hashes only: both canaries absent from it.
+    const auditAppends = captured.filter(
+      (c) => c.api === 'promises.appendFile' && c.target.endsWith('audit.jsonl'),
+    )
+    expect(auditAppends.length).toBeGreaterThanOrEqual(1)
+    for (const capture of auditAppends) {
+      expect(capture.bytes.includes(WORD_CANARY)).toBe(false)
+      expect(capture.bytes.includes(SECRET_CANARY)).toBe(false)
+    }
+
+    // (4) ABSENCE — the load-bearing FULL-FLOW sweep over every capture
+    // accumulated since the start (both events + the restore run): NO
+    // buffer handed to ANY write API carries a canary original or the
+    // plaintext map-JSON marker. Temp files included — this is the
+    // dimension the post-hoc inspection byte-scan cannot see.
     for (const capture of captured) {
       expect(
         capture.bytes.includes(WORD_CANARY),
