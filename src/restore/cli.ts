@@ -212,8 +212,18 @@ export async function runRestore(opts: RunRestoreOpts): Promise<void> {
     // Belt-and-braces: an UNEXPECTED throw (the wave-1 read path is total,
     // so this is defense in depth) degrades one-way — output equals input,
     // constant warning, exit 0. Flags prevent double stdout/warn emission.
+    // IN-01a: reset FIRST — the summary must never report pre-throw counts;
+    // a run whose catch fired reports ZERO work (honest degrade).
+    counts = ZERO_COUNTS
     if (!stdoutWritten) {
-      process.stdout.write(input)
+      try {
+        process.stdout.write(input)
+      } catch {
+        // IN-01b: degrade is one-way — if even the fallback write fails
+        // there is nothing safer to do; the warning + zero-counts summary
+        // on stderr are the signal. This documented swallow IS the error
+        // handling.
+      }
     }
     if (!warnedNoMaps) {
       process.stderr.write(WARN_NO_MAPS)

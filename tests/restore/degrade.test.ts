@@ -191,8 +191,16 @@ async function captureRun(opts: {
   cwd: string
   session?: string
   stdin: NodeJS.ReadableStream
+  /**
+   * IN-01 seam (11-04): make the captured stdout stub THROW — 'first' fails
+   * only the main payload write (the fallback pass-through still lands);
+   * 'always' fails the fallback too (double-throw containment). Absent ⇒
+   * capture-only, byte-identical to the rows (a)-(g) behavior.
+   */
+  stdoutThrows?: 'first' | 'always'
 }): Promise<CapturedRun> {
   const { runRestore } = await import('../../src/restore/cli.js')
+  const { stdoutThrows, ...runOpts } = opts
 
   const originalExit = process.exit
   const originalExitCode = process.exitCode
@@ -200,6 +208,7 @@ async function captureRun(opts: {
   const originalStderrWrite = process.stderr.write.bind(process.stderr)
   let stdout = ''
   let stderr = ''
+  let stdoutCalls = 0
 
   // WR-03 shape: hard gates set process.exitCode and RETURN (flush-safe);
   // process.exit is stubbed to THROW as a regression guard. Any throw
@@ -210,6 +219,10 @@ async function captureRun(opts: {
     )
   }) as typeof process.exit
   process.stdout.write = ((chunk: unknown) => {
+    stdoutCalls += 1
+    if (stdoutThrows === 'always' || (stdoutThrows === 'first' && stdoutCalls === 1)) {
+      throw new Error('stdout write stubbed to throw (IN-01 seam)')
+    }
     stdout += String(chunk)
     return true
   }) as typeof process.stdout.write
@@ -221,7 +234,7 @@ async function captureRun(opts: {
 
   let exitCode: number | undefined
   try {
-    await runRestore(opts)
+    await runRestore(runOpts)
   } finally {
     // Capture BEFORE restoring so a hard-gate exitCode never leaks into the
     // vitest worker's own exit status.
@@ -399,5 +412,78 @@ describe('row (g) — a held hook-side map lock never blocks, contends, or degra
     await release()
     pendingRelease = null
     expect(await lockfile.check(mapPath, LOCK_OPTS)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite — IN-01 (11-04): outer-catch honesty — zero counts + guarded fallback
+// ---------------------------------------------------------------------------
+
+/**
+ * Byte-exact ZERO_COUNTS summary — the honest-degrade pin (IN-01a). A run
+ * whose outer catch fired must report ZERO work: pre-throw counts describe
+ * deliveries that never happened.
+ */
+const ZERO_SUMMARY = '[mrclean] restore: restored=0 unmatched=0 secret-skipped=0 sessions=0\n'
+
+describe('IN-01: outer-catch honesty — zero counts + guarded fallback', () => {
+  it('pin consistency: ZERO_SUMMARY is exactly summaryLine(0,0,0,0)', () => {
+    expect(ZERO_SUMMARY).toBe(summaryLine(0, 0, 0, 0))
+  })
+
+  it('Row 1: throw AFTER counts were computed ⇒ summary reports ZERO counts, never stale ones', async () => {
+    // Real map + real token: counts become {restored:1, sessions:1} at step
+    // (5) BEFORE the main payload write at step (6). The audit-side inner
+    // catch is TOTAL (bare catch — nothing thrown in step (7) escapes it),
+    // so the seam that provably fires the OUTER catch post-counts is the
+    // main stdout write itself: stub throws on its FIRST call only.
+    const baseDir = await makeTmpDir('base')
+    const cwd = await makeCwd()
+    const { token } = await seedSession(baseDir)
+    const input = `late-throw ${token} tail`
+
+    const run = await captureRun({
+      baseDir,
+      cwd,
+      stdin: Readable.from([input]),
+      stdoutThrows: 'first',
+    })
+
+    // One-way degrade: exit 0 (the throwing process.exit stub is the
+    // regression guard) and the fallback pass-through landed (the stub's
+    // second call succeeds) — token present, non-vacuous.
+    expect(run.exitCode).toBeUndefined()
+    expect(run.stdout).toBe(input)
+    expect(run.stdout).toContain(token)
+
+    // Honest summary: byte-locked ZERO_COUNTS form — a failed delivery must
+    // never claim restored=1 — and the summary stays LAST on stderr.
+    expect(run.stderr).toBe(WARN_NO_MAPS + ZERO_SUMMARY)
+    expect(run.stderr.endsWith(ZERO_SUMMARY)).toBe(true)
+  })
+
+  it('Row 2: fallback write ALSO throws ⇒ contained — exit 0, warning + zero-counts summary emitted', async () => {
+    // Every stdout write throws: step (6) fires the outer catch, then the
+    // fallback pass-through write throws INSIDE the catch. An escape is the
+    // RED shape (captureRun repropagates and this await rejects with the
+    // stub's own error); containment means runRestore resolves normally
+    // with the full degrade shape still on stderr.
+    const baseDir = await makeTmpDir('base')
+    const cwd = await makeCwd()
+    const { token } = await seedSession(baseDir)
+    const input = `double-throw ${token} tail`
+
+    const run = await captureRun({
+      baseDir,
+      cwd,
+      stdin: Readable.from([input]),
+      stdoutThrows: 'always',
+    })
+
+    expect(run.exitCode).toBeUndefined()
+    // No stdout write can land — there is nothing safer to do than nothing.
+    expect(run.stdout).toBe('')
+    expect(run.stderr).toBe(WARN_NO_MAPS + ZERO_SUMMARY)
+    expect(run.stderr.endsWith(ZERO_SUMMARY)).toBe(true)
   })
 })
