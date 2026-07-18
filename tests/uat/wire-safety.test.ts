@@ -236,16 +236,14 @@ function grepProjectsTreeForCanaries(label: string, projectsDirOverride?: string
   const hits: string[] = []
   for (const rel of jsonlFiles) {
     const full = path.join(projectsDir, rel)
-    let raw = ''
     try {
-      raw = readFileSync(full, 'utf8')
+      const toolData = extractTranscriptToolData(full)
+      const wireText = `${toolData.toolResults}\n${toolData.toolUseInputs}`
+      if (wireText.includes(WORD_LIVE)) hits.push(`${full} [WORD_LIVE]`)
+      if (wireText.includes(SECRET_LIVE)) hits.push(`${full} [SECRET_LIVE]`)
     } catch {
       continue
     }
-    // RED (pre-fix): raw whole-file byte grep — trips on non-wire
-    // hook_success attachments (sc1b false positive).
-    if (raw.includes(WORD_LIVE)) hits.push(`${full} [WORD_LIVE]`)
-    if (raw.includes(SECRET_LIVE)) hits.push(`${full} [SECRET_LIVE]`)
   }
   expect(
     hits,
