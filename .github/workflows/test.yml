@@ -2,9 +2,14 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    # gsd/** lets milestone branches fire the full matrix on ubuntu BEFORE the
+    # merge PR — the stress gate's first ubuntu run must not be the milestone
+    # PR itself (Plan 11-06, A4 retirement). PR gating stays main-only.
+    branches: [main, 'gsd/**']
   pull_request:
     branches: [main]
+  # Durable post-merge affordance: re-run the matrix on demand from any branch.
+  workflow_dispatch:
 
 # Cancel in-progress runs for the same branch so successive pushes don't queue
 # redundant test runs. This workflow has no write permissions and uses no secrets.
