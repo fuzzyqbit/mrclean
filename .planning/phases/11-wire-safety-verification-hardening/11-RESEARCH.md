@@ -468,20 +468,24 @@ placeholders.set(entry.placeholder, entry.original)
 | A5 | Hooks registered on the same event all receive the payload (parallel execution) — the shape-survey log-hook can ride alongside mrclean's real hook | Pattern 2 (survey) | Low — documented hook behavior used by 08 experiments; if serialized-with-interference, run survey legs with the log-hook alone (shapes don't need mrclean in the loop) |
 | A6 | `registerTool` SDK signature in the sketch matches the installed `@modelcontextprotocol/sdk@^1.29` | Code Examples | Low — copy from src/mcp.ts (in-repo ground truth) at implementation time |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How should the ubuntu-first-run risk for the stress gate be retired?** (Pitfall 6)
    - What we know: 500 ms deadline is macOS-measured; workflows only fire at PR-to-main; T-09-08-06 sanctions re-measuring the knob (never the assertion).
    - Recommendation: add `workflow_dispatch` to test.yml (2-line change) and run once from the milestone branch during this phase; fall back to knob adjustment only on observed evidence.
+   - **RESOLVED** (2026-07-17): pinned in ROADMAP.md's Phase 11 planner-pin note — workflow_dispatch + `gsd/**` push triggers on test.yml/canary-leak.yml, one-time milestone-branch pre-run retires the risk (WORKER_DEADLINE_MS the only knob, T-09-08-06); executed by 11-06 Task 2.
 2. **Does SC1's live leg need byte-level hook-stdout capture (tee wrapper), or do transcript/stream signals suffice?**
    - What we know: the dist-parity leg already proves stdout parity deterministically at the artifact level; the live leg's transcript/stream scans prove the wire outcome.
    - Recommendation: skip the tee wrapper (it perturbs the fail-closed wrapper shape being tested); treat dist-parity as the stdout proof, live leg as the wire proof. Planner may add the tee as a stretch observation.
+   - **RESOLVED** (2026-07-17): pinned in ROADMAP.md's Phase 11 planner-pin note — NO tee wrapper; dist-parity is the stdout proof, the live leg is the wire proof; adopted by 11-05.
 3. **Which stable phrase anchors replace 'design commitment' in the copy-drift gate?**
    - What we know: the gate needs greppable fragments the finalized section genuinely carries (Pitfall 8).
    - Recommendation: decide at THREAT_MODEL-rewrite time; candidates: a "verified against the shipped implementation" stamp line, the §4 same-user-attacker fragment, and the existing 'transcript ratchet' phrase (kept).
+   - **RESOLVED** (2026-07-17): pinned in ROADMAP.md's Phase 11 planner-pin note — anchors pinned to 'verified against the shipped implementation' + 'not a defense against a same-user local attacker', with 'transcript ratchet' kept; executed by 11-07.
 4. **Adopt the optional reversible-overhead perf row?**
    - What we know: STATE.md metric TBD names Phase 9/11; nothing in SC1–SC5 requires it.
    - Recommendation: include as the last, cut-first task; measurement drives `handlePostToolUse` with the chaos HOME-stub seam under the existing 200 ms budget.
+   - **RESOLVED** (2026-07-17): pinned in ROADMAP.md's Phase 11 planner-pin note — perf row ADOPTED as the cut-first task; executed by 11-06 Task 3.
 
 ## Environment Availability
 
