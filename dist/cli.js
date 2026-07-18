@@ -40669,7 +40669,13 @@ async function runRestore(opts) {
       return;
     }
   } else {
-    input = await readAll(stdin);
+    try {
+      input = await readAll(stdin);
+    } catch {
+      process.stderr.write(ERR_STDIN_READ);
+      process.exitCode = 2;
+      return;
+    }
   }
   let counts = ZERO_COUNTS;
   let stdoutWritten = false;
@@ -40716,7 +40722,7 @@ async function runRestore(opts) {
   }
   process.stderr.write(summaryLine(counts));
 }
-var WARN_NO_MAPS, WARN_AUDIT_FAILED, ERR_BAD_SESSION, ZERO_COUNTS;
+var WARN_NO_MAPS, WARN_AUDIT_FAILED, ERR_BAD_SESSION, ERR_STDIN_READ, ZERO_COUNTS;
 var init_cli = __esm({
   "src/restore/cli.ts"() {
     "use strict";
@@ -40729,6 +40735,7 @@ var init_cli = __esm({
     WARN_NO_MAPS = "[mrclean] restore: no readable session map \u2014 placeholders left unchanged\n";
     WARN_AUDIT_FAILED = "[mrclean] restore: audit write failed \u2014 restored output unaffected\n";
     ERR_BAD_SESSION = "[mrclean] restore: invalid --session id (expected UUID)\n";
+    ERR_STDIN_READ = "[mrclean] restore: cannot read stdin\n";
     ZERO_COUNTS = { restored: 0, unmatched: 0, skippedSecret: 0, sessions: 0 };
   }
 });
