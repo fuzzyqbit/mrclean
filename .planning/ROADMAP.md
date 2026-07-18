@@ -189,7 +189,7 @@ Plans:
 | 8. Contract Verification & Reversible Plumbing | v3.0 | 11/12 | Gap closure (round 3) | - |
 | 9. Session State Adapter | v3.0 | 0/8 | Planned | - |
 | 10. Operator Restore | v3.0 | 8/8 | Complete    | 2026-07-18 |
-| 11. Wire-Safety Verification & Hardening | v3.0 | 7/7 | Complete   | 2026-07-18 |
+| 11. Wire-Safety Verification & Hardening | v3.0 | 7/7 | Complete    | 2026-07-18 |
 
 > Coverage validation (54 v1 reqs, 14 v2.0 reqs — all mapped) archived in the per-milestone roadmap files under `milestones/`. v3.0 coverage: 12/12 REVMODE requirements mapped (see REQUIREMENTS.md traceability).
 
