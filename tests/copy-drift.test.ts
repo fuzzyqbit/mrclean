@@ -120,13 +120,20 @@ describe('disclaimer-presence gate (D-05)', () => {
 })
 
 /**
- * Reversible-mode presence gate — Plan 08-06 Task 1 (REVMODE-03, T-08-21).
+ * Reversible-mode presence gate — Plan 08-06 Task 1 (REVMODE-03, T-08-21);
+ * anchors finalized by Plan 11-07 (REVMODE-11, SC5).
  *
  * Asserts THREAT_MODEL.md carries the '## Reversible Mode (v3.0)' section, its five
  * required H3 subsections (asserted on stable heading fragments so renumbering does
- * not break the gate), and the two honest-framing key phrases. Future edits that
- * silently drop the section or a subsection fail the build. Phase 11 finalizes the
- * section against the shipped implementation and extends this gate.
+ * not break the gate), and the honest-framing key phrases. Future edits that
+ * silently drop the section or a subsection fail the build.
+ *
+ * 11-07 finalized the section against the shipped implementation, so the required
+ * anchors are now the shipped-fact stamp ('verified against the shipped
+ * implementation') and the key-custody honesty fragment ('not a defense against a
+ * same-user local attacker'); 'transcript ratchet' is kept. The drafted-era
+ * 'design commitment' phrase is gone by design — Pitfall 8: that assertion swap
+ * and the doc rewrite land in the SAME commit so the suite is never red between.
  */
 const REQUIRED_REVERSIBLE_SUBSECTION_FRAGMENTS = [
   'blast radius',
@@ -163,8 +170,12 @@ describe('THREAT_MODEL reversible-mode presence gate (08-06, REVMODE-03)', () =>
     expect(readThreatModel()).toContain('transcript ratchet')
   })
 
-  it("carries the honest-framing key phrase 'design commitment'", () => {
-    expect(readThreatModel()).toContain('design commitment')
+  it("carries the shipped-fact stamp fragment 'verified against the shipped implementation'", () => {
+    expect(readThreatModel()).toContain('verified against the shipped implementation')
+  })
+
+  it("carries the key-custody honesty fragment 'not a defense against a same-user local attacker'", () => {
+    expect(readThreatModel()).toContain('not a defense against a same-user local attacker')
   })
 })
 
