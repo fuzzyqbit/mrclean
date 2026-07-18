@@ -57,6 +57,7 @@ The four warnings are CI-gate reliability/vacuity issues and two robustness gaps
 
 ### WR-01: Wire-safety CI gate pipeline can false-fail via `grep -q` early-exit SIGPIPE under pipefail
 
+**Status:** FIXED — commit 931552f (capture-then-grep `run_and_guard`; explicit status check preserves the pipefail property; old form's false-red reproduced 5/5 against a flooding stub, new form 0/5; both pipelines re-run green for real)
 **File:** `.github/workflows/canary-leak.yml:118-121`
 **Issue:** `npx vitest run … | tee /dev/stderr | grep -Eq "Test Files\s+3 passed"` — `grep -q` exits with status 0 the moment the summary line matches (POSIX-mandated). Vitest prints several more lines after `Test Files N passed` (`Tests …`, `Start at …`, `Duration …`); once grep exits, `tee`'s next write to its stdout pipe raises EPIPE/SIGPIPE (exit 141), and vitest's next write to the dead `tee` can do the same. With `set -o pipefail` those non-zero statuses fail the step even though every test passed. This is an intermittent false-red on a security gate — it cannot false-green, but flaky reds erode trust in exactly the gate that must stay credible (re-run-until-green habituation).
 **Fix:**
@@ -78,12 +79,14 @@ run: |
 
 ### WR-02: "Defense-in-depth grep — reversible canary corpus" step is structurally vacuous — it can never scan the surface it claims to backstop
 
+**Status:** FIXED — commit 50c47a1 (option (b): unit wire-safety suites export sandbox audit.jsonl to MRCLEAN_TEST_AUDIT_EXPORT_DIR before cleanup; step scans exported copies and FAILS on absent/empty set; validated 11 real sinks scanned green + missing-dir/empty-dir/injected-canary controls all fail loud; dist-parity (frozen) + stress write no persistent audit sink — honestly scoped out in the step comment)
 **File:** `.github/workflows/canary-leak.yml:123-146`
 **Issue:** The step greps `.mrclean/audit*.jsonl` relative to the checkout, guarded by `[ -d .mrclean ]`. But every suite this step claims to backstop writes audit output exclusively under `os.tmpdir()` sandboxes, never the workspace root (verified: `tests/audit/restore-canary-leak.test.ts` → `mrclean-restore-leak-*` tmp cwd; `tests/state/chaos.test.ts` → `mrclean-chaos-cwd-*`; `tests/state/fs-interception.test.ts` → `mrclean-fs-intercept-cwd-*`; `tests/state/stress.test.ts` → `mrclean-stress-*` mkdtemp; `tests/hook/dist-parity.test.ts` → payload cwd `/tmp`). The reversible canaries (`zz-canary-project-path-7g2`, `kim.canary@zz.invalid`, `AKIAIOSFODNN7EXAMPLX`) therefore never appear in any file this step can see, so it always prints "passed" while scanning nothing relevant. The stated purpose — "catches any future test-bug where those assertions are silenced or skipped" (line 128-130) — cannot fire: silencing the in-test assertions does not move the audit sinks to the repo root. This is a gate that passes without proving anything, presented as a second layer of defense.
 **Fix:** Either (a) delete the step and rely on the in-test `assertNoCanaryLeak`/byte-scan assertions (which are the real gates), or (b) make the sinks scannable — e.g., have the wire-safety suites accept an env-provided audit root (`MRCLEAN_TEST_AUDIT_DIR`) that CI sets to a workspace path and the step greps — or at minimum (c) rewrite the step comment to state honestly that it only covers a hypothetical future repo-root audit sink, so the next reader does not count it as live coverage.
 
 ### WR-03: Survey verdict fallback can record a different tool's shape under the requested tool's name in the committed evidence artifact
 
+**Status:** FIXED — commit 5fc9897 (fallback removed; hard harness-integrity expect with observed-tool_names message; missing per-tool entry now fails loud and records nothing under that name; token-free uat guards 3 passed / 8 live legs skipped)
 **File:** `tests/uat/wire-safety.test.ts:453`
 **Issue:** `const entry = entries.find((e) => e.tool_name === toolName) ?? entries[0]` — when the observer log contains entries but none for `toolName` (model used a different tool, PostToolUse fired for an unexpected tool, tool call denied), the verdict for `toolName` is silently built from `entries[0]`, i.e. some other tool's `typeof`/shape. The only hard assertion is `entries.length > 0`. This writes a mislabeled per-tool verdict into `tests/uat/artifacts/contract-findings.json`, which `docs/HOOK-CONTRACT.md`'s "Per-tool tool_response shapes" matrix re-stamps from — corrupting the exact evidence chain the copy-drift traceability gate exists to protect. `observed_tool_names` in signals makes the mislabel *discoverable*, but nothing makes it *loud*.
 **Fix:**
@@ -98,6 +101,7 @@ if (entry === undefined) return
 
 ### WR-04: `runRestore` stdin read sits outside both error domains — a stream error crashes with a raw stack instead of the contracted exit shapes
 
+**Status:** FIXED — commit 192b7e7 (stdin readAll wrapped in the hard-gate discipline: constant ERR_STDIN_READ line, exitCode 2 + return; docblock contract updated; byte-locked row added to tests/cli/restore.test.ts, RED reproduced the raw-stack escape then GREEN 10/10)
 **File:** `src/restore/cli.ts:161`
 **Issue:** The module's contract (lines 17-31) is total: hard input errors exit 2 with a constant line; everything else degrades one-way with exit 0. But `input = await readAll(stdin)` runs before the degrade `try` and has no handler of its own (unlike the file branch at 152-159). A stdin stream `'error'` event (closed fd, EIO on hangup, broken pipe upstream) makes the async iterator throw, `runRestore` rejects, and `src/cli.ts`'s top-level `await program.parseAsync(...)` turns that into an unhandled-rejection crash: raw stack trace on stderr, exit code 1 — neither error domain, no constant-shape diagnostic, no counts summary.
 **Fix:**
