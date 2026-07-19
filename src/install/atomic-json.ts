@@ -8,7 +8,7 @@
  * RESEARCH.md §3.3 (atomic write + backup naming).
  */
 
-import { readFile, writeFile, rename, copyFile, readdir, unlink } from 'node:fs/promises'
+import { readFile, writeFile, rename, copyFile, mkdir, readdir, unlink } from 'node:fs/promises'
 import { dirname, basename, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -36,10 +36,16 @@ export async function readJsonOrEmpty(path: string): Promise<Record<string, unkn
  * Writes to a tmp file in the SAME directory as the target (Pitfall #5 defense),
  * then renames the tmp file to the target. If the rename fails, the tmp file
  * is cleaned up in a finally block to avoid leaving orphaned files.
+ *
+ * Creates the target's parent directories if missing (recursive, no-op when
+ * present) — zero-config first run means ~/.claude may not exist yet
+ * (08-UAT gap 1).
  */
 export async function atomicWriteJson(path: string, data: unknown): Promise<void> {
   const dir = dirname(path)
   const tmpPath = join(dir, `.mrclean-tmp-${randomUUID()}.json`)
+
+  await mkdir(dir, { recursive: true })
 
   try {
     await writeFile(tmpPath, JSON.stringify(data, null, 2), 'utf8')

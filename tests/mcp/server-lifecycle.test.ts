@@ -13,13 +13,22 @@
 
 import { describe, it, expect } from 'vitest'
 import { spawn } from 'node:child_process'
-import { resolve } from 'node:path'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const PROJECT_ROOT = resolve(__dirname, '../..')
 const DIST_MCP = resolve(PROJECT_ROOT, 'dist/mcp.js')
 const NODE = process.execPath
+
+// 09 review (WR-02): the MCP server's boot TTL sweep now runs
+// UNCONDITIONALLY. These tests spawn the REAL dist/mcp.js — sandbox HOME so
+// the sweep can never touch the developer's real ~/.mrclean. The probe
+// script's inner spawn inherits this env transitively.
+const SANDBOX_HOME = mkdtempSync(join(tmpdir(), 'mrclean-lifecycle-home-'))
+const SANDBOX_ENV = { ...process.env, HOME: SANDBOX_HOME, USERPROFILE: SANDBOX_HOME }
 
 /**
  * Spawn a child process and collect output; optionally kill it after a pattern appears in stderr.
@@ -35,7 +44,7 @@ function spawnAndSignal(
   } = {},
 ): Promise<{ code: number | null; stderr: string; stdout: string }> {
   return new Promise((resolveP, rejectP) => {
-    const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'] })
+    const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'], env: SANDBOX_ENV })
     let stderr = ''
     let stdout = ''
 
@@ -88,7 +97,10 @@ function spawnEval(
   opts: { timeoutMs?: number } = {},
 ): Promise<{ code: number | null; stderr: string; stdout: string }> {
   return new Promise((resolveP, rejectP) => {
-    const child = spawn(NODE, ['--input-type=module'], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const child = spawn(NODE, ['--input-type=module'], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: SANDBOX_ENV,
+    })
     let stderr = ''
     let stdout = ''
 

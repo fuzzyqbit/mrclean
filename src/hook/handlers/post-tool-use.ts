@@ -24,8 +24,28 @@ import {
   initSessionState,
   setCachedSessionState,
 } from '../../detect/session-state.js'
-import { runDetection } from '../../detect/index.js'
+import {
+  runDetection,
+  hydrateSessionManager,
+  drainSessionAllocations,
+} from '../../detect/index.js'
 import type { PostToolUseInput, PostToolUseOutput } from '../../shared/types.js'
+
+/**
+ * Reversible-mode capability handle (Phase 9, Plan 09-07 — REVMODE-02).
+ *
+ * Non-null ONLY when [reversible] is enabled AND the sid passed the strict
+ * UUID allowlist AND store hydration succeeded. Carries the lazily-imported
+ * state facade namespace so the whole event uses EXACTLY ONE dynamic import
+ * site — the cold-path import-graph fence (tests/state/cold-path.test.ts)
+ * bans every static form of `src/state/` from this module (Pitfall 7).
+ * `typeof import(...)` below is a TYPE position — erased at compile, loads
+ * nothing.
+ */
+interface ReversibleHandle {
+  facade: typeof import('../../state/index.js')
+  deadlineMs: number
+}
 
 /**
  * Matches mrclean's OWN MCP tools regardless of install method.
@@ -66,6 +86,34 @@ export async function handlePostToolUse(
     setCachedSessionState(state)
   }
 
+  // Step 2b: Reversible hydrate (Plan 09-07, REVMODE-02) — gate order matters:
+  // the config master switch is OUTERMOST (a disabled session allocates zero
+  // promises and never touches src/state/), then the strict UUID sid allowlist
+  // (the facade re-checks internally — defense in depth). The state facade is
+  // reachable ONLY via this one dynamic import (cold-path fence, Pitfall 7).
+  // The WHOLE block is a try/catch wall: ANY facade error means one-way
+  // fallback — no new throw may surface (Pitfall 6; PostToolUse is
+  // non-blocking, but exit-2 stderr noise on every tool result is still a
+  // failure mode).
+  let reversible: ReversibleHandle | null = null
+  if (config.reversible.enabled) {
+    try {
+      const facade = await import('../../state/index.js')
+      if (facade.isValidSessionId(input.session_id)) {
+        const hydration = await facade.readSessionMapForHydration({
+          sessionId: input.session_id,
+        })
+        if (hydration) {
+          hydrateSessionManager(input.session_id, hydration)
+          const { POST_LOCK_DEADLINE_MS } = await import('../../state/lock.js')
+          reversible = { facade, deadlineMs: POST_LOCK_DEADLINE_MS }
+        }
+      }
+    } catch {
+      // One-way fallback: reversible stays null; detection runs unchanged.
+    }
+  }
+
   // Step 3: Coerce tool_response to string (RESEARCH Pitfall #7)
   const text =
     typeof input.tool_response === 'string'
@@ -81,6 +129,15 @@ export async function handlePostToolUse(
 
   // Step 5: Budget exhausted → pass through (non-blocking); log structured stderr warning
   if (result.budgetExhausted) {
+    // Reversible drain-DISCARD (T-09-07-04): nothing is emitted on this path,
+    // so persisting would orphan store entries for values that never shipped.
+    if (reversible) {
+      try {
+        drainSessionAllocations(input.session_id)
+      } catch {
+        // One-way fallback (Pitfall 6) — the pass-through below is unchanged.
+      }
+    }
     process.stderr.write(
       JSON.stringify({
         warn: 'mrclean detection budget exhausted on PostToolUse',
@@ -92,15 +149,50 @@ export async function handlePostToolUse(
 
   // Step 6: dry_run=true → no substitution; detections already audit-logged by runDetection
   if (config.dry_run) {
+    // Reversible drain-DISCARD (T-09-07-04): dry_run substitutes nothing, so
+    // a persisted entry would be an orphan the operator could never restore to.
+    if (reversible) {
+      try {
+        drainSessionAllocations(input.session_id)
+      } catch {
+        // One-way fallback (Pitfall 6) — the null pass-through is unchanged.
+      }
+    }
     return null
   }
 
   // Step 7: Any detection → return updatedToolOutput with substituted text
   if (result.findings.length > 0) {
+    let emittedText = result.substitutedText
+
+    // Step 7b: Reversible drain → SINGLE locked persist → reconcile renames
+    // (Plan 09-07). Renames swap provisional tokens that lost the store race
+    // for the authoritative ones BEFORE emission (both placeholder-shaped —
+    // the wire only ever carries placeholders, T-09-07-01). 'degraded'/'noop'
+    // emit as-is: provisional tokens stand, the facade already warned once.
+    // The emitted shape is UNCHANGED: string-form updatedToolOutput (E1).
+    if (reversible) {
+      try {
+        const pending = drainSessionAllocations(input.session_id)
+        if (pending.length > 0) {
+          const persisted = await reversible.facade.persistAllocations({
+            sessionId: input.session_id,
+            pending,
+            deadlineMs: reversible.deadlineMs,
+          })
+          if (persisted.status === 'ok' && persisted.renames.length > 0) {
+            emittedText = reversible.facade.applyRenamesToText(emittedText, persisted.renames)
+          }
+        }
+      } catch {
+        // One-way emission — provisional tokens stand; never throw (Pitfall 6).
+      }
+    }
+
     return {
       hookSpecificOutput: {
         hookEventName: 'PostToolUse',
-        updatedToolOutput: result.substitutedText,
+        updatedToolOutput: emittedText,
         additionalContext: `[mrclean] substituted ${result.findings.length} secret(s) in tool output`,
       },
     }

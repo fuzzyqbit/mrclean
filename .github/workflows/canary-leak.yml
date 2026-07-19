@@ -2,9 +2,13 @@ name: Canary Leak Gate
 
 on:
   push:
-    branches: [main]
+    # gsd/** lets milestone branches fire the wire-safety gates on ubuntu
+    # BEFORE the merge PR (Plan 11-06, A4 retirement). PR gating stays main-only.
+    branches: [main, 'gsd/**']
   pull_request:
     branches: [main]
+  # Durable post-merge affordance: re-run the gate on demand from any branch.
+  workflow_dispatch:
 
 # Cancel in-progress runs for the same branch. This workflow has no write
 # permissions and uses no secrets — it is a read-only security gate.
@@ -91,3 +95,90 @@ jobs:
             done
           fi
           echo "Defense-in-depth PII canary-leak grep passed."
+
+      - name: Wire-safety gates — REVMODE-11 (SC2/SC3 unit + SC1a/SC4 integration)
+        # Plan 11-06 (SC3/SC4 elevation): every wire-safety suite is NAMED here so a
+        # routing regression cannot silently drop a gate from CI. The exact-count
+        # "Test Files N passed" grep is the anti-vacuity guard: `npx vitest run
+        # <file> --project=X` exits 0 with ZERO files collected when the file is
+        # not in project X's include list (demonstrated in-repo, 10-07) — a
+        # mis-routed file changes the collected count and fails the step even
+        # though vitest exits 0.
+        #
+        # Capture-then-grep (11-REVIEW WR-01): vitest output is captured to a
+        # temp file, echoed to the CI log, and ONLY THEN grepped. The previous
+        # `… | tee /dev/stderr | grep -Eq` form let grep -q exit at first match
+        # (POSIX-mandated) while vitest/tee were still writing the trailing
+        # summary lines — the resulting EPIPE/SIGPIPE (exit 141) under pipefail
+        # turned fully-green runs into intermittent false-reds. With no live
+        # pipe between vitest and the guard, that race is structurally gone.
+        # The explicit `[ "$status" -eq 0 ]` check preserves the property
+        # pipefail provided here: a non-zero vitest exit whose output still
+        # contains an intact "Test Files N passed" line (e.g. a teardown or
+        # unhandled-rejection failure) fails the step BEFORE the count guard
+        # can pass it. pipefail itself is retained defensively for any future
+        # pipeline added to this step.
+        #
+        # The integration pipeline runs after the npm ci + npm run build steps
+        # above; the integration project's globalSetup owns the tsup rebuild, so
+        # dist/ is guaranteed fresh for dist-parity + stress.
+        env:
+          # 11-REVIEW WR-02: the unit wire-safety suites copy each sandbox
+          # audit.jsonl here before their cleanup removes the sandbox; the
+          # "reversible canary corpus" grep step below scans the copies and
+          # fails when the exported set is empty.
+          MRCLEAN_TEST_AUDIT_EXPORT_DIR: ${{ runner.temp }}/mrclean-audit-export
+        run: |
+          set -o pipefail
+          run_and_guard() {
+            local project="$1" expected="$2"
+            shift 2
+            local out status=0
+            out="$(mktemp)"
+            npx vitest run --no-color --project="$project" "$@" >"$out" 2>&1 || status=$?
+            cat "$out"
+            [ "$status" -eq 0 ] || exit "$status"
+            grep -Eq "Test Files[[:space:]]+${expected} passed" "$out"
+          }
+          run_and_guard unit 3 tests/audit/restore-canary-leak.test.ts tests/state/chaos.test.ts tests/state/fs-interception.test.ts
+          run_and_guard integration 2 tests/hook/dist-parity.test.ts tests/state/stress.test.ts
+
+      - name: Defense-in-depth grep — reversible canary corpus
+        # Plan 11-06 / 11-REVIEW WR-02: belt-and-suspenders second pass mirroring
+        # the secret + PII greps above, over the pinned 10-08 reversible canary
+        # corpus (word, email, non-EXAMPLE AWS key). The wire-safety suites write
+        # audit.jsonl ONLY inside os.tmpdir() sandboxes their cleanup removes —
+        # a repo-root `.mrclean` scan can never see them (WR-02's vacuity). The
+        # unit suites (restore-canary-leak, chaos, fs-interception) therefore
+        # copy every sandbox audit.jsonl into MRCLEAN_TEST_AUDIT_EXPORT_DIR (set
+        # on the wire-safety step above) before cleanup, and THIS step greps the
+        # exported copies. It FAILS when the exported set is empty: a silenced
+        # or skipped in-test assertion and broken export wiring both surface as
+        # a red step instead of a vacuous pass. dist-parity + stress
+        # (integration) write no persistent audit sink; their absence proofs
+        # stay in-test. Values are synthetic markers pinned for exactly this
+        # purpose (T-11-06-03) — printed only on FAILURE.
+        run: |
+          set -e
+          EXPORT_DIR="${RUNNER_TEMP}/mrclean-audit-export"
+          REVERSIBLE_CANARIES=(
+            "zz-canary-project-path-7g2"
+            "kim.canary@zz.invalid"
+            "AKIAIOSFODNN7EXAMPLX"
+          )
+          if [ ! -d "$EXPORT_DIR" ]; then
+            echo "::error::Vacuous reversible canary grep: $EXPORT_DIR missing — audit export wiring broken or wire-safety suites did not run"
+            exit 1
+          fi
+          file_count=$(find "$EXPORT_DIR" -type f -name '*.jsonl' | wc -l | tr -d ' ')
+          if [ "$file_count" -eq 0 ]; then
+            echo "::error::Vacuous reversible canary grep: zero exported audit files under $EXPORT_DIR"
+            exit 1
+          fi
+          for val in "${REVERSIBLE_CANARIES[@]}"; do
+            if grep -RF "$val" "$EXPORT_DIR"; then
+              echo "::error::Reversible canary leak: '$val' found in exported audit logs"
+              exit 1
+            fi
+          done
+          echo "Defense-in-depth reversible canary-leak grep passed over ${file_count} exported audit file(s)."

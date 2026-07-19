@@ -54,7 +54,7 @@ describe('runInstall idempotency', () => {
     const settingsPath = join(tempHome, '.claude', 'settings.json')
     const data = JSON.parse(await readFile(settingsPath, 'utf8'))
 
-    for (const event of ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
+    for (const event of ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse']) {
       const mrcleanEntries = (data.hooks[event] || []).filter(
         (e: Record<string, unknown>) => e._mrclean === true
       )

@@ -15,6 +15,13 @@ import type { MrcleanConfig } from '../../src/shared/types.js'
 import type { DetectionResult } from '../../src/detect/index.js'
 import { DEFAULT_CONFIG } from '../../src/config/defaults.js'
 
+// 09 review (WR-02): handleSessionStart's TTL sweep is now UNCONDITIONAL —
+// mock the janitor so this suite never sweeps the real ~/.mrclean.
+vi.mock('../../src/state/janitor.js', () => ({
+  runTtlSweep: vi.fn().mockResolvedValue(undefined),
+  runSessionEndJanitor: vi.fn().mockResolvedValue(undefined),
+}))
+
 // ---------------------------------------------------------------------------
 // Shared mock factories — called freshly in each test
 // ---------------------------------------------------------------------------

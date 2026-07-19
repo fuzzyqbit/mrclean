@@ -18,12 +18,18 @@
 
 import { describe, it, expect } from 'vitest'
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import path from 'node:path'
 
 const DIST_CLI = path.resolve(process.cwd(), 'dist/cli.js')
+
+// 09 review (WR-02): the SessionStart TTL sweep in the built binary now runs
+// UNCONDITIONALLY. Sandbox HOME so a spawned hook can never sweep (or read)
+// the developer's real ~/.mrclean. Tests that need a specific HOME still win
+// via extraEnv (spread last).
+const SANDBOX_HOME = mkdtempSync(join(tmpdir(), 'mrclean-hook-det-home-'))
 
 function runHook(
   payload: string,
@@ -34,7 +40,7 @@ function runHook(
     input: payload,
     encoding: 'utf8',
     timeout: 30_000,
-    env: { ...process.env, ...extraEnv },
+    env: { ...process.env, HOME: SANDBOX_HOME, USERPROFILE: SANDBOX_HOME, ...extraEnv },
     cwd: cwd ?? process.cwd(),
   })
   return {

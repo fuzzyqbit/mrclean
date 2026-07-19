@@ -12,15 +12,20 @@ import { readJsonOrEmpty, atomicWriteJson, backupJson } from './atomic-json.js'
 import { isMrcleanEntry } from './markers.js'
 
 /**
- * The four hook events mrclean registers for.
+ * The five hook events mrclean registers for.
  * Ordered per RESEARCH.md §1.1 for consistent output.
+ * Phase 8 (08-02): SessionEnd added + SessionStart matcher widened (REVMODE-07).
+ * Exported so install's success banner derives its count from this single
+ * source of truth (08-UAT gap 2 — the hardcoded count went stale when 08-02
+ * widened this list).
  */
-const HOOK_EVENTS = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse'] as const
+export const HOOK_EVENTS = ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse'] as const
 type HookEvent = (typeof HOOK_EVENTS)[number]
 
-/** Matcher per event. `undefined` means no matcher field (UserPromptSubmit). */
+/** Matcher per event. `undefined` means no matcher field (UserPromptSubmit, SessionEnd). */
 const HOOK_MATCHERS: Record<HookEvent, string | undefined> = {
-  SessionStart: 'startup',
+  SessionStart: 'startup|resume|clear|compact',  // regex alternation — re-init on resume/clear/compact
+  'SessionEnd': undefined,   // no matcher — SessionEnd matchers filter on `reason`; the handler must see ALL reasons
   UserPromptSubmit: undefined,    // No matcher support per RESEARCH §1.1
   PreToolUse: '*',
   PostToolUse: '*',
@@ -104,7 +109,7 @@ export function buildHookCommand(
 }
 
 /**
- * Write mrclean hook entries into settings.json for all four events.
+ * Write mrclean hook entries into settings.json for all five events.
  *
  * Idempotent: any existing `_mrclean: true` entries are replaced, not duplicated.
  * Creates a timestamped backup before writing if the file exists.

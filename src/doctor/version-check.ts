@@ -61,7 +61,9 @@ function defaultRunVersionCommand(): string {
  * Check the installed Claude Code version.
  *
  * Version compatibility table (Plan 02-05 floor bump for updatedToolOutput support):
- *   >= 2.1.121  → green  (full Phase 2 support: PostToolUse updatedToolOutput available)
+ *   >= 2.1.121  → green  (PostToolUse updatedToolOutput channel available — but see
+ *                         the E1 shape-validation caveat in the green detail below;
+ *                         verified on Claude Code 2.1.209, 2026-07-14, docs/HOOK-CONTRACT.md)
  *   >= 2.0.0    → yellow (partial: prompt block + PreToolUse substitution work,
  *                         but PostToolUse output rewrite requires >= 2.1.121)
  *   <  2.0.0    → red    (incompatible — hook contract pre-dates Phase 1 requirements)
@@ -112,7 +114,12 @@ export async function checkClaudeCodeVersion(
     return {
       status: 'green',
       version,
-      detail: `${version} — fully compatible (PostToolUse updatedToolOutput supported, full Phase 2 functionality)`,
+      detail:
+        `${version} — hook contract compatible. Note: PostToolUse updatedToolOutput is ` +
+        `shape-validated per tool (verified on Claude Code 2.1.209, 2026-07-14): string ` +
+        `payloads are honored for MCP tools but rejected for built-in tools (Bash/Read), ` +
+        `so mrclean's current string-form tool-output rewrite is inert for built-in tools. ` +
+        `See docs/HOOK-CONTRACT.md.`,
     }
   }
 

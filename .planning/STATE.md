@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Reversible Redact Mode — Foundations + Operator Restore
-status: executing
-stopped_at: Roadmap created, awaiting phase planning
-last_updated: "2026-07-14T18:22:10.587Z"
-last_activity: 2026-07-14 -- Phase 8 planning complete
+status: Awaiting next milestone
+stopped_at: Completed 09-08-PLAN.md
+last_updated: "2026-07-19T00:48:18.973Z"
+last_activity: 2026-07-19 — Milestone v3.0 completed and archived
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 6
-  completed_plans: 0
-  percent: 0
+  completed_phases: 4
+  total_plans: 37
+  completed_plans: 37
+  percent: 100
 ---
 
 # State: mrclean
@@ -22,17 +22,16 @@ progress:
 
 **Project:** mrclean
 **Core Value:** Real secrets and proprietary terms never reach the wire — the user keeps Claude Code productivity without trading away repo-level confidentiality.
-**Current Focus:** Milestone v3.0 Reversible Redact Mode — Foundations + Operator Restore — roadmap created (Phases 8–11), ready to plan Phase 8
+**Current Focus:** Planning next milestone — run `/gsd:new-milestone`
 **Project Mode:** mvp (vertical slices)
 **Granularity:** coarse (3-5 phases)
 
 ## Current Position
 
-Phase: 8 of 11 — Contract Verification & Reversible Plumbing (not started)
+Phase: Milestone v3.0 complete
 Plan: —
-Status: Ready to execute
-Progress: [░░░░░░░░░░] 0% (0/4 v3.0 phases)
-Last activity: 2026-07-14 -- Phase 8 planning complete
+Status: Awaiting next milestone
+Last activity: 2026-07-19 — Milestone v3.0 completed and archived
 
 ## Performance Metrics
 
@@ -44,9 +43,12 @@ Last activity: 2026-07-14 -- Phase 8 planning complete
 | False-positive rate on negative fixture corpus | 0% | 0% (0/10 — 02-06 fixture corpus) |
 | Line coverage on `src/` | ≥ 80% | 84.01% lines / 82.89% stmts / 82.12% funcs / 73.22% branches (03-00 baseline) |
 | Regex-PII hot-path latency (p95) | < 100 / < 200 ms | TBD (Phase 5 — must stay within v1 budget with L6a enabled) |
-| Reversible-mode PostToolUse overhead | ~4–8 ms typical / <60 ms contended worst-case | TBD (Phase 9/11 — research estimate; detection stays dominant cost) |
+| Reversible-mode PostToolUse overhead | ~4–8 ms typical / <60 ms contended worst-case | p95 5.36ms reversible / 2.60ms one-way, +2.75ms delta (measured 11-06, well under the 60ms worst-case estimate) |
 | Phase 01 P06 | 10min | 3 tasks | 9 files |
 | Phase 01 P07 | 4min | 2 tasks | 1 files |
+| Phase 08 P12 | 8min | 2 tasks | 7 files |
+| Phase 09 P07 | 18min | 2 tasks | 5 files |
+| Phase 09 P08 | 28min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -61,6 +63,14 @@ Last activity: 2026-07-14 -- Phase 8 planning complete
 - **REVMODE-03 maps to Phase 8** (THREAT_MODEL.md reversible section drafted from made decisions + in-phase empirical answers); Phase 11 finalizes it against the shipped implementation and locks it with the copy-drift gate (REVMODE-11 scope).
 - **Verification gates named early**: Phase 11's canary round-trip / chaos / concurrency-stress gates are named in Phases 8–10 success criteria so implementations build against them, not retrofit them (research phase-ordering rule).
 - **Storage-mechanics reconciliation deferred to Phase 9 planning** — append-only JSONL + lock-free hot path vs whole-file encrypt + short locked transaction, plus key layout; invariants already converged (SUMMARY.md T2), so it's a plan-phase design pin, not new research.
+- [Phase 08-12]: atomicWriteJson owns parent-dir creation (recursive mkdir before tmp write) — every JSON writer fresh-HOME safe, matching ignore.ts/project-dir.ts precedent
+- [Phase 08-12]: install banner count derives from exported HOOK_EVENTS.length, test-locked to the on-disk _mrclean ground truth (survives future HOOK_EVENTS changes)
+- [Phase 09]: 09-07: ReversibleHandle capability handle — lazily-imported facade stored from Step 2b and reused at persist time, keeping EXACTLY ONE dynamic state-import site per handler — Satisfies the one-await-import grep gate + cold-path fence without a facade re-export; disabled sessions allocate zero promises
+- [Phase 09]: 09-07: drain-and-DISCARD on budget-deny and dry_run paths in both substitution handlers — the store only learns allocations that actually shipped on the wire (T-09-07-04) — Persisting non-emitted substitutions would create orphan store entries the operator could never legitimately restore against
+- [Phase 09]: 09-07: cold-path fence is now regression-locked — static state/proper-lockfile/write-file-atomic imports banned from the 9-module hook-reachable set; cipher/lock tokens confined to src/state/ by full-src walk — Pitfall 7 / REVMODE-05: one-way default provably byte-identical; fence trip verified live with a planted import during development
+- [Phase ?]: [Phase 09]: 09-08: tsup shims:true — bundled CJS write-file-atomic references __filename, unshimmed in ESM output; every dist-bundle reversible persist threw and degraded until the SC5 stress gate caught it
+- [Phase ?]: [Phase 09]: 09-08: withMapLock re-arms proper-lockfile's ELOCKED ladder while wall-clock budget remains — only ELOCKED re-arms (ENOENT/EACCES stay immediate-degrade); the deadline is now provably the effective bound
+- [Phase ?]: [Phase 09]: 09-08: stress harness deadline 500ms on measured evidence (0/400 degrades x3 runs); production UPS/POST lock deadlines untouched at 50/100 per T-09-08-06
 
 ### Phase → Requirement Mapping (v3.0)
 
@@ -236,17 +246,17 @@ Last activity: 2026-07-14 -- Phase 8 planning complete
 
 ## Session Continuity
 
-**Last command:** `/gsd:new-project` (roadmap step for v3.0)
-**Last action:** v3.0 roadmap created — Phases 8–11 appended to ROADMAP.md (numbering continued from v2.0), 12/12 REVMODE requirements mapped, REQUIREMENTS.md traceability filled, STATE.md updated.
-**Stopped at:** Roadmap created, awaiting phase planning
-**Next action:** `/gsd-plan-phase 8` — `--research-phase` recommended (live headless contract experiments; UAT-2b harness precedent)
+**Last command:** `/gsd:complete-milestone v3`
+**Last action:** v3.0 milestone archived — ROADMAP/REQUIREMENTS/AUDIT moved to `.planning/milestones/`, Phase 8-11 directories moved to `.planning/milestones/v3.0-phases/`, PROJECT.md full evolution review complete (12 new Validated requirements, 5 Key Decisions flipped Pending→Good), RETROSPECTIVE.md updated.
+**Stopped at:** v3.0 milestone close complete
+**Next action:** `/gsd:new-milestone` — no active milestone scoped yet
 
 ---
-*Last updated: 2026-07-14 — v3.0 roadmap created (Phases 8–11 appended; phase numbering continued from v2.0)*
+*Last updated: 2026-07-19 — v3.0 milestone shipped and archived*
 
 ## Operator Next Steps
 
-- Run `/gsd-plan-phase 8` (research-phase recommended: live headless contract verification)
+- Start the next milestone with /gsd-new-milestone
 
 ## Deferred Items
 
@@ -269,3 +279,23 @@ The 2026-06-03 audit's "missing" statuses were stale — the quick-task director
 - Delimiter/case-tolerant token matching + near-miss audit — only on field evidence of model-mangled tokens (never Levenshtein)
 - Keychain-backed key custody (POLISH-03) — `getMachineKey()` is the single swap point
 - Layer 5 `--deep` LLM classifier — planned v4.0
+
+### v3.0 milestone close (2026-07-19) — pre-close artifact audit acknowledged
+
+Pre-close audit found 11 open items. All checked individually before acknowledging — every item is resolved in substance, just not administratively flipped to a closed status in its source file.
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | rolldown-binding-node2018-engines | resolved — CONFIRMED root cause (stale `engines.node` floor 20.18 vs toolchain's actual 20.19 requirement), fixed commit `e6a888e` (Phase 11 gap-closure 11-09) |
+| debug | sc1b-resume-canary-leak | resolved — CONFIRMED root cause (test-surface bug: `grepProjectsTreeForCanaries` unscoped whole-file byte grep tripped on an unrelated third-party plugin's hook bookkeeping, not a product leak), fixed in two passes (11-08 `2c8eee9`/`1d8155d`/`782bc64`, then `df350d1` for a second identical instance) |
+| debug | ubuntu-ci-doctor-exit-5 | resolved — CONFIRMED two independent causes (ANSI color breaking CI count-guard grep; doctor tests lacking version-stub hermeticity), fixed commits `feea179`/`45a46b6` (Phase 11 gap-closure 11-09) |
+| debug | stub-dead-keys-issue | resolved (carried forward from v2.0 close — fix shipped 1afefec, re-confirmed this audit by reading the diff) |
+| quick_task | 260601-0e1-fix-install-stub-dead-keys | shipped 2026-06-01 (carried forward, `1afefec`) |
+| quick_task | 260601-1sw-mrclean-init-command | shipped 2026-06-01 (carried forward, `0d12c88`) |
+| quick_task | 260601-2fj-uninstall-surgical | shipped 2026-06-01 (carried forward, `ca2891a`) |
+| uat_gap | 08-HUMAN-UAT.md | resolved (own status field already says resolved, 0 pending scenarios — audit tool false-positive) |
+| uat_gap | 08-UAT.md | resolved (own status field already says resolved, 0 pending scenarios — audit tool false-positive) |
+| uat_gap | 11-HUMAN-UAT.md | resolved (own status field already says resolved, 0 pending scenarios; documents the SC1b live-leg 8/8 clean re-run and both-workflows-green ubuntu CI re-run) |
+| verification_gap | 11-VERIFICATION.md | superseded — frontmatter still literally reads `human_needed` (2 deferred operator legs) because the artifact was never regenerated after gap closure. Both deferred items independently re-confirmed by `/gsd:audit-milestone v3` (2026-07-18): SC1b live leg confirmed via `tests/uat/artifacts/contract-findings.json` real data (CLI 2.1.212, 2026-07-18, restored=1/unmatched=0); ubuntu CI confirmed via direct `gh run list` — both `test.yml` and `Canary Leak Gate` `success` on resolution commit `6a171d0` (runs `29649118240`/`29649118226`). Not re-tracked as a fresh gap — this is the same milestone audit's finding, not new information. |
+
+One residual **non-blocking process gap** carried into the archive (not part of this acknowledgment — it's tracked in `v3.0-MILESTONE-AUDIT.md` tech debt, not the pre-close audit): `docs/HOOK-CONTRACT.md`'s per-tool matrix still shows "pending" placeholders even though `contract-findings.json` already has the real 2026-07-18 live-run data. Cheap 4-cell copy fix; deferred to backlog, not blocking close.

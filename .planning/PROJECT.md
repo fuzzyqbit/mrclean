@@ -2,7 +2,7 @@
 
 ## What This Is
 
-mrclean is an in-session sanitizer that prevents sensitive data from leaking out of Claude Code sessions to remote services (Anthropic API, cloud agents, MCP endpoints). It hooks into Claude Code via a settings.json hook and an MCP server, intercepting prompts and tool payloads in memory, swapping detected secrets and project-specific terms with stable placeholders before they leave the machine, and optionally restoring placeholders on the return path so file paths, names, and identifiers round-trip cleanly back into the user's view.
+mrclean is an in-session sanitizer that prevents sensitive data from leaking out of Claude Code sessions to remote services (Anthropic API, cloud agents, MCP endpoints). It hooks into Claude Code via a settings.json hook and an MCP server, intercepting prompts and tool payloads in memory, swapping detected secrets and project-specific terms with stable placeholders before they leave the machine, and, in opt-in reversible mode, letting the operator restore file paths, names, and identifiers locally via the `mrclean restore` CLI — never on the model-facing return path.
 
 ## Core Value
 
@@ -10,11 +10,31 @@ Real secrets and proprietary terms never reach the wire — the user keeps Claud
 
 ## Current State
 
-**Shipped:** v2.0 Native-Node PII/NER Layer (2026-06-03) — atop v1.0 MVP (2026-05-14).
+**Shipped:** v3.0 Reversible Redact Mode — Foundations + Operator Restore (2026-07-18) — atop v2.0 Native-Node PII/NER Layer (2026-06-03) and v1.0 MVP (2026-05-14).
+
+mrclean now ships opt-in reversible redaction end-to-end: an encrypted, session-scoped placeholder→original map that survives across hook events, and an operator-only `mrclean restore` CLI that turns policy-permitted placeholders back into real paths/names/identifiers locally. Secret-class values (all secret TYPEs, ENV, ENTROPY, checksum'd PII) are structurally never persisted — no config can widen that floor. CI adversarially proves the milestone's core negative claim — reversible mode never re-exposes originals on any wire path — via a live headless canary round-trip, fs-write interception, chaos (corrupt/missing/chmod'd map), and 8–16-process concurrency stress gates. Default behavior stays one-way and byte-identical to v2.0 when `[reversible]` is absent.
+
+<details>
+<summary>v3.0 phase-by-phase detail (Phases 8-11, 37 plans, 4 days)</summary>
+
+**Phase 11 complete (2026-07-18):** Wire-Safety Verification & Hardening — CI now proves the milestone's negative claims adversarially: dist-spawn parity gate (shipped `dist/cli.js hook` stdout deep-equal one-way vs reversible, nonce-normalized, canary-free), fs-write interception gate (8 patched fs builtins + `syncBuiltinESMExports` — no plaintext canary in any written buffer incl. write-file-atomic temp fds, 3 channel probes non-vacuous), chaos + 16-process stress suites elevated to named, count-guarded, pipefail-hardened CI steps (vacuous-pass hazard structurally killed), live UAT wire-safety harness with run-unique minted canaries + per-tool `tool_response` shape survey (operator-gated via `MRCLEAN_UAT=1`), THREAT_MODEL reversible section finalized to shipped facts in a paired doc+gate commit with 3 encrypted-at-rest overclaim bans. Hardening: cross-session collision demote-to-unmatched (closes AR-10-05) and outer-catch zero-counts honesty (IN-01), both TDD. Reversible PostToolUse overhead measured: p95 5.36ms vs 200ms budget. Review fixed 4 warnings (CI SIGPIPE false-red, vacuous corpus grep → 11 real exported audit sinks, survey evidence hard-assert, stdin error domain). Verified 12/14 automated + operator approval; REVMODE-11 complete — **v3.0 milestone requirements 12/12**. Suite 986 passed / 29 skipped.
+
+**Gap-closure round (2026-07-18):** the 2 operator-run follow-up items both surfaced real findings, resolved and re-verified with fresh evidence rather than assumed-fixed: (1) SC1b's "resume leak" was a test-surface bug, not a product leak — `grepProjectsTreeForCanaries` byte-scanned whole transcript files instead of scoping to wire-mirrored records, false-tripping on an unrelated third-party plugin's local hook bookkeeping; fixed in two passes (a first fix missed a second, identical unscoped check in the same file — caught by re-running the live leg, not assumed). (2) First-ever ubuntu CI run for the v3.0 branch surfaced three real pre-existing gaps invisible until that run: ANSI codes breaking a CI count-guard, doctor tests lacking version-stub hermeticity, a stale `engines.node` floor (20.18 vs. the toolchain's actual 20.19 requirement — rolldown's native bindings silently no-op below that, no error), and the 16-process stress gate's local-tuned deadline being too tight under real shared-runner + coverage overhead (bumped 500ms→1500ms, zero-degrade assertion itself untouched, T-09-08-06's pre-sanctioned single-knob mechanism). One wrong fix attempt (forcing `npm@latest`, which dropped Node 20 support entirely) was caught and reverted before landing the correct one. Both workflows now fully green on ubuntu; SC1b live leg passes 8/8 clean. `.planning/milestones/v3.0-phases/11-wire-safety-verification-hardening/11-HUMAN-UAT.md` has the full resolution record. Independently re-confirmed at milestone audit (`v3.0-MILESTONE-AUDIT.md`, 2026-07-18): live-run artifact data checked directly, both ubuntu CI runs re-verified via `gh run list`.
+
+**Phase 10 complete (2026-07-17):** Operator Restore — `mrclean restore [file] [--session <uuid>]` now round-trips redacted content locally: pure single-pass `restoreText()` engine (exact full-token lookup; unknown/stale/planted/OVF/v1 tokens pass through untouched) over a policy-filtered union session index (secret-class entries structurally excluded — a hand-poisoned re-encrypted map contributes nothing restorable). Fail-one-way degrade matrix proven for 7 corruption shapes incl. a real held lock (output==input, exit 0, zero litter); every restore audited hash-only via a discriminated sibling record (LOCKED audit builders byte-untouched); doctor FAILs loud (exit 1, names file+key) on unknown `[reversible]` keys; `mrclean_status` reports counts-by-class + restored/unmatched — never values. Zero model-facing surface: `restore` stays on FORBIDDEN_TOOL_NAMES (exact-three tools-list green) and both-direction import fences confine `src/restore/` to the single sanctioned CLI dynamic-import site. Post-execution review fixed 1 critical (entrypoint guard inert under symlinked/npx invocation — pre-existing, now `isMainEntry()` with realpath fallback + shipped-artifact proof) and 3 warnings (tampered-audit `Infinity`/negative counters, uppercase `--session` silent miss, stderr truncation on exit). Verified 41/41; REVMODE-01/08/09/12 complete. Suite 962 passed / 18 skipped, typecheck at the 38-error pre-existing baseline, frozen trees (`src/hook`, `src/detect`, `src/placeholder`) zero-diff.
+
+**Phase 9 complete (2026-07-17):** Session State Adapter — reversible sessions now persist an AES-256-GCM-encrypted placeholder→original map under `~/.mrclean/sessions/` (per-session key in separate 0700 `~/.mrclean/keys/`, ciphertext-only on disk including temp files), with content-addressed allocate-if-absent under a short proper-lockfile transaction (16-process stress: 0 lost / 0 duplicates / 0 disagreements), session-tagged v2 tokens (v1 one-way path byte-frozen), a structural secret floor (secret-class entries persist no `original` — not config-widenable), and a reason-aware SessionEnd janitor (retain only `resume`) + unconditional TTL sweep at SessionStart and MCP boot. Code review caught and closed one critical (rename-chain corruption → single-pass replacement) and four warnings; the stress gate exposed and fixed two shipped-bundle bugs (tsup `__filename` shim, ELOCKED re-arm). Verified 22/22; REVMODE-02/04/05/06/07 complete. Suite 861 passed / 16 skipped.
+
+**Phase 8 complete (2026-07-15):** Contract Verification & Reversible Plumbing — all four LOW-confidence hook-contract questions empirically settled in live headless sessions and locked into `docs/HOOK-CONTRACT.md` (key finding: object-shaped `updatedToolOutput` IS honored for Bash on 2.1.209 and the 10K output cap does NOT bind it; string shape rejected). `[reversible]` config table landed (default OFF, byte-identical shipped behavior when absent) with true-Partial cross-layer merge semantics so operator opt-ins survive partial higher-layer tables. Installer widened to the 5-event surface with idempotent migration; doctor reports reversible state. THREAT_MODEL.md reversible section drafted with copy-drift + evidence-UUID-traceability CI gates; contract-findings artifact hardened against partial-rerun evidence destruction/fabrication. Post-phase UAT (12 tests, delegated CLI observation) surfaced and closed two install-surface gaps in gap-closure round 3 (08-12): `atomicWriteJson` now mkdirs missing parents so zero-config fresh-HOME install works, and the install banner derives its hook count from `HOOK_EVENTS.length` — re-verified 20/20 (2026-07-17).
+
+</details>
+
+<details>
+<summary>v2.0 PII/NER layer + v1.0 hardening detail</summary>
 
 **Hardened (2026-07-13):** Phase 01 gap-closure — SC4/HOOK-05 fail-open hole closed. The installer now writes a fail-closed POSIX `/bin/sh` wrapper (`"$1" "$2" hook || exit 2`), so a missing/renamed mrclean bin blocks tool calls instead of silently disabling protection. Confirmed in a live headless Claude session (UAT-2b: canary never leaked). win32 remains a documented fail-open known-gap.
 
-mrclean now ships an opt-in, native-Node PII/NER detection layer with **zero data egress and no Python**:
+mrclean ships an opt-in, native-Node PII/NER detection layer with **zero data egress and no Python**:
 - Regex structured-PII (email / US SSN / credit card / phone / IP) in the existing `<100ms` hot-path budget, no model required.
 - Opt-in in-process NER (PERSON/LOC, advisory) as a warm singleton in the long-lived MCP server **only** — never the hook; fail-closed-for-NER; model provenance stamped in every PII audit entry.
 - PII findings flow through the existing placeholder / audit / allowlist pipeline; `[pii]` config sub-table off by default; ML deps are `optionalDependencies` (zero-config `npx` preserved).
@@ -22,23 +42,15 @@ mrclean now ships an opt-in, native-Node PII/NER detection layer with **zero dat
 
 **Guardrails held:** no Python runtime; cloud PII APIs ruled out; Microsoft Presidio (Python sidecar) remains deferred (PIISEC-03 scope fence). Secrets remain mrclean's deterministic core.
 
-## Current Milestone: v3.0 Reversible Redact Mode — Foundations + Operator Restore
+</details>
 
-**Goal:** Opt-in reversible-redaction foundations — a session-scoped, encrypted placeholder→original map that survives across hook events, plus an operator-only `mrclean restore` CLI that restores paths/names/identifiers locally. Zero model-facing restore surface, zero wire re-exposure. Default remains one-way.
+**v3.0 known tech debt (accepted at close, tracked not blocking):** 23 items across Phases 8-11, mostly carried/OWNER-NEEDED install-hardening items from Phase 8 review (file-mode reset on rewrite, unvalidated JSON.parse, no error contextualization, no cross-process config locking) plus one real doc-sync gap — `docs/HOOK-CONTRACT.md`'s per-tool matrix still shows "pending" placeholders despite the confirmed live-run data already existing in `tests/uat/artifacts/contract-findings.json`. Full itemized list: `.planning/milestones/v3.0-MILESTONE-AUDIT.md`.
 
-**Reshaped 2026-07-14 (T1 decision):** research proved the hook contract has no display-only rewrite channel — `updatedToolOutput` replaces what the *model* sees, so in-session restore would permanently re-expose restored values to the API (transcript ratchet). In-session restore is deferred until upstream ships a display-only channel; this milestone ships the foundations and the operator-side round-trip instead.
+## Milestone History
 
-**Target features:**
-- Session State Adapter (`src/state/`): encrypted per-session map (AES-256-GCM, key material in separate dir, never project tree), locking + atomic rewrite, reason-aware janitor on SessionEnd + TTL orphan sweep (REVMODE-02)
-- Content-addressed placeholder allocation under shared session state — fixes the latent cross-process counter-collision gap in reversible sessions; session-tagged v2 token format (`<MRCLEAN:TYPE:NNN:nonce8>`) in reversible mode only, v1 format untouched for one-way default
-- Hardcoded restore floor: secret-class originals are never persisted anywhere — structurally unrestorable, no config can widen
-- Operator-only `mrclean restore` CLI (REVMODE-01 reshaped): local exact-map-lookup restore; no MCP tool (`restore` stays CI-banned), no hook-path restore
-- Phase-1 empirical contract verification (updatedToolOutput rendering, updatedInput echo, session_id resume continuity, 10K cap) + upstream feature request for a display-only rewrite channel
-- THREAT_MODEL.md coverage of reversible-mode blast radius, secret floor, wire-re-entry rationale (REVMODE-03)
+v3.0 shipped 2026-07-18. Full phase detail archived to `.planning/milestones/v3.0-ROADMAP.md`; requirements to `.planning/milestones/v3.0-REQUIREMENTS.md`; audit to `.planning/milestones/v3.0-MILESTONE-AUDIT.md`. Stats and accomplishments in `.planning/MILESTONES.md`.
 
-**Key context:** "In-memory by default" in Constraints describes one-way mode (no map at all); opting into reversible = consenting to encrypted session-scoped disk state, removed on session exit (janitor + TTL). Keychain persistence (POLISH-03) deferred. If Claude Code ships a display-only restore channel, in-session round-trip becomes a v3.x fast-follow on these foundations.
-
-> Note (2026-07-14): the three v1-era polish candidates (`mrclean init`, surgical uninstall, install-stub dead-keys fix) were verified already shipped 2026-06-01 as quick tasks (commits 0d12c88, ca2891a, 1afefec). Layer-5 `--deep` classifier is the planned v4.0 milestone.
+**Next milestone:** not yet scoped — run `/gsd:new-milestone`.
 
 ## Requirements
 
@@ -65,10 +77,29 @@ mrclean now ships an opt-in, native-Node PII/NER detection layer with **zero dat
 - ✓ `mrclean init` CLI subcommand + `/mrclean:mrclean-init` slash command — quick task 0d12c88 (2026-06-01)
 - ✓ Surgical uninstall — removes only mrclean entries, never wholesale-restore — quick task ca2891a (2026-06-01)
 - ✓ Install stub no longer advertises dead `[words]`/`[detection]` keys — quick task 1afefec (2026-06-01)
+- ✓ `[reversible]` config table (default OFF), byte-identical one-way behavior when absent — v3.0 (Phase 8)
+- ✓ Empirically verified hook-contract behaviors (`updatedToolOutput` per-tool honored-ness + terminal rendering, `updatedInput` echo, `session_id` continuity across `--resume`, 10K-char cap applicability) + upstream feature request filed — v3.0 (Phase 8)
+- ✓ Encrypted session-scoped placeholder→original map (AES-256-GCM, fresh IV per write, key material in separate 0700 dir, ciphertext-only on disk incl. temp files, never in project tree) — v3.0 (Phase 9)
+- ✓ Content-addressed, collision-free placeholder allocation across concurrent hook processes — 16-process/400-transaction stress-proven (0 lost, 0 dupes, 0 disagreements) — v3.0 (Phase 9)
+- ✓ Session-tagged v2 tokens (`<MRCLEAN:TYPE:NNN:nonce8>`) in reversible mode only; v1 format and code path byte-identical in one-way default — v3.0 (Phase 9)
+- ✓ Structural secret floor — secret-class originals (all secret TYPEs, ENV, ENTROPY, checksum'd PII) never persisted; not config-widenable — v3.0 (Phase 9)
+- ✓ Reason-aware SessionEnd janitor (retain only `resume`) + TTL orphan sweep at SessionStart/MCP boot — v3.0 (Phase 9)
+- ✓ Operator-only `mrclean restore` CLI — exact single-pass lookup, policy-filtered, fail-one-way degrade matrix, hash-only audit; zero model-facing surface (`restore` stays on FORBIDDEN_TOOL_NAMES, CI-enforced) — v3.0 (Phase 10)
+- ✓ Honest doctor/status reporting for reversible mode — FAIL-loud (never silent) on unsupported config; `mrclean_status` reports entry counts by class + restored/unmatched, never values — v3.0 (Phase 10)
+- ✓ CI adversarial wire-safety proof — dist-spawn parity, fs-write interception (incl. atomic temp files), chaos (corrupt/missing/chmod'd map), 8–16-process concurrency stress all gate the build by name — v3.0 (Phase 11)
+- ✓ THREAT_MODEL.md reversible-mode section finalized against shipped implementation, locked by copy-drift CI gate — v3.0 (Phase 11)
 
-### Active (v3.0)
+### Active
 
-- [ ] Reversible-redaction foundations — encrypted session-scoped placeholder→original map, cross-process placeholder stability, operator-only restore CLI (in-session restore deferred pending upstream display-only channel)
+_(no active milestone — v3.0 shipped 2026-07-18; run `/gsd:new-milestone` to scope the next one)_
+
+### Backlog (v3.0 identified fast-follows, not yet scoped into a milestone)
+
+- In-session restore on the return path — becomes viable if/when Claude Code ships a display-only rewrite channel (upstream request filed under REVMODE-10; `updatedToolOutput` is model-facing today, so restored values would permanently ratchet into the transcript)
+- PreToolUse input-side restore for local tools — only if a future `updatedInput` echo re-verification proves it safe
+- Delimiter/case-tolerant token matching + near-miss audit for `mrclean restore` — only on field evidence of model-mangled tokens (never Levenshtein-based)
+- Keychain-backed key custody for the reversible-mode session key (currently file-based 0700 dir) — `getMachineKey()` is the single designed swap point
+- `docs/HOOK-CONTRACT.md` per-tool `tool_response` matrix re-stamp from `tests/uat/artifacts/contract-findings.json` (data already exists from the 2026-07-18 live run; the doc copy step was missed at v3.0 close — see MILESTONE-AUDIT tech debt)
 
 ### Future
 
@@ -81,10 +112,10 @@ mrclean now ships an opt-in, native-Node PII/NER detection layer with **zero dat
 - Standalone batch CLI that scans a directory and writes sanitized copies — superseded by in-memory interception; no file output mode in v1
 - Pre-commit / git-hook integration — out of scope for v1; existing tools (gitleaks, trufflehog) cover this surface and mrclean is the in-session complement, not a replacement
 - Sanitizing arbitrary HTTP traffic via local proxy — too invasive for the leverage; hook + MCP cover the Claude Code surface deterministically
-- Persisting the placeholder→original map across sessions — reversible mode is session-scoped only, to limit blast radius if the map file leaks
+- Persisting the placeholder→original map across sessions — reversible mode is session-scoped only (janitor deletes on SessionEnd except `resume`; TTL sweep catches orphans), to limit blast radius if the map file leaks — reasoning held through v3.0 shipping, now CI-proven rather than just designed
 - Multi-user / team policy server with central rule distribution — single-developer workflow first; team mode deferred until v1 ships and demand is real
-- In-session restore via `updatedToolOutput` (or any hook-path restore) — the hook contract has no display-only channel; restored values would enter model context and re-ship to the API permanently (transcript ratchet). Deferred until upstream ships a display-only rewrite surface (T1 decision, 2026-07-14)
-- Model-facing `restore` MCP tool — prompt-injected model calling restore is a self-service deanonymization oracle; `restore` stays on FORBIDDEN_TOOL_NAMES with CI enforcement (reaffirmed 2026-07-14)
+- In-session restore via `updatedToolOutput` (or any hook-path restore) — the hook contract has no display-only channel; restored values would enter model context and re-ship to the API permanently (transcript ratchet). Deferred until upstream ships a display-only rewrite surface (T1 decision, 2026-07-14; reasoning confirmed still valid — Phase 8's live contract experiments found no display-only channel in CLI 2.1.209)
+- Model-facing `restore` MCP tool — prompt-injected model calling restore is a self-service deanonymization oracle; `restore` stays on FORBIDDEN_TOOL_NAMES with CI enforcement (reaffirmed 2026-07-14; shipped and CI-locked in Phase 10/11 — exact-three tools-list test + import fences)
 
 ## Context
 
@@ -98,7 +129,7 @@ mrclean now ships an opt-in, native-Node PII/NER detection layer with **zero dat
 
 - **Tech stack**: Node.js + TypeScript — required for clean integration with the official MCP TypeScript SDK and for shipping a single `npx`-runnable bin alongside Claude Code's existing Node ecosystem.
 - **Performance**: Hook execution must add < 100 ms to a typical UserPromptSubmit and < 200 ms to a typical PostToolUse — slower than that and users will disable it. Layer 5 LLM pass is exempt because it is opt-in.
-- **Security**: The placeholder→original map in reversible mode lives in memory only by default; if persisted to disk for crash recovery, it must be encrypted at rest and removed on session exit. Audit log must never contain raw secret values.
+- **Security**: One-way mode (the default) holds no map at all — nothing persists. Opting into reversible mode is opting into an encrypted, session-scoped disk-persisted placeholder→original map (AES-256-GCM, key material in a separate 0700 directory, never the project tree); the map is removed on session exit by a reason-aware janitor (retained only on `resume`) plus a TTL orphan sweep. Secret-class originals are never persisted in either mode — structurally, not by config. Audit log must never contain raw secret values (shipped and CI-proven, v3.0).
 - **Compatibility**: Must work against current Claude Code hook contract (UserPromptSubmit, PreToolUse, PostToolUse) and MCP spec (stdio + Streamable HTTP transports). Track Claude Code release notes for hook contract changes.
 - **Distribution**: Zero-config first run — `npx mrclean install` must wire everything with sensible defaults; users should not have to author a config file to get protection on day one.
 
@@ -108,16 +139,17 @@ mrclean now ships an opt-in, native-Node PII/NER detection layer with **zero dat
 |----------|-----------|---------|
 | Surface = Claude Code hook + MCP server, in-memory only | Pure runtime interception covers the actual leak path; file-output / batch CLI adds surface area without preventing the runtime leaks the user actually fears | ✓ Good — shipped v1.0, held through v2.0 |
 | Layered detection (regex → entropy → env-extract → user words → optional LLM) | Dirty-word lists alone are brittle; layering pushes maintenance onto detectors that need none | ✓ Good — L1–4 v1.0, L6a/L6b PII added v2.0; L5 still deferred |
-| Both one-way and reversible redact modes, default one-way | Reversible is a power feature but increases blast radius if the map leaks; safe default is one-way | — Pending — one-way shipped v1.0; reversible mode unshipped (next-milestone candidate) |
-| Node.js + TypeScript implementation | Official MCP TypeScript SDK is most mature; Claude Code is Node; npm distribution matches hook integration | ✓ Good — held; native-Node NER (transformers.js) avoided a Python sidecar in v2.0 |
+| Both one-way and reversible redact modes, default one-way | Reversible is a power feature but increases blast radius if the map leaks; safe default is one-way | ✓ Good — one-way shipped v1.0; reversible mode shipped v3.0, `[reversible]` default OFF, byte-identical one-way when absent |
+| Node.js + TypeScript implementation | Official MCP TypeScript SDK is most mature; Claude Code is Node; npm distribution matches hook integration | ✓ Good — held; native-Node NER (transformers.js) avoided a Python sidecar in v2.0; encrypted state adapter (v3.0) used Node's native `node:crypto` (AES-256-GCM), no new runtime dep class |
 | Adopt gitleaks rule pack rather than author regex from scratch | Community-maintained patterns; reinventing wastes effort, lower coverage | ✓ Good — shipped v1.0 |
-| Reversible-mode map is session-scoped, in-memory by default | Limits blast radius if the artifact leaks; encrypted disk persistence opt-in | — Pending — reversible mode not yet built |
+| Reversible-mode map is session-scoped, encrypted disk persistence (not memory-only) | Limits blast radius if the artifact leaks; crash-safe across hook-process restarts (each hook event is a fresh process) | ✓ Good — v3.0; AES-256-GCM whole-file envelope, key in separate 0700 dir, janitor + TTL sweep bound the on-disk window |
 | PII/NER off by default; secrets = deterministic guarantee, NER = best-effort recall aid | A security tool must not blur a probabilistic recall aid into a guarantee; false negatives can leak | ✓ Good — v2.0; enforced by copy-drift CI gate + leak-grep regression |
 | NER in long-lived MCP server only, never the hook | Keeps the `<100ms` hook hot path model-free; ML import boundary isolated | ✓ Good — v2.0; import-graph test + cold-start perf gate prove it |
-| v3.0 reshape: no in-session restore; operator-only CLI (T1) | No display-only hook channel exists — `updatedToolOutput` is model-facing; restored values ratchet into the transcript and re-ship to the API permanently | — Pending — v3.0 requirements decision 2026-07-14 |
-| Map = encrypted per-session file under `~/.mrclean/sessions/` (T2) | Crash-safe, works for hook-only installs, counter survives restarts; MCP-resident memory loses map + resets counter on server restart (wrong-value restore) | — Pending — v3.0 |
-| Session-tagged v2 token format in reversible mode only (T4) | Sequential NNN is enumerable (planted-token deanonymization oracle); per-session CSPRNG nonce kills enumeration; one-way v1 format contract untouched | — Pending — v3.0 |
-| Secret-class originals never persisted — hardcoded restore floor (T3) | Caps map blast radius to one session's paths/names, never keys; structural (no original stored), not a config filter | — Pending — v3.0 |
+| v3.0 reshape: no in-session restore; operator-only CLI (T1) | No display-only hook channel exists — `updatedToolOutput` is model-facing; restored values ratchet into the transcript and re-ship to the API permanently | ✓ Good — v3.0; Phase 8's live contract experiments (E1-E5) empirically confirmed no display-only channel exists on CLI 2.1.209; `mrclean restore` CLI ships as the operator-side round-trip instead |
+| Map = encrypted per-session file under `~/.mrclean/sessions/` (T2) | Crash-safe, works for hook-only installs, counter survives restarts; MCP-resident memory loses map + resets counter on server restart (wrong-value restore) | ✓ Good — v3.0; whole-file AES-256-GCM + short locked `proper-lockfile` transaction, 16-process stress-proven collision-free |
+| Session-tagged v2 token format in reversible mode only (T4) | Sequential NNN is enumerable (planted-token deanonymization oracle); per-session CSPRNG nonce kills enumeration; one-way v1 format contract untouched | ✓ Good — v3.0; `<MRCLEAN:TYPE:NNN:nonce8>`, v1 test suite has zero edits since Phase 2, cold-path fence proves the one-way code path is unreachable |
+| Secret-class originals never persisted — hardcoded restore floor (T3) | Caps map blast radius to one session's paths/names, never keys; structural (no original stored), not a config filter | ✓ Good — v3.0; enforced at write-time (type strip), parse-time (drop), and read-time (Phase 10 restore-index gate) — three independent layers |
+| CI adversarially proves no wire re-exposure (dist-parity, fs-write interception, chaos, concurrency stress) — Phase 11 | A "we tested it" claim isn't the same as a build gate that fails if reversible mode ever leaks; the milestone's core promise needed a standing, non-bypassable proof | ✓ Good — v3.0; all four gates named and count-guarded in CI, drive real (non-mocked) Phase 9/10 modules — confirmed by milestone audit's integration check, not just trusted from phase docs |
 
 ## Evolution
 
@@ -137,4 +169,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-14 — v3.0 reshaped to Foundations + Operator Restore after T1 research finding (no display-only hook channel)*
+*Last updated: 2026-07-19 after v3.0 milestone — Reversible Redact Mode shipped (Phases 8-11, 12/12 requirements); full evolution review complete*

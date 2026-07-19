@@ -88,4 +88,21 @@ describe('checkClaudeCodeVersion', () => {
     expect(result.version).toBe('2.1.120')
     expect(result.detail).toContain('2.1.121')
   })
+
+  // Plan 08-05 copy honesty: green detail carries the E1 verified-on stamp and
+  // names the shape-validation caveat instead of the old unqualified
+  // "fully compatible (PostToolUse updatedToolOutput supported)" claim.
+  it('Test 11h: green detail is E1-honest — verified-on stamp + HOOK-CONTRACT pointer, no unqualified claim', async () => {
+    const { checkClaudeCodeVersion } = await import('../../src/doctor/version-check.js')
+    const result = await checkClaudeCodeVersion({
+      runVersionCommand: async () => '2.1.209 (Claude Code)',
+    })
+    expect(result.status).toBe<ClaudeVersionStatus>('green')
+    expect(result.detail).toContain('verified on Claude Code 2.1.209')
+    expect(result.detail).toContain('docs/HOOK-CONTRACT.md')
+    expect(result.detail).toContain('shape-validated per tool')
+    expect(result.detail).not.toContain(
+      'fully compatible (PostToolUse updatedToolOutput supported',
+    )
+  })
 })

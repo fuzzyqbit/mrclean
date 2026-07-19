@@ -62,6 +62,48 @@ describe('mergeConfigs', () => {
     )
     expect(result.allowlist.rules).toEqual(['USR', 'PRJ'])
   })
+
+  // Test D (Phase 8-01): reversible.enabled merges LAST-WINS across layers.
+  // Both directions asserted: false→true discriminates last-wins from "layers ignored"
+  // (fails at RED where the seed default false would vacuously satisfy true→false alone);
+  // true→false discriminates last-wins from "any-layer-true-wins" at GREEN.
+  it('applies LAST-WINS for reversible.enabled across layers', () => {
+    // Arrange + Act
+    const trueThenFalse = mergeConfigs(
+      DEFAULT_CONFIG,
+      { reversible: { enabled: true } },
+      { reversible: { enabled: false } },
+    )
+    const falseThenTrue = mergeConfigs(
+      DEFAULT_CONFIG,
+      { reversible: { enabled: false } },
+      { reversible: { enabled: true } },
+    )
+
+    // Assert
+    expect(trueThenFalse.reversible.enabled).toBe(false)
+    expect(falseThenTrue.reversible.enabled).toBe(true)
+  })
+
+  // Test E (Phase 8-01): a single layer opting in carries through the merge
+  it('carries reversible.enabled=true through the merge from a single layer', () => {
+    // Arrange + Act
+    const result = mergeConfigs(DEFAULT_CONFIG, { reversible: { enabled: true } })
+
+    // Assert
+    expect(result.reversible.enabled).toBe(true)
+  })
+
+  // Test F (Phase 8-01, regression guard; widened 09-01): absent [reversible] in every
+  // layer means the merged config carries the frozen default — absent table == shipped
+  // one-way guarantee. Phase 9-01: the default shape now includes ttl_hours = 24 (D-09).
+  it('defaults reversible to { enabled: false, ttl_hours: 24 } when no layer sets it', () => {
+    // Arrange + Act
+    const result = mergeConfigs(DEFAULT_CONFIG, {}, {})
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: false, ttl_hours: 24 })
+  })
 })
 
 describe('loadEffectiveConfig', () => {
@@ -97,5 +139,112 @@ describe('loadEffectiveConfig', () => {
     const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
     expect(result.dry_run).toBe(DEFAULT_CONFIG.dry_run)
     expect(result.allowlist).toEqual(DEFAULT_CONFIG.allowlist)
+  })
+
+  // Test G (Phase 8-07, CR-01 repro): a project-layer [reversible] table carrying only
+  // unknown/future keys (the documented Phase-9 forward-compat scenario) must NOT clear
+  // the user-layer opt-in. Real TOML files are load-bearing here — the defect lives in
+  // the validators, so programmatic mergeConfigs layers cannot reproduce it.
+  it('preserves user-layer reversible opt-in when project layer has a partial [reversible] table (CR-01)', async () => {
+    // Arrange
+    await mkdir(join(tmpHome, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpHome, '.mrclean', 'config.toml'), '[reversible]\nenabled = true\n')
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[reversible]\nfuture_key = 1\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert
+    expect(result.reversible.enabled).toBe(true)
+  })
+
+  // Test H (Phase 8-07, CR-01 repro): a project file that ONLY narrows [pii.regex].entities
+  // must not silently disable the user's global PII opt-in (including the SSN/credit-card
+  // block actions) nor reset the NER confidence floor.
+  it('preserves user-layer PII opt-ins when project layer sets only [pii.regex] (CR-01)', async () => {
+    // Arrange
+    await mkdir(join(tmpHome, '.mrclean'), { recursive: true })
+    await writeFile(
+      join(tmpHome, '.mrclean', 'config.toml'),
+      '[pii]\nenabled = true\n\n[pii.ner]\nenabled = true\nconfidence = 0.9\n',
+    )
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[pii.regex]\nentities = ["email"]\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert — user opt-ins survive the partial project table...
+    expect(result.pii.enabled).toBe(true)
+    expect(result.pii.ner.enabled).toBe(true)
+    expect(result.pii.ner.confidence).toBe(0.9)
+    // ...while the project narrowing still applies.
+    expect(result.pii.regex.entities).toEqual(['email'])
+  })
+
+  // Test K (Phase 8-07, regression guard): default-filling survives its relocation into
+  // mergeConfigs — a single layer setting only [pii].enabled still gets every unset
+  // field from the bundled defaults, exactly once.
+  it('fills defaults exactly once when a single layer sets only [pii].enabled', async () => {
+    // Arrange
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[pii]\nenabled = true\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert — the opt-in applies and every unset field carries the bundled default.
+    expect(result.pii.enabled).toBe(true)
+    expect(result.pii.regex).toEqual(DEFAULT_CONFIG.pii.regex)
+    expect(result.pii.ner.model).toBe(DEFAULT_CONFIG.pii.ner.model)
+    expect(result.pii.ner.confidence).toBe(DEFAULT_CONFIG.pii.ner.confidence)
+  })
+
+  // Test Q (Phase 9-01, D-09): default effective config carries ttl_hours = 24 alongside
+  // enabled = false — no config files present means the full frozen default shape.
+  it('yields reversible { enabled: false, ttl_hours: 24 } when no config files are present', async () => {
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: false, ttl_hours: 24 })
+  })
+
+  // Test R (Phase 9-01, D-09 — Test G mirror): a partial project [reversible] table
+  // WITHOUT ttl_hours must not reset the user layer's ttl_hours or enabled — per-field
+  // accumulation, never wholesale replacement (T-09-01-02 / CR-01 regression class).
+  // Real TOML files are load-bearing: the defect class lives in the validators.
+  it('preserves user ttl_hours and enabled when project [reversible] is partial without ttl_hours', async () => {
+    // Arrange
+    await mkdir(join(tmpHome, '.mrclean'), { recursive: true })
+    await writeFile(
+      join(tmpHome, '.mrclean', 'config.toml'),
+      '[reversible]\nenabled = true\nttl_hours = 48\n',
+    )
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[reversible]\nfuture_key = 1\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert — the partial project layer never resets accumulated fields.
+    expect(result.reversible).toEqual({ enabled: true, ttl_hours: 48 })
+  })
+
+  // Test S (Phase 9-01, D-09): ttl_hours is last-wins-when-set — a project layer that
+  // DOES set it overrides the user layer, independent of the enabled field.
+  it('lets project ttl_hours = 2 override user ttl_hours = 48 (last-wins-when-set)', async () => {
+    // Arrange
+    await mkdir(join(tmpHome, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpHome, '.mrclean', 'config.toml'), '[reversible]\nttl_hours = 48\n')
+    await mkdir(join(tmpCwd, '.mrclean'), { recursive: true })
+    await writeFile(join(tmpCwd, '.mrclean', 'config.toml'), '[reversible]\nttl_hours = 2\n')
+
+    // Act
+    const result = await loadEffectiveConfig({ homeDir: tmpHome, cwd: tmpCwd })
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: false, ttl_hours: 2 })
   })
 })

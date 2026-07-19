@@ -1,5 +1,21 @@
 # Milestones
 
+## v3.0 Reversible Redact Mode — Foundations + Operator Restore (Shipped: 2026-07-19)
+
+**Phases completed:** 4 phases, 37 plans, ~67 tasks
+**Timeline:** 4 days (2026-07-14 → 2026-07-18) · **Git range:** `9bfca45`..`6a171d0`, 306 commits, 221 files changed (+45,826/-860)
+**Requirements:** 12/12 REVMODE satisfied (see `.planning/milestones/v3.0-MILESTONE-AUDIT.md` for full coverage + integration verification)
+
+**Key accomplishments:**
+
+- **Hook-contract unknowns settled empirically** (Phase 8) — live headless sessions proved `updatedToolOutput` object-shape IS honored for Bash (no 10K cap), locked into `docs/HOOK-CONTRACT.md`; `[reversible]` config table landed with zero behavior change to the shipped one-way default.
+- **Encrypted session-scoped state adapter** (Phase 9) — AES-256-GCM placeholder→original map with content-addressed allocation (16-process/400-transaction stress: 0 lost, 0 dupes, 0 disagreements), a structural secret floor (secret-class originals never persisted, not config-widenable), and a reason-aware SessionEnd janitor + TTL sweep.
+- **Operator-only `mrclean restore` CLI** (Phase 10) — pure single-pass exact-lookup restore engine, 7-row fail-one-way degrade matrix (including a real held lock), hash-only audit, zero model-facing surface (`restore` stays CI-banned from both the MCP tool list and the hook path).
+- **CI adversarially proves no wire re-exposure** (Phase 11) — dist-spawn parity, fs-write interception (incl. atomic temp files), chaos (corrupt/missing/chmod'd map), and 8–16-process concurrency stress all gate the build by name; THREAT_MODEL.md finalized against shipped code with a copy-drift lock.
+- **Gap-closure round found and fixed 3 additional real issues** the first live/CI runs surfaced (test-scope bug in the transcript-leak grep, ANSI-breaking CI count-guard, stale `engines.node` floor) — both deferred human-verification legs (SC1b live leg, first ubuntu CI run) independently re-confirmed green by this close, not just trusted from prior docs.
+
+---
+
 ## v2.0 Native-Node PII/NER Layer (Shipped: 2026-06-03)
 
 **Phases completed:** 4 phases, 12 plans, 19 tasks

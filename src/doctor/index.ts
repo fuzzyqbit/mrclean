@@ -1,7 +1,7 @@
 /**
  * Doctor subcommand — orchestrator.
  *
- * computeDoctorReport(opts) is a pure async function: runs all six checks plus the
+ * computeDoctorReport(opts) is a pure async function: runs all eight checks plus the
  * version check, returns { exitCode, results, versionResult }. Tests call it directly.
  * It never terminates the process — that responsibility belongs only to runDoctor.
  *
@@ -32,6 +32,7 @@ import {
   checkMcpCanary,
   checkConfigLoad,
   checkModelCache,
+  checkReversibleState,
   extractRegisteredPaths,
   type CheckResult,
 } from './checks.js'
@@ -70,7 +71,7 @@ export interface DoctorReport {
 // ---------------------------------------------------------------------------
 
 /**
- * Run all six doctor checks plus the Claude Code version check.
+ * Run all eight doctor checks plus the Claude Code version check.
  * Returns { exitCode, results, versionResult } — never exits the process.
  *
  * Check order (priority order for exit code computation):
@@ -81,6 +82,8 @@ export interface DoctorReport {
  *   5. checkMcpCanary        — exitCode 4 on fail (SKIP if bins failed)
  *   6. checkConfigLoad       — exitCode 1 on fail
  *   7. checkModelCache       — exitCode 6 on fail (SKIP if model not downloaded)
+ *   8. checkReversibleState  — reporting-only in Phase 8 (never FAIL); reserves
+ *                              exit 1 (config domain) for Phase 10 REVMODE-12
  *   + version check          — exitCode 5 if red/not-found AND no other failures
  */
 export async function computeDoctorReport(opts: {
@@ -117,8 +120,26 @@ export async function computeDoctorReport(opts: {
       claudeJsonPath,
       cwd,
     )
-    results.push(await checkHookCanary(nodePath, hookBinPath || process.execPath))
-    results.push(await checkMcpCanary(nodePath, mcpBinPath || process.execPath))
+    if (hookBinPath === '') {
+      results.push({
+        name: 'hook-canary',
+        status: 'SKIP',
+        detail: 'skipped: no hook binary path registered',
+        exitCodeOnFail: 4,
+      })
+    } else {
+      results.push(await checkHookCanary(nodePath, hookBinPath))
+    }
+    if (mcpBinPath === '') {
+      results.push({
+        name: 'mcp-canary',
+        status: 'SKIP',
+        detail: 'skipped: no MCP binary path registered',
+        exitCodeOnFail: 4,
+      })
+    } else {
+      results.push(await checkMcpCanary(nodePath, mcpBinPath))
+    }
   } else {
     results.push({
       name: 'hook-canary',
@@ -140,6 +161,11 @@ export async function computeDoctorReport(opts: {
   // 7. Model-cache check — SKIP when model not downloaded (stays green for non-NER users);
   //    PASS when present + SHA-256 verified; FAIL (exit 6) on integrity mismatch.
   results.push(await checkModelCache(homeDir))
+
+  // 8. Reversible-state check — REPORTING-ONLY in Phase 8 (never FAIL): surfaces
+  //    the [reversible] master switch for every run; SKIPs on config errors
+  //    (checkConfigLoad owns that FAIL). Exit 1 reserved for Phase 10 REVMODE-12.
+  results.push(await checkReversibleState(homeDir, cwd))
 
   // Version check.
   // TEST-ONLY escape hatch: if MRCLEAN_TEST_FAKE_CLAUDE_VERSION is set, inject

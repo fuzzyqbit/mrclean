@@ -1,0 +1,349 @@
+/**
+ * findings-builder unit tests (Plan 08-08, WR-01).
+ *
+ * Proves the guard + carry-forward + merge logic of buildFindingsArtifact
+ * OFFLINE — no live sessions, no tokens, no claude spawns. Deliberately NOT
+ * gated on MRCLEAN_UAT: this file is pure logic and must run in every
+ * `--project=uat` invocation so the writer's durability is verifiable
+ * before any live rerun (plan 08-09) touches the committed artifact.
+ */
+
+import { describe, test, expect } from 'vitest'
+
+import {
+  buildFindingsArtifact,
+  type RunRecords,
+  type ToolVerdict,
+  type ExperimentRecord,
+} from './findings-builder.js'
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
+function emptyRun(): RunRecords {
+  return {
+    claudeVersion: '2.1.209 (Claude Code)',
+    date: '2026-07-14',
+    issue68951State: 'not-checked',
+    e1Tools: {},
+  }
+}
+
+function bashVerdict(): ToolVerdict {
+  return {
+    verdict: 'honored',
+    signals: { stream_tool_result_contains_rewritten: true },
+    evidence_paths: ['/tmp/transcript-bash.jsonl'],
+  }
+}
+
+/**
+ * Mirrors the committed tests/uat/artifacts/contract-findings.json E1.tools:
+ * populated per-tool records whose destruction by a partial rerun is the
+ * CR-01 / T-08-08-01 evidence-tampering scenario. Non-stub signals and
+ * evidence_paths matter — they are what a regression would erase.
+ */
+const COMMITTED_E1_VERDICT =
+  'Bash: ignored (original output reached the model unchanged); Read: ignored (original output reached the model unchanged); MCP: honored'
+
+function previousE1Tools(): Record<string, ToolVerdict> {
+  return {
+    Bash: {
+      verdict: 'ignored (original output reached the model unchanged)',
+      signals: { stream_tool_result_contains_rewritten: false, transcript_tool_result_contains_original: true },
+      evidence_paths: ['/tmp/prev-e1-bash-transcript.jsonl'],
+    },
+    Read: {
+      verdict: 'ignored (original output reached the model unchanged)',
+      signals: { stream_tool_result_contains_rewritten: false, transcript_tool_result_contains_original: true },
+      evidence_paths: ['/tmp/prev-e1-read-transcript.jsonl'],
+    },
+    MCP: {
+      verdict: 'honored',
+      signals: { stream_tool_result_contains_rewritten: true },
+      evidence_paths: ['/tmp/prev-e1-mcp-transcript.jsonl'],
+    },
+  }
+}
+
+/** Minimal fresh E2 record so a run passes the zero-verdict guard without touching E1. */
+function freshE2(): ExperimentRecord {
+  return {
+    question: 'Does the PreToolUse updatedInput rewrite reach the tool? (fresh partial-rerun record)',
+    verdict: 'honored — rewritten input reached the tool',
+    method: 'live headless session',
+    claude_version: '2.1.209 (Claude Code)',
+    date: '2026-07-14',
+    signals: { rewritten_input_observed: true },
+    evidence_paths: ['/tmp/fresh-e2-transcript.jsonl'],
+  }
+}
+
+function previousRendering(): Record<string, unknown> {
+  return {
+    verdict:
+      'honored rewrite (object shape) → terminal renders REWRITTEN output; display follows the model-facing value',
+    claude_version: '2.1.209 (Claude Code)',
+    date: '2026-07-14',
+    method: 'operator-directed automated PTY observation (tmux capture-pane)',
+    evidence: {
+      object_shape_session_id: 'e244a7f9-6296-4413-a636-efea169636e2',
+      evidence_paths: ['/tmp/prev-rendering.jsonl'],
+    },
+  }
+}
+
+function previousShapeValidation(): Record<string, unknown> {
+  return {
+    question:
+      "Discovery behind the E1 'ignored for Bash/Read' verdicts: does Claude Code shape-validate updatedToolOutput per tool?",
+    method: 'interactive string-shape transcript inspection + headless -p object probe',
+    claude_version: '2.1.209 (Claude Code)',
+    date: '2026-07-14',
+    verdict: 'Claude Code 2.1.209 SHAPE-VALIDATES updatedToolOutput per tool',
+    verbatim_hook_error:
+      "PostToolUse hook returned updatedToolOutput that does not match Bash's output shape; using original output. [invalid_type: expected object, received string]",
+    fixture_path: 'tests/uat/fixtures/e1-object-rewrite-hook.sh',
+    signals: { object_probe_honored: true, string_shape_rejected: true },
+    evidence_paths: ['/tmp/prev-shape.jsonl'],
+    reinterpretation_notes: { issue_68951: '#68951 likely reports the string form' },
+  }
+}
+
+function previousArtifact(): Record<string, unknown> {
+  return {
+    claude_version: '2.1.209 (Claude Code)',
+    date: '2026-07-14',
+    generated_by: 'tests/uat/contract-verification.test.ts (MRCLEAN_UAT=1 opt-in, record-dont-assert)',
+    issue_68951: '{"state":"OPEN"}',
+    experiments: {
+      E1: {
+        question: 'Is PostToolUse hookSpecificOutput.updatedToolOutput honored, per tool?',
+        // Stamps deliberately OLDER than the run's — provenance survival is
+        // only provable when the two differ (round-2 CR-02).
+        claude_version: '2.1.100 (Claude Code)',
+        date: '2026-06-01',
+        verdict: COMMITTED_E1_VERDICT,
+        tools: previousE1Tools(),
+        rendering: previousRendering(),
+      },
+      E1_shape_validation: previousShapeValidation(),
+    },
+  }
+}
+
+function experimentsOf(result: Record<string, unknown> | null): Record<string, unknown> {
+  expect(result).not.toBeNull()
+  const experiments = (result as Record<string, unknown>)['experiments']
+  expect(experiments).toBeTypeOf('object')
+  return experiments as Record<string, unknown>
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('buildFindingsArtifact', () => {
+  test('returns null when the run recorded zero verdicts (guard — skipped/beforeAll-broken runs cannot clobber the artifact)', () => {
+    // Arrange
+    const run = emptyRun()
+    const previous = previousArtifact()
+
+    // Act
+    const result = buildFindingsArtifact(previous, run)
+
+    // Assert
+    expect(result).toBeNull()
+  })
+
+  test('carries forward previous E1.rendering and E1_shape_validation verbatim when the run did not produce them', () => {
+    // Arrange
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() } }
+    const previous = previousArtifact()
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert
+    const e1 = experiments['E1'] as Record<string, unknown>
+    expect(e1['rendering']).toEqual(previousRendering())
+    expect(experiments['E1_shape_validation']).toEqual(previousShapeValidation())
+  })
+
+  test('uses the run shapeValidation record when defined (run wins over previous)', () => {
+    // Arrange
+    const freshShape: Record<string, unknown> = {
+      question: 'shape validation (fresh)',
+      verdict: 'object shape HONORED for Bash this run',
+      verbatim_hook_error: 'fresh verbatim excerpt from this run',
+      signals: { object_probe_honored: true },
+    }
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() }, shapeValidation: freshShape }
+    const previous = previousArtifact()
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert
+    expect(experiments['E1_shape_validation']).toEqual(freshShape)
+  })
+
+  test('fills verbatim_hook_error from previous when the run shapeValidation record lacks it (field-level fallback)', () => {
+    // Arrange
+    const freshShape: Record<string, unknown> = {
+      question: 'shape validation (fresh, no verbatim error observed)',
+      verdict: 'object shape HONORED for Bash this run',
+      verbatim_hook_error: undefined,
+      signals: { object_probe_honored: true, string_shape_rejected: false },
+    }
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() }, shapeValidation: freshShape }
+    const previous = previousArtifact()
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert
+    const shape = experiments['E1_shape_validation'] as Record<string, unknown>
+    expect(shape['verbatim_hook_error']).toBe(previousShapeValidation()['verbatim_hook_error'])
+    expect(shape['question']).toBe('shape validation (fresh, no verbatim error observed)')
+    expect(shape['verdict']).toBe('object shape HONORED for Bash this run')
+    expect(shape['signals']).toEqual({ object_probe_honored: true, string_shape_rejected: false })
+  })
+
+  test("emits a 'not-recorded' stub when an experiment is absent from BOTH previous and run", () => {
+    // Arrange — previous artifact has no E2; run has no e2 record.
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() } }
+    const previous = previousArtifact()
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert — missingRecord shape preserved from the pre-08-08 writer.
+    const e2 = experiments['E2'] as ExperimentRecord
+    expect(e2.question).toBe('E2 (not recorded)')
+    expect(e2.verdict).toBe('not-recorded (test failed before a verdict was captured — see vitest output)')
+    expect(e2.method).toBe('live headless session')
+    expect(e2.claude_version).toBe('2.1.209 (Claude Code)')
+    expect(e2.signals).toEqual({})
+    expect(e2.evidence_paths).toEqual([])
+  })
+
+  test("falls back to the literal 'pending-interactive' rendering only when previous is undefined and the run produced none", () => {
+    // Arrange
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() } }
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(undefined, run))
+
+    // Assert
+    const e1 = experiments['E1'] as Record<string, unknown>
+    expect(e1['rendering']).toBe('pending-interactive')
+  })
+
+  test('carries forward committed E1 per-tool verdicts when a partial rerun records only E2', () => {
+    // Arrange — disjoint rerun: zero E1 verdicts, one fresh E2 verdict passes the guard.
+    const run: RunRecords = { ...emptyRun(), e2: freshE2() }
+    const previous = previousArtifact()
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert — committed per-tool evidence survives byte-identical; nothing is stubbed.
+    const e1 = experiments['E1'] as Record<string, unknown>
+    expect(e1['tools']).toEqual(previousE1Tools())
+    expect(e1['verdict']).toBe(COMMITTED_E1_VERDICT)
+    // Round-2 CR-02: a run that recorded NO E1 leg must re-emit the previous
+    // E1 record verbatim — provenance stamps (and question/method literals)
+    // included. Re-stamping carried-forward evidence with the fresh run's
+    // claude_version/date is provenance fabrication.
+    expect(e1['claude_version']).toBe('2.1.100 (Claude Code)')
+    expect(e1['date']).toBe('2026-06-01')
+    expect(e1['question']).toBe('Is PostToolUse hookSpecificOutput.updatedToolOutput honored, per tool?')
+  })
+
+  test('merges a fresh per-tool verdict over previous and derives the verdict string from the merged map', () => {
+    // Arrange — run records a fresh Bash verdict only; Read/MCP must come from previous.
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() } }
+    const previous = previousArtifact()
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert — run wins per tool; verdict string reads the MERGED map, not run.e1Tools.
+    const e1 = experiments['E1'] as Record<string, unknown>
+    const tools = e1['tools'] as Record<string, unknown>
+    expect(tools['Bash']).toEqual(bashVerdict())
+    expect(tools['Read']).toEqual(previousE1Tools()['Read'])
+    expect(tools['MCP']).toEqual(previousE1Tools()['MCP'])
+    expect(e1['verdict']).toBe(
+      'Bash: honored; Read: ignored (original output reached the model unchanged); MCP: honored',
+    )
+  })
+
+  test('preserves per-tool records outside the canonical {Bash, Read, MCP} set, appended after the canonical order', () => {
+    // Arrange — previous E1.tools carries an extra 'Edit' record (a future
+    // harness leg / tool addition); run records a fresh Bash verdict (merge
+    // path). Round-2 WR-03: key-set truncation must be impossible.
+    const editVerdict: ToolVerdict = {
+      verdict: 'ignored (original output reached the model unchanged)',
+      signals: { stream_tool_result_contains_rewritten: false },
+      evidence_paths: ['/tmp/prev-e1-edit-transcript.jsonl'],
+    }
+    const base = previousArtifact()
+    const baseExperiments = base['experiments'] as Record<string, unknown>
+    const baseE1 = baseExperiments['E1'] as Record<string, unknown>
+    const previous = {
+      ...base,
+      experiments: {
+        ...baseExperiments,
+        E1: { ...baseE1, tools: { ...previousE1Tools(), Edit: editVerdict } },
+      },
+    }
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() } }
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert — the unknown key survives verbatim, ordered after the canonical
+    // tools, and the verdict string derives from the full union.
+    const e1 = experiments['E1'] as Record<string, unknown>
+    const tools = e1['tools'] as Record<string, unknown>
+    expect(Object.keys(tools)).toEqual(['Bash', 'Read', 'MCP', 'Edit'])
+    expect(tools['Edit']).toEqual(editVerdict)
+    expect(e1['verdict']).toBe(
+      'Bash: honored; Read: ignored (original output reached the model unchanged); MCP: honored; Edit: ignored (original output reached the model unchanged)',
+    )
+  })
+
+  test('stubs a per-tool record only when NEITHER previous nor run has it (merge path)', () => {
+    // Arrange — previous E1.tools carries only Bash and MCP (no Read entry);
+    // run records a FRESH Bash verdict so the merge path (not the CR-02
+    // verbatim re-emit, which needs no stubs) is exercised.
+    const toolsWithoutRead = Object.fromEntries(
+      Object.entries(previousE1Tools()).filter(([tool]) => tool !== 'Read'),
+    )
+    const base = previousArtifact()
+    const baseExperiments = base['experiments'] as Record<string, unknown>
+    const baseE1 = baseExperiments['E1'] as Record<string, unknown>
+    const previous = {
+      ...base,
+      experiments: {
+        ...baseExperiments,
+        E1: { ...baseE1, tools: toolsWithoutRead },
+      },
+    }
+    const run: RunRecords = { ...emptyRun(), e1Tools: { Bash: bashVerdict() } }
+
+    // Act
+    const experiments = experimentsOf(buildFindingsArtifact(previous, run))
+
+    // Assert — Read stubs (neither side has it); Bash is fresh; MCP is carried from previous.
+    const e1 = experiments['E1'] as Record<string, unknown>
+    const tools = e1['tools'] as Record<string, unknown>
+    expect(tools['Read']).toEqual({ verdict: 'not-run', signals: {}, evidence_paths: [] })
+    expect(tools['Bash']).toEqual(bashVerdict())
+    expect(tools['MCP']).toEqual(previousE1Tools()['MCP'])
+    expect(e1['verdict']).toBe('Bash: honored; Read: not-run; MCP: honored')
+  })
+})

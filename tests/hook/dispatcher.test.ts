@@ -17,7 +17,19 @@ vi.mock('../../src/config/index.js', () => ({
     entropy: { threshold: 4.5, min_length: 20 },
     secrets_files: [],
     rules: [],
+    // 09-06: MrcleanConfig requires reversible — ttl_hours feeds the
+    // SessionStart TTL sweep (UNCONDITIONAL since the 09 review WR-02 fix;
+    // janitor mocked below). Disabled here, mirroring the shipped default.
+    reversible: { enabled: false, ttl_hours: 24 },
   }),
+}))
+
+// 09 review (WR-02): the SessionStart TTL sweep now runs regardless of
+// reversible.enabled — mock the janitor so routing tests never sweep a real
+// ~/.mrclean (SessionEnd routing gets the same hermetic seam).
+vi.mock('../../src/state/janitor.js', () => ({
+  runTtlSweep: vi.fn().mockResolvedValue(undefined),
+  runSessionEndJanitor: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../../src/detect/session-state.js', () => ({
@@ -53,6 +65,7 @@ vi.mock('../../src/detect/layer1-regex/index.js', () => ({
 import { dispatch } from '../../src/hook/dispatcher.js'
 import type {
   SessionStartInput,
+  SessionEndInput,
   UserPromptSubmitInput,
   PreToolUseInput,
   PostToolUseInput,
@@ -107,6 +120,32 @@ describe('dispatch', () => {
       tool_input: { command: 'ls' },
       tool_response: 'ok',
       tool_use_id: 'x',
+    }
+    const output = await dispatch(input)
+    expect(output).toBeNull()
+  })
+
+  it('Test 11f: routes SessionEnd to handleSessionEnd → returns null (pure no-op)', async () => {
+    const input: SessionEndInput = { ...base, hook_event_name: 'SessionEnd', reason: 'other' }
+    const output = await dispatch(input)
+    expect(output).toBeNull()
+  })
+
+  it('Test 11g: SessionEnd with reason bypass_permissions_disabled → returns null', async () => {
+    const input: SessionEndInput = {
+      ...base,
+      hook_event_name: 'SessionEnd',
+      reason: 'bypass_permissions_disabled',
+    }
+    const output = await dispatch(input)
+    expect(output).toBeNull()
+  })
+
+  it('Test 11h: SessionEnd tolerates any future reason string → returns null', async () => {
+    const input: SessionEndInput = {
+      ...base,
+      hook_event_name: 'SessionEnd',
+      reason: 'some_future_reason_xyz',
     }
     const output = await dispatch(input)
     expect(output).toBeNull()

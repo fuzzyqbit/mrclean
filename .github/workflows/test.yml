@@ -2,9 +2,14 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    # gsd/** lets milestone branches fire the full matrix on ubuntu BEFORE the
+    # merge PR — the stress gate's first ubuntu run must not be the milestone
+    # PR itself (Plan 11-06, A4 retirement). PR gating stays main-only.
+    branches: [main, 'gsd/**']
   pull_request:
     branches: [main]
+  # Durable post-merge affordance: re-run the matrix on demand from any branch.
+  workflow_dispatch:
 
 # Cancel in-progress runs for the same branch so successive pushes don't queue
 # redundant test runs. This workflow has no write permissions and uses no secrets.
@@ -21,7 +26,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: ['20.18', '20.x', '22.x']
+        # Floor pin is 20.19 (not the package.json-historical 20.18) because
+        # vitest -> vite@8 -> rolldown's native bindings carry
+        # engines.node: "^20.19.0 || >=22.12.0"; npm silently marks the
+        # optional binding inert below that floor (no install, no error),
+        # so 20.18 could never actually pass this toolchain. Verified via
+        # rolldown-binding-node2018-engines debug session, 2026-07-18.
+        node-version: ['20.19', '20.x', '22.x']
 
     steps:
       - uses: actions/checkout@v4

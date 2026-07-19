@@ -14,7 +14,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import pc from 'picocolors'
 
-import { writeHookEntries, removeHookEntries } from './settings.js'
+import { HOOK_EVENTS, writeHookEntries, removeHookEntries } from './settings.js'
 import { writeMcpServerEntry, removeMcpServerEntry } from './mcp-config.js'
 import { createProjectDir } from './project-dir.js'
 import { addGitignoreEntries, removeGitignoreEntries } from './gitignore.js'
@@ -78,7 +78,7 @@ export async function runInstall(opts?: InstallOpts): Promise<void> {
 
   process.stdout.write(
     pc.green(`mrclean v${VERSION} installed`) +
-    pc.dim(' (hooks: 4, MCP server: mrclean)') +
+    pc.dim(` (hooks: ${HOOK_EVENTS.length}, MCP server: mrclean)`) +
     '\n'
   )
 }

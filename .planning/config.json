@@ -1,5 +1,5 @@
 {
-  "model_profile": "inherit",
+  "model_profile": "quality",
   "commit_docs": true,
   "parallelization": true,
   "search_gitignored": false,
@@ -14,7 +14,7 @@
     "create_tag": true
   },
   "workflow": {
-    "research": true,
+    "research": false,
     "plan_check": true,
     "verifier": true,
     "nyquist_validation": true,
@@ -29,7 +29,7 @@
     "skip_discuss": true,
     "code_review": true,
     "code_review_depth": "standard",
-    "_auto_chain_active": false,
+    "_auto_chain_active": true,
     "tdd_mode": true,
     "ui_review": true,
     "ai_integration_phase": true,
@@ -51,19 +51,19 @@
     "enabled": true
   },
   "model_overrides": {
-    "gsd-executor": "fable",
-    "gsd-verifier": "fable",
-    "gsd-planner": "fable",
-    "gsd-phase-researcher": "fable",
-    "gsd-plan-checker": "fable",
-    "gsd-code-reviewer": "fable",
-    "gsd-code-fixer": "fable",
-    "gsd-debugger": "fable"
+    "gsd-executor": "inherit",
+    "gsd-verifier": "inherit",
+    "gsd-planner": "inherit",
+    "gsd-phase-researcher": "inherit",
+    "gsd-plan-checker": "inherit",
+    "gsd-code-reviewer": "inherit",
+    "gsd-code-fixer": "inherit",
+    "gsd-debugger": "inherit"
   },
   "model_profile_overrides": {
     "claude": {
-      "opus": "claude-fable-5",
-      "sonnet": "claude-fable-5"
+      "opus": "inherit",
+      "sonnet": "inherit"
     }
   }
 }

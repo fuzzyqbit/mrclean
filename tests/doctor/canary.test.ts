@@ -12,9 +12,10 @@
  * Plan 01-05 TDD RED: these tests must fail before implementation.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
-import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { existsSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
@@ -29,6 +30,17 @@ describe('canary helpers', () => {
         'dist/cli.js or dist/mcp.js not found. Run npm run build before running these tests.',
       )
     }
+    // 09 review (WR-02): runMcpCanary boots the REAL dist/mcp.js, whose boot
+    // TTL sweep now runs unconditionally. The canary spawns inherit
+    // process.env, so stub HOME here — canaries must never touch the real
+    // ~/.mrclean from a test run.
+    const sandboxHome = mkdtempSync(join(tmpdir(), 'mrclean-canary-home-'))
+    vi.stubEnv('HOME', sandboxHome)
+    vi.stubEnv('USERPROFILE', sandboxHome)
+  })
+
+  afterAll(() => {
+    vi.unstubAllEnvs()
   })
 
   it('exports CANARY_STRING constant', async () => {

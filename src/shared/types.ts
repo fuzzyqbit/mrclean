@@ -1,8 +1,8 @@
 /**
  * Shared TypeScript types for the mrclean hook contract.
  *
- * Input shapes: RESEARCH.md §1.1 — verified from code.claude.com/docs/en/hooks (2026-05-13)
- * Output shapes: RESEARCH.md §1.2 — verified from code.claude.com/docs/en/hooks (2026-05-13)
+ * Input shapes: RESEARCH.md §1.1 — verified from code.claude.com/docs/en/hooks (re-verified 2026-07-14, Phase 8)
+ * Output shapes: RESEARCH.md §1.2 — verified from code.claude.com/docs/en/hooks (re-verified 2026-07-14, Phase 8)
  *
  * These types are LOCKED by the Claude Code hook contract and must not be altered
  * without verifying against the upstream docs. Plans 02/03/04/05 import these
@@ -18,7 +18,7 @@ export interface HookInputBase {
   session_id: string
   transcript_path: string
   cwd: string
-  hook_event_name: 'SessionStart' | 'UserPromptSubmit' | 'PreToolUse' | 'PostToolUse'
+  hook_event_name: 'SessionStart' | 'UserPromptSubmit' | 'PreToolUse' | 'PostToolUse' | 'SessionEnd'
 }
 
 /**
@@ -67,12 +67,25 @@ export interface PostToolUseInput extends HookInputBase {
   permission_mode?: string
 }
 
+/**
+ * SessionEnd — fires when a Claude Code session terminates.
+ * Output and exit codes are ignored upstream — the handler is fire-and-forget.
+ */
+export interface SessionEndInput extends HookInputBase {
+  hook_event_name: 'SessionEnd'
+  /** Documented values as of CC 2.1.209: clear | resume | logout | prompt_input_exit
+   *  | bypass_permissions_disabled | other. Upstream may add more — treat as open string.
+   *  [CITED: code.claude.com/docs/en/hooks, fetched 2026-07-14] */
+  reason: string
+}
+
 /** Union of all possible hook input payloads. */
 export type HookInput =
   | SessionStartInput
   | UserPromptSubmitInput
   | PreToolUseInput
   | PostToolUseInput
+  | SessionEndInput
 
 // ---------------------------------------------------------------------------
 // Hook Output Types
@@ -122,13 +135,31 @@ export interface PreToolUseOutput {
  * PostToolUse is non-blocking: exit 2 only shows stderr, it cannot stop execution.
  *
  * `updatedToolOutput` requires Claude Code >= v2.1.121 (Plan 02-05 doctor floor bump).
- * When present, it replaces the tool output that re-enters the model context.
+ *
+ * E1 verdict — verified on Claude Code 2.1.209, 2026-07-14, live fixture-hook
+ * experiments (docs/HOOK-CONTRACT.md; tests/uat/artifacts/contract-findings.json):
+ * Claude Code SHAPE-VALIDATES `updatedToolOutput` per tool.
+ *   - MCP tools: STRING payloads honored (MCP content is string-shaped) — the
+ *     rewrite replaces the tool output that re-enters model context.
+ *   - Built-in Bash: STRING payloads REJECTED (zod invalid_type, "expected
+ *     object, received string"; hook warning shown, original output used —
+ *     the likely substance of anthropics/claude-code#68951). OBJECT payloads
+ *     ({stdout, stderr, interrupted, isImage}) ARE honored.
+ *   - Built-in Read: STRING payloads rejected; object shape untested (open
+ *     follow-up — expected shape unknown).
+ * mrclean emits the STRING form (post-tool-use.ts Step 7), so on 2.1.209 the
+ * PostToolUse rewrite is honored for MCP tool outputs and inert for built-in
+ * tools. Terminal rendering follows the model-facing value.
  */
 export interface PostToolUseOutput {
   hookSpecificOutput?: {
     hookEventName: 'PostToolUse'
     additionalContext?: string
-    /** Placeholder-substituted version of the tool output (CC >= v2.1.121). */
+    /**
+     * Placeholder-substituted version of the tool output (CC >= v2.1.121).
+     * String form is honored for MCP tools only; built-in tools reject it via
+     * per-tool shape validation on 2.1.209 — see docs/HOOK-CONTRACT.md §E1.
+     */
     updatedToolOutput?: string
   }
 }
@@ -221,6 +252,17 @@ export interface MrcleanPiiRegexConfig {
 }
 
 /**
+ * Parsed-TOML layer shape for [pii.regex] (Phase 8-07 / CR-01 fix).
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ */
+export interface MrcleanPiiRegexConfigLayer {
+  enabled?: boolean
+  entities?: string[]
+  actions?: Record<string, PiiAction>
+}
+
+/**
  * NER sub-lane configuration ([pii.ner] in TOML).
  * MCP-server-only — warm singleton, perf-exempt. NEVER runs in the hook process.
  */
@@ -250,6 +292,22 @@ export interface MrcleanPiiNerConfig {
 }
 
 /**
+ * Parsed-TOML layer shape for [pii.ner] (Phase 8-07 / CR-01 fix).
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ */
+export interface MrcleanPiiNerConfigLayer {
+  enabled?: boolean
+  model?: string
+  dtype?: string
+  entities?: string[]
+  confidence?: number
+  allowDownload?: boolean
+  warmOnBoot?: boolean
+  actions?: Record<string, PiiAction>
+}
+
+/**
  * Top-level PII configuration ([pii] in TOML).
  * Phase 4-02 contract: defines the config surface for Phases 5-7.
  * PII-03: OFF by default; secrets remain mrclean's core hard gate.
@@ -271,6 +329,50 @@ export interface MrcleanPiiConfig {
   regex: MrcleanPiiRegexConfig
   /** NER inference MCP-only lane (L6b). */
   ner: MrcleanPiiNerConfig
+}
+
+/**
+ * Parsed-TOML layer shape for [pii] (Phase 8-07 / CR-01 fix).
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ */
+export interface MrcleanPiiConfigLayer {
+  enabled?: boolean
+  regex?: MrcleanPiiRegexConfigLayer
+  ner?: MrcleanPiiNerConfigLayer
+}
+
+/**
+ * Reversible-mode configuration ([reversible] in TOML).
+ * Phase 8-01 contract: REVMODE-02 groundwork — the config table.
+ * Phase 9-01: the store-schema ownership landed — `ttl_hours` added per D-09
+ * (the ONLY new [reversible] key this phase; no cipher choice, no path overrides).
+ *
+ * Merge semantics: per-field LAST-WINS-WHEN-SET (scalar), same as [pii.ner] fields.
+ * YAGNI fence: `enabled` + `ttl_hours` are the ONLY fields — do not speculate here.
+ */
+export interface MrcleanReversibleConfig {
+  /**
+   * Master switch. Default: false.
+   * When false, behavior is byte-identical to shipped v2.0 —
+   * absent-[reversible] == shipped one-way guarantee.
+   */
+  enabled: boolean
+  /** Orphan-sweep TTL in hours; integer >= 1; default 24 (D-09). */
+  ttl_hours: number
+}
+
+/**
+ * Parsed-TOML layer shape for [reversible] (Phase 8-07 / CR-01 fix).
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ * A `[reversible]` table carrying only unknown/future keys parses to {} so it
+ * cannot clear a lower-layer opt-in.
+ */
+export interface MrcleanReversibleConfigLayer {
+  enabled?: boolean
+  /** Orphan-sweep TTL in hours; integer >= 1; default 24 (D-09). */
+  ttl_hours?: number
 }
 
 /**
@@ -308,4 +410,31 @@ export interface MrcleanConfig {
    * PII-03: opt-in; secrets remain the only default hard gate.
    */
   pii: MrcleanPiiConfig
+  /**
+   * Reversible-mode configuration ([reversible] in TOML). Phase 8-01 contract.
+   * Default: enabled=false (master off). Absent [reversible] table == shipped
+   * one-way guarantee. REVMODE-02 groundwork; Phase 9 consumes it.
+   */
+  reversible: MrcleanReversibleConfig
+}
+
+/**
+ * One parsed config layer (Phase 8-07 / CR-01 fix). Replaces Partial<MrcleanConfig>
+ * as the layer currency: pii/reversible sub-tables are themselves partial-shaped,
+ * which Partial<MrcleanConfig> cannot express (its pii? is a FULL MrcleanPiiConfig).
+ *
+ * Absent field == this layer does not set it. Default-filling happens ONLY in
+ * mergeConfigs — validators must never substitute DEFAULT_CONFIG values into a layer.
+ *
+ * Design invariant: every full config type is structurally assignable to its layer
+ * type, so DEFAULT_CONFIG (MrcleanConfig) remains passable as layer 1 of mergeConfigs.
+ */
+export interface MrcleanConfigLayer {
+  dry_run?: boolean
+  allowlist?: MrcleanAllowlist
+  entropy?: MrcleanEntropyConfig
+  secrets_files?: string[]
+  rules?: MrcleanRuleOverride[]
+  pii?: MrcleanPiiConfigLayer
+  reversible?: MrcleanReversibleConfigLayer
 }

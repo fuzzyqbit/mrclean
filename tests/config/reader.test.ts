@@ -127,4 +127,178 @@ describe('readConfigLayer', () => {
       // smol-toml provides its own error text; we don't assert a specific prefix.
     }
   })
+
+  // Test A (Phase 8-01): [reversible] enabled = true parses to a typed sub-table
+  it('returns reversible { enabled: true } when file contains [reversible] with enabled = true', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nenabled = true\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: true })
+  })
+
+  // Test B (Phase 8-01): wrong-typed enabled fails closed with a structured error
+  it('throws ConfigReadError when [reversible].enabled is not a boolean', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nenabled = "yes"\n')
+
+    // Act + Assert
+    await expect(readConfigLayer(configPath)).rejects.toBeInstanceOf(ConfigReadError)
+
+    try {
+      await readConfigLayer(configPath)
+      expect.unreachable('readConfigLayer must reject on non-boolean [reversible].enabled')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigReadError)
+      const configErr = err as ConfigReadError
+      expect(configErr.reason).toBe('[reversible].enabled must be a boolean')
+      expect(configErr.path).toBe(configPath)
+    }
+  })
+
+  // Test C (Phase 8-01): unknown keys inside [reversible] are ignored (matches parseToml
+  // tolerance; FAIL-loud on unsupported keys is Phase 10 / REVMODE-12).
+  it('ignores unknown keys inside [reversible] and returns only { enabled }', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nenabled = true\nfuture_key = 1\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toEqual({ enabled: true })
+  })
+
+  // Test I (Phase 8-07, CR-01): a [reversible] table with only unknown/future keys parses
+  // to a true Partial — no baked `enabled` default. Default-filling is mergeConfigs' job.
+  it('returns reversible {} (no baked enabled default) when [reversible] has only unknown keys', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nfuture_key = 1\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toEqual({})
+  })
+
+  // Test J (Phase 8-07, CR-01): [pii]/[pii.ner] tables parse to true Partials — absent
+  // fields are absent keys, never substituted with bundled defaults.
+  // (Structural cast: the partial layer types land in the GREEN step; this keeps the
+  // RED commit compiling under the differential typecheck gate.)
+  it('returns a partial pii layer (absent fields omitted) when [pii.ner] sets only confidence', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[pii]\n[pii.ner]\nconfidence = 0.9\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    const pii = (result as { pii?: { enabled?: boolean; regex?: unknown; ner?: unknown } }).pii
+    expect(pii).toBeDefined()
+    expect(pii?.enabled).toBeUndefined()
+    expect(pii?.regex).toBeUndefined()
+    expect(pii?.ner).toEqual({ confidence: 0.9 })
+  })
+
+  // Test L (Phase 9-01, D-09): ttl_hours = 0 fails closed — a hostile/typo'd config
+  // cannot force instant orphan deletion (T-09-01-01). Reason names the exact bound.
+  it('throws ConfigReadError when [reversible].ttl_hours is 0', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nttl_hours = 0\n')
+
+    // Act + Assert
+    await expect(readConfigLayer(configPath)).rejects.toBeInstanceOf(ConfigReadError)
+
+    try {
+      await readConfigLayer(configPath)
+      expect.unreachable('readConfigLayer must reject on [reversible].ttl_hours = 0')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigReadError)
+      const configErr = err as ConfigReadError
+      expect(configErr.reason).toBe('[reversible].ttl_hours must be an integer >= 1')
+      expect(configErr.path).toBe(configPath)
+    }
+  })
+
+  // Test M (Phase 9-01, D-09): wrong-typed ttl_hours (string) fails closed with the
+  // same structured reason — never silently coerces "24" to 24.
+  it('throws ConfigReadError when [reversible].ttl_hours is a string', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nttl_hours = "24"\n')
+
+    // Act + Assert
+    await expect(readConfigLayer(configPath)).rejects.toBeInstanceOf(ConfigReadError)
+
+    try {
+      await readConfigLayer(configPath)
+      expect.unreachable('readConfigLayer must reject on string [reversible].ttl_hours')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigReadError)
+      const configErr = err as ConfigReadError
+      expect(configErr.reason).toBe('[reversible].ttl_hours must be an integer >= 1')
+      expect(configErr.path).toBe(configPath)
+    }
+  })
+
+  // Test N (Phase 9-01, D-09): non-integer ttl_hours fails closed — TTL math is
+  // whole-hours only; 1.5 is rejected, not truncated.
+  it('throws ConfigReadError when [reversible].ttl_hours is a non-integer number', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nttl_hours = 1.5\n')
+
+    // Act + Assert
+    await expect(readConfigLayer(configPath)).rejects.toBeInstanceOf(ConfigReadError)
+
+    try {
+      await readConfigLayer(configPath)
+      expect.unreachable('readConfigLayer must reject on non-integer [reversible].ttl_hours')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigReadError)
+      const configErr = err as ConfigReadError
+      expect(configErr.reason).toBe('[reversible].ttl_hours must be an integer >= 1')
+      expect(configErr.path).toBe(configPath)
+    }
+  })
+
+  // Test O (Phase 9-01, D-09): a ttl-only [reversible] table parses to a TRUE partial —
+  // `enabled` is ABSENT (not undefined-assigned), so it can never clear a lower-layer
+  // opt-in. toStrictEqual is load-bearing: it fails on { ttl_hours: 48, enabled: undefined }.
+  it('returns reversible { ttl_hours: 48 } with enabled key absent for a ttl-only table', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\nttl_hours = 48\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toStrictEqual({ ttl_hours: 48 })
+  })
+
+  // Test P (Phase 9-01, D-09 — Test C/I mirror): the ttl-aware validator keeps the
+  // unknown-key tolerance — a [reversible] table with only future keys (which D-09
+  // explicitly fences OUT of this phase) still parses to {}.
+  it('returns reversible {} when [reversible] carries only unknown future keys (ttl-aware validator)', async () => {
+    // Arrange
+    const configPath = join(tmpDir, 'config.toml')
+    await writeFile(configPath, '[reversible]\ncipher = "aes-256-gcm"\nstore_path = "/tmp/x"\n')
+
+    // Act
+    const result = await readConfigLayer(configPath)
+
+    // Assert
+    expect(result.reversible).toStrictEqual({})
+  })
 })
