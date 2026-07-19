@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0
+
+### Major Changes
+
+- 4f46507: First public release — version 1.0.0.
+
+  Bumps from 1.0.0-rc.1 to 1.0.0 with no behavior change vs the release candidate.
+  The 1.0.0-rc.1 entry in CHANGELOG.md already enumerates Phase 1 + 2 + 3 deliverables;
+  this changeset adds the `## 1.0.0` entry referring back to 1.0.0-rc.1.
+
 All notable changes to mrclean-claude are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
