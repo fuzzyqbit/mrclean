@@ -1,7 +1,7 @@
 {
   "name": "mrclean-claude",
   "version": "1.0.0-rc.9",
-  "description": "In-session sanitizer for Claude Code that prevents secrets and proprietary terms from reaching Anthropic, MCP servers, or cloud agents. Local, deterministic, no telemetry.",
+  "description": "In-session sanitizer for Claude Code that reduces the secrets and proprietary terms that reach Anthropic, MCP servers, or cloud agents. Local, deterministic, no telemetry.",
   "license": "MIT",
   "author": "",
   "repository": {
@@ -21,8 +21,7 @@
     "redaction",
     "sanitizer",
     "hook",
-    "anthropic",
-    "dlp"
+    "anthropic"
   ],
   "type": "module",
   "engines": {
