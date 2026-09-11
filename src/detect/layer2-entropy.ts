@@ -3,6 +3,7 @@
  *
  * Algorithm:
  *   1. Tokenize text into candidates (alphanumeric + _-./+= sequences ≥ min_length).
+ *   1a. Skip (and count) any candidate longer than MAX_TOKEN_LENGTH.
  *   2. Skip tokens covered by prior-layer spans.
  *   3. Skip shape-allowlisted tokens (UUIDs, git SHAs, etc.) — runs BEFORE entropy.
  *   4. Compute Shannon bits-per-char entropy.
@@ -128,6 +129,30 @@ const ESCALATION_MIN_LENGTH = 40
 const ESCALATION_MIN_ENTROPY = 5.0
 
 // ---------------------------------------------------------------------------
+// Token length cap
+// ---------------------------------------------------------------------------
+
+/**
+ * Upper bound (chars) on a single entropy candidate. Runs longer than this are
+ * skipped entirely and counted, never substituted and never turned into a Finding.
+ *
+ * Why 4096:
+ *   - Largest legitimate entropy finding observed:            146 chars
+ *   - Largest finding of ANY rule in the repo ledger:       5,642 chars
+ *   - Smallest observed false positive (minified bundle):  256,368 chars
+ *     (others measured at 323,944 / 396,860 / 499,988 / 669,944 chars)
+ * 4096 sits inside the empty three-orders-of-magnitude gap between real findings
+ * and the minified-bundle false positives, so it separates the two populations
+ * without clipping anything a real secret has ever needed.
+ *
+ * Why skip rather than truncate: a minified bundle is ONE token. Reporting it
+ * makes the whole file a single Finding, and because the terminal renders the
+ * model-facing value, a working substitution replaces a 670 KB file with one
+ * placeholder in the operator's own view.
+ */
+export const MAX_TOKEN_LENGTH = 4096
+
+// ---------------------------------------------------------------------------
 // runLayer2Entropy
 // ---------------------------------------------------------------------------
 
@@ -138,18 +163,30 @@ const ESCALATION_MIN_ENTROPY = 5.0
  * @param config       - Effective mrclean configuration (entropy.threshold, entropy.min_length).
  * @param coveredSpans - Spans already claimed by Layer 1. Tokens whose span overlaps
  *                       any entry here are skipped (span-dedup protocol).
- * @returns            - Array of Findings sorted by span.start ascending.
+ * @returns            - `findings`: sorted by span.start ascending.
+ *                       `skippedOversizedTokens`: how many candidates were dropped for
+ *                       exceeding MAX_TOKEN_LENGTH. Non-zero means this text contained a
+ *                       blob Layer 2 deliberately did not scan; callers that surface
+ *                       coverage (CLI output, diagnostics) should report it rather than
+ *                       let the gap pass silently.
  */
 export function runLayer2Entropy(
   text: string,
   config: MrcleanConfig,
   coveredSpans: readonly { start: number; end: number }[] = [],
-): Finding[] {
+): { findings: Finding[]; skippedOversizedTokens: number } {
   const { threshold, min_length } = config.entropy
   const findings: Finding[] = []
+  let skippedOversizedTokens = 0
 
   // Token regex: alphanumeric + safe punctuation that appears in secrets (_-./+=)
   // Minimum length enforced via the {N,} quantifier.
+  //
+  // The quantifier stays UNBOUNDED on purpose. Bounding it to {min,MAX_TOKEN_LENGTH}
+  // would make a 670 KB run match as ~164 adjacent MAX_TOKEN_LENGTH fragments, each of
+  // which independently clears the length>=40 && entropy>=5.0 escalation path — trading
+  // one bogus finding for a hundred. Greedy maximal-munch is what lets the loop below
+  // see the whole run as one unit and drop it as one unit.
   const tokenRe = new RegExp(`[A-Za-z0-9_.\\-./+=]{${min_length},}`, 'g') // PERF-03: dynamic min_length from config — cannot be module-scope constant; compiled once per runLayer2Entropy invocation, not per token.
 
   let match: RegExpExecArray | null
@@ -159,23 +196,31 @@ export function runLayer2Entropy(
     const spanStart = match.index
     const spanEnd = spanStart + value.length
 
-    // 1. Skip if covered by a prior layer's span
+    // 1. Skip (and count) runs past the length cap. Checked FIRST: it is an O(1)
+    //    test that avoids running the overlap scan and the O(n) entropy pass over a
+    //    multi-hundred-KB string we are going to discard anyway.
+    if (value.length > MAX_TOKEN_LENGTH) {
+      skippedOversizedTokens++
+      continue
+    }
+
+    // 2. Skip if covered by a prior layer's span
     if (overlapsCovered(spanStart, spanEnd, coveredSpans)) continue
 
-    // 2. Shape allowlist runs BEFORE entropy (DET2-02)
+    // 3. Shape allowlist runs BEFORE entropy (DET2-02)
     if (isShapeAllowlisted(value)) continue
 
-    // 3. Compute entropy
+    // 4. Compute entropy
     const entropy = shannonEntropy(value)
 
-    // 4. Fire conditions (DET2-03)
+    // 5. Fire conditions (DET2-03)
     const hasKeyword = hasEntropyContext(text, spanStart, spanEnd)
     const keywordFired = entropy >= threshold && hasKeyword
     const escalationFired = value.length >= ESCALATION_MIN_LENGTH && entropy >= ESCALATION_MIN_ENTROPY
 
     if (!keywordFired && !escalationFired) continue
 
-    // 5. Build Finding
+    // 6. Build Finding
     const hash = redactedHash(value)
     const fp = fingerprint('entropy:high', value)
 
@@ -190,6 +235,10 @@ export function runLayer2Entropy(
     })
   }
 
-  // Return sorted by span.start ascending
-  return findings.sort((a, b) => a.span.start - b.span.start)
+  // Findings sorted by span.start ascending; sort on a copy so the local array is
+  // not mutated in place on the way out.
+  return {
+    findings: [...findings].sort((a, b) => a.span.start - b.span.start),
+    skippedOversizedTokens,
+  }
 }

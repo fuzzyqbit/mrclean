@@ -13,6 +13,12 @@
  * Design notes:
  *   - Substring check (not exact match) catches partial leaks, e.g. if a raw
  *     value were accidentally base64-encoded into a field.
+ *   - Case-INSENSITIVE. Layer 4 lowercases word rule IDs
+ *     (`word:${entry.word.toLowerCase()}` in layer4-words.ts) and log.ts writes the
+ *     ruleId verbatim, so a leak reaches the log folded while the canary keeps its
+ *     source casing. A case-sensitive scan could never match it, which made this
+ *     guard permanently green — i.e. vacuous. Both sides are folded before compare;
+ *     the ORIGINAL canary and record casing are preserved in the report.
  *   - Checks `JSON.stringify(record)` not the raw line — normalises whitespace
  *     and key order so the check is format-independent.
  *   - On ENOENT the function returns `{ ok: true, leaked: [] }` — an absent log
@@ -51,6 +57,7 @@ export interface CanaryLeakResult {
  *
  * @param logPath  - Absolute path to the `audit.jsonl` file.
  * @param canaries - Array of raw secret strings to search for (must never appear in the log).
+ *                   Matched case-insensitively.
  * @returns        - `{ ok: true, leaked: [] }` if clean; `{ ok: false, leaked: [...] }` if not.
  */
 export async function assertNoCanaryLeak(
@@ -71,6 +78,11 @@ export async function assertNoCanaryLeak(
   const lines = content.split('\n').filter((line) => line.length > 0)
   const leaked: CanaryLeakResult['leaked'] = []
 
+  // Fold each canary once here rather than once per line. `toLowerCase` (not
+  // `toLocaleLowerCase`) is deliberate: locale-invariant folding keeps the
+  // result identical on every machine that runs the CI gate.
+  const foldedCanaries = canaries.map((canary) => ({ canary, folded: canary.toLowerCase() }))
+
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i]!
     const lineNumber = i + 1
@@ -85,9 +97,12 @@ export async function assertNoCanaryLeak(
     }
 
     const recordStr = JSON.stringify(record)
+    const foldedRecord = recordStr.toLowerCase()
 
-    for (const canary of canaries) {
-      if (recordStr.includes(canary)) {
+    for (const { canary, folded } of foldedCanaries) {
+      if (foldedRecord.includes(folded)) {
+        // Report the ORIGINAL canary and the ORIGINAL record — folding is a
+        // matching detail, not something the caller should have to un-pick.
         leaked.push({ canary, line: lineNumber, record: recordStr })
       }
     }
