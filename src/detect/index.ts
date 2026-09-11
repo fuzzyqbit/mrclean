@@ -277,7 +277,7 @@ export async function runDetectionReadOnly(
   const timeoutCount = l1.timeoutCount
 
   const l2 = runLayer2Entropy(text, config, findings.map((f) => f.span))
-  findings.push(...l2)
+  findings.push(...l2.findings)
 
   const l3 = runLayer3Env(text, sessionState.envBlocklist, findings.map((f) => f.span))
   findings.push(...l3)
@@ -380,7 +380,7 @@ export async function runDetection(
 
   // Step 4: Layer 2 — Shannon entropy detection (sync)
   const l2 = runLayer2Entropy(text, config, findings.map((f) => f.span))
-  findings.push(...l2)
+  findings.push(...l2.findings)
 
   // Step 5: Layer 3 — env blocklist literal matching (sync)
   const l3 = runLayer3Env(text, sessionState.envBlocklist, findings.map((f) => f.span))
