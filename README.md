@@ -292,8 +292,9 @@ Short list:
 ## 12. License
 
 [MIT](./LICENSE). No telemetry, no phone-home, no analytics — by design and by
-architecture (no network calls other than the Anthropic API that Claude Code itself
-makes).
+architecture. A default install makes no network calls other than the Anthropic API
+that Claude Code itself makes. The one exception is the opt-in NER tier, which
+downloads its model from `huggingface.co` on first use.
 
 ---
 
