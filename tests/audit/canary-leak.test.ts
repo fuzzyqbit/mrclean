@@ -112,4 +112,37 @@ describe('assertNoCanaryLeak', () => {
     expect(leakedCanaries).toContain(AWS_FIXTURE)
     expect(leakedCanaries).not.toContain(SAFE_CANARY)
   })
+
+  it('detects a leaked term when the record is lowercased and the canary is uppercase', async () => {
+    // Arrange: Layer 4 lowercases word rule IDs (src/detect/layer4-words.ts —
+    // `word:${entry.word.toLowerCase()}`) and src/audit/log.ts writes ruleId
+    // verbatim, so a real leak lands in the log lower-cased while the fixture
+    // canary keeps its original casing. A case-sensitive scan can never match it.
+    const MIXED_CASE_CANARY = 'NorthstarLedger'
+    const leakyRecord = JSON.stringify({
+      ts: '2026-05-14T10:00:00.000Z',
+      sessionId: 'sess-test',
+      hookEvent: 'UserPromptSubmit',
+      // BAD: the raw term reaches the log via the lower-cased rule ID
+      ruleId: `word:${MIXED_CASE_CANARY.toLowerCase()}`,
+      severity: 'MEDIUM',
+      action: 'substitute',
+      redactedHash: 'dead123456abcdef',
+      fingerprint: 'word:dead123456abcdef',
+      location: { hookEvent: 'UserPromptSubmit', offset: 5, length: 15 },
+    })
+    await writeFile(logPath, leakyRecord + '\n')
+
+    // Act
+    const result = await assertNoCanaryLeak(logPath, [MIXED_CASE_CANARY])
+
+    // Assert
+    expect(result.ok).toBe(false)
+    expect(result.leaked).toHaveLength(1)
+    // The ORIGINAL canary is reported, not a lower-cased copy
+    expect(result.leaked[0]!.canary).toBe(MIXED_CASE_CANARY)
+    expect(result.leaked[0]!.line).toBe(1)
+    // The record is reported with its original casing, not folded
+    expect(result.leaked[0]!.record).toContain(`word:${MIXED_CASE_CANARY.toLowerCase()}`)
+  })
 })
